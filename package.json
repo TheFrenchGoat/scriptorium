@@ -30,7 +30,8 @@
     "publish": {
       "provider": "github",
       "owner": "TheFrenchGoat",
-      "repo": "scriptorium"
+      "repo": "scriptorium",
+      "releaseType": "release"
     }
   },
   "devDependencies": {
