@@ -1,0 +1,39 @@
+{
+  "name": "scriptorium",
+  "version": "1.0.0",
+  "description": "Éditeur d'écriture moderne",
+  "main": "app.js",
+  "author": "",
+  "license": "ISC",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --enable-logging",
+    "build": "electron-builder"
+  },
+  "build": {
+    "appId": "com.scriptorium.app",
+    "productName": "Scriptorium",
+    "asar": true,
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "icon.ico"
+    }
+  },
+  "devDependencies": {
+    "electron": "^44.2.0",
+    "electron-builder": "^26.15.3"
+  },
+  "dependencies": {
+    "adm-zip": "^0.6.0",
+    "docx": "^9.5.3",
+    "electron-store": "^8.2.0",
+    "sanitize-html": "^2.13.1"
+  },
+  "allowScripts": {
+    "ejs@2.7.4": true,
+    "electron@40.10.6": true
+  }
+}

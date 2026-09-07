@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Scriptorium</title>
+  <link rel="stylesheet" href="style.css">
+  <link href="fonts/roboto/roboto.css" rel="stylesheet">
+</head>
+<body class="dark menu-page">
+
+  <div class="menu-container">
+    <header class="menu-header">
+      <h1>Scriptorium</h1>
+      <div style="display:flex; gap:10px;">
+        <div class="theme-menu-container" style="position: relative;">
+          <button id="btnLangToggle" data-i18n="langToggle">🌐 Langue ▾</button>
+          <div id="langDropdown" class="theme-dropdown">
+            <div class="theme-item" data-lang="fr" data-i18n="langFr">Français</div>
+            <div class="theme-item" data-lang="en" data-i18n="langEn">English</div>
+          </div>
+        </div>
+        <button id="btnImportProject" data-i18n="importProject" data-i18n-title="importProjectTitle">📥 Importer</button>
+        <button id="btnNewProject" data-i18n="newProject">+ Nouveau Projet</button>
+      </div>
+    </header>
+    
+    <div id="projectsList" class="projects-list"></div>
+  </div>
+
+  <!-- Modal Nouveau Projet -->
+  <div id="newProjectModal" class="modal">
+    <div class="modal-content">
+      <h3 data-i18n="newProjectModalTitle">Nouveau Projet</h3>
+      <input type="text" id="projectNameInput" data-i18n-placeholder="projectNamePlaceholder" placeholder="Nom du projet">
+      <div class="modal-buttons">
+        <button id="cancelNewProject" data-i18n="cancel">Annuler</button>
+        <button id="confirmNewProject" data-i18n="create">Créer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Renommer Projet -->
+  <div id="renameProjectModal" class="modal">
+    <div class="modal-content">
+      <h3 data-i18n="renameProjectModalTitle">Renommer le projet</h3>
+      <input type="text" id="renameProjectInput" data-i18n-placeholder="newNamePlaceholder" placeholder="Nouveau nom">
+      <div class="modal-buttons">
+        <button id="cancelRenameProject" data-i18n="cancel">Annuler</button>
+        <button id="confirmRenameProject" data-i18n="rename">Renommer</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="menu.js"></script>
+</body>
+</html>
