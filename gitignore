@@ -1,0 +1,20 @@
+# Dépendances (régénérées via `npm install`, ne jamais committer)
+node_modules/
+
+# Sorties de build electron-builder (.exe, latest.yml, etc. — générées, pas du code source)
+dist/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Fichiers système
+.DS_Store
+Thumbs.db
+
+# Éditeurs
+.vscode/
+.idea/
+
+# Variables d'environnement (ex: si vous stockez un token localement un jour)
+.env

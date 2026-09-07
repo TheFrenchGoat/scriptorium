@@ -195,6 +195,14 @@ async function init() {
   };
   document.getElementById('closeStats').onclick = () => closeModal('statsModal');
 
+  // --- MISE À JOUR AUTOMATIQUE ---
+  // Le résultat (mise à jour trouvée / déjà à jour / erreur) est affiché par
+  // le processus main via des dialogues natifs (voir app.js#setupAutoUpdater).
+  const btnCheckUpdates = document.getElementById('btnCheckUpdates');
+  if (btnCheckUpdates) {
+    btnCheckUpdates.onclick = () => window.api.checkForUpdates();
+  }
+
   document.querySelectorAll('.stats-period-option').forEach(opt => {
     opt.addEventListener('click', async () => {
       currentStatsPeriod = opt.dataset.period;

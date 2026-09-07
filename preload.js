@@ -80,4 +80,8 @@ contextBridge.exposeInMainWorld('api', {
     return () => ipcRenderer.removeListener('grammar:install-progress', listener);
   },
   openExternalLink: (url) => ipcRenderer.invoke('shell:open-external', url),
+
+  // --- Mise à jour automatique (electron-updater) ---
+  checkForUpdates: () => ipcRenderer.invoke('updater:check'),
+  getAppVersion: () => ipcRenderer.invoke('updater:get-version'),
 });

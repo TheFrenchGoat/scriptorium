@@ -6,6 +6,7 @@ const AdmZip = require('adm-zip');
 const Store = require('electron-store');
 const { generateDocx } = require('./utils.js');
 const sanitizeHtml = require('sanitize-html');
+const { autoUpdater } = require('electron-updater');
 
 // ---------------------------------------------------------------------------
 // SÉCURITÉ : désinfection du HTML provenant de sources externes.
@@ -736,7 +737,98 @@ ipcMain.handle('backup:restore', (event, { projectName, fileName }) => {
 // web quelconque, potentiellement piégé).
 ipcMain.handle('sanitize:html', (event, html) => sanitizeHtml(html, CHAPTER_HTML_SANITIZE_OPTIONS));
 
-app.whenReady().then(createWindow);
+// Vérification manuelle des mises à jour (bouton dans le menu Paramètres du
+// renderer) : contrairement aux checks automatiques en fond, celle-ci
+// informe toujours l'utilisateur du résultat (voir setupAutoUpdater()).
+ipcMain.handle('updater:check', () => checkForUpdates(true));
+ipcMain.handle('updater:get-version', () => app.getVersion());
+
+// ---------------------------------------------------------------------------
+// MISE À JOUR AUTOMATIQUE (electron-updater)
+//
+// Fonctionnement : electron-builder publie, à chaque `npm run release`, le
+// setup .exe accompagné d'un fichier `latest.yml` sur les Releases GitHub du
+// dépôt configuré dans package.json#build.publish. Au démarrage (et toutes
+// les 4h si l'app reste ouverte longtemps, ce qui est courant pour un
+// éditeur de texte), on interroge ce `latest.yml` : si la version publiée
+// est plus récente que app.getVersion(), le setup est téléchargé en tâche de
+// fond, puis on propose à l'utilisateur de redémarrer pour l'installer.
+// Ne fait rien en dev (`npm start`) : app.isPackaged est false tant que
+// l'app n'a pas été buildée par electron-builder.
+// ---------------------------------------------------------------------------
+autoUpdater.autoDownload = true;
+autoUpdater.autoInstallOnAppQuit = true;
+
+// Un check manuel (menu "Rechercher les mises à jour…") doit informer
+// l'utilisateur même s'il n'y a rien de neuf ; un check automatique en fond
+// doit rester silencieux dans ce cas, pour ne pas interrompre l'écriture.
+let isManualUpdateCheck = false;
+
+function setupAutoUpdater() {
+  autoUpdater.on('update-available', (info) => {
+    console.log(`Mise à jour disponible : v${info.version}. Téléchargement en fond...`);
+  });
+
+  autoUpdater.on('update-not-available', () => {
+    if (isManualUpdateCheck) {
+      dialog.showMessageBox(win, {
+        type: 'info',
+        title: 'Scriptorium',
+        message: 'Vous utilisez déjà la dernière version.'
+      });
+    }
+    isManualUpdateCheck = false;
+  });
+
+  autoUpdater.on('update-downloaded', async (info) => {
+    isManualUpdateCheck = false;
+    const { response } = await dialog.showMessageBox(win, {
+      type: 'info',
+      title: 'Mise à jour prête',
+      message: `La version ${info.version} de Scriptorium a été téléchargée.`,
+      detail: 'Elle sera installée au prochain démarrage. Redémarrer maintenant ?',
+      buttons: ['Redémarrer maintenant', 'Plus tard'],
+      defaultId: 0,
+      cancelId: 1
+    });
+    if (response === 0) autoUpdater.quitAndInstall();
+  });
+
+  autoUpdater.on('error', (err) => {
+    // Échec silencieux en fond (pas de connexion, dépôt non configuré...) :
+    // on ne dérange pas l'utilisateur en pleine écriture pour ça. On
+    // l'informe seulement s'il a demandé une vérification manuelle.
+    console.error('Erreur auto-updater :', err);
+    if (isManualUpdateCheck) {
+      dialog.showMessageBox(win, {
+        type: 'error',
+        title: 'Scriptorium',
+        message: 'Impossible de vérifier les mises à jour pour le moment.',
+        detail: err.message
+      });
+    }
+    isManualUpdateCheck = false;
+  });
+}
+
+function checkForUpdates(manual = false) {
+  if (!app.isPackaged) return; // pas de mise à jour en dev
+  isManualUpdateCheck = manual;
+  autoUpdater.checkForUpdates().catch(err => console.error('checkForUpdates:', err));
+}
+
+const FOUR_HOURS_MS = 4 * 60 * 60 * 1000;
+
+app.whenReady().then(() => {
+  createWindow();
+  setupAutoUpdater();
+
+  // Premier check 5s après le démarrage (laisse l'UI se charger tranquillement),
+  // puis un check périodique pour les sessions d'écriture qui restent ouvertes
+  // longtemps sans jamais redémarrer l'app.
+  setTimeout(() => checkForUpdates(false), 5000);
+  setInterval(() => checkForUpdates(false), FOUR_HOURS_MS);
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
