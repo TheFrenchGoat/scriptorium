@@ -1,0 +1,53 @@
+{
+  "name": "scriptorium",
+  "version": "1.0.1",
+  "description": "Éditeur d'écriture moderne",
+  "main": "app.js",
+  "author": "",
+  "license": "ISC",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --enable-logging",
+    "build": "electron-builder",
+    "release": "electron-builder --publish always"
+  },
+  "build": {
+    "appId": "com.scriptorium.app",
+    "productName": "Scriptorium",
+    "asar": true,
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "TheFrenchGoat",
+      "repo": "scriptorium",
+      "releaseType": "release"
+    }
+  },
+  "devDependencies": {
+    "electron": "^44.2.0",
+    "electron-builder": "^26.15.3"
+  },
+  "dependencies": {
+    "adm-zip": "^0.6.0",
+    "docx": "^9.5.3",
+    "electron-store": "^8.2.0",
+    "electron-updater": "^6.8.9",
+    "sanitize-html": "^2.13.1"
+  },
+  "allowScripts": {
+    "ejs@2.7.4": true,
+    "electron@40.10.6": true
+  }
+}
+
