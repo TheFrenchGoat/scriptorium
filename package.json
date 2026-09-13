@@ -1,5 +1,9 @@
 {
   "name": "scriptorium",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TheFrenchGoat/scriptorium.git"
+  },
   "version": "1.0.1",
   "description": "Éditeur d'écriture moderne",
   "main": "app.js",
@@ -50,4 +54,3 @@
     "electron@40.10.6": true
   }
 }
-
