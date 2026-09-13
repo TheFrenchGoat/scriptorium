@@ -4,7 +4,7 @@
     "type": "git",
     "url": "https://github.com/TheFrenchGoat/scriptorium.git"
   },
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Éditeur d'écriture moderne",
   "main": "app.js",
   "author": "",
