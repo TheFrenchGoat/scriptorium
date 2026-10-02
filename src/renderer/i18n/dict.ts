@@ -72,9 +72,12 @@ export const fr = {
   displayPrefsBtn: '⚙️ Affichage',
   displayPrefsBtnTitle:
     "Personnaliser l'affichage de la page d'écriture",
-  rulerMarginLeftTitle: 'Marge gauche (glisser pour ajuster)',
-  rulerMarginRightTitle: 'Marge droite (glisser pour ajuster)',
-  rulerIndentTitle: 'Retrait de première ligne (glisser pour ajuster)',
+  rulerMarginLeftTitle:
+    'Marge gauche (glisser pour ajuster)',
+  rulerMarginRightTitle:
+    'Marge droite (glisser pour ajuster)',
+  rulerIndentTitle:
+    'Retrait de première ligne (glisser pour ajuster)',
   backToProjects: 'Retour aux projets',
 
   // -------------------------------------------------------------------------
@@ -88,9 +91,11 @@ export const fr = {
   timerFinishedTitle: '⏱ Minuteur terminé',
 
   sessionManualButton: '✍ Session',
-  sessionManualStartTitle: 'Démarrer une session sans minuteur',
+  sessionManualStartTitle:
+    'Démarrer une session sans minuteur',
   sessionResumeTitle: 'Reprendre la session',
-  sessionStopTitle: 'Terminer et enregistrer la session',
+  sessionStopTitle:
+    'Terminer et enregistrer la session',
   sessionFinishedTitle: 'Session terminée',
   sessionSkipFeedback: 'Ignorer le ressenti',
   sessionSaveFeedback: 'Enregistrer la session',
@@ -146,15 +151,18 @@ export const fr = {
   settingsSectionTimer: 'Minuteur',
   settingsSectionSessions: 'Sessions d’écriture',
 
-  timerSoundEnabledLabel: '🔔 Son de fin de minuteur',
+  timerSoundEnabledLabel:
+    '🔔 Son de fin de minuteur',
   timerSoundChoiceLabel: 'Sonnerie',
   timerVolumeLabel: 'Volume',
   timerVolumeTestBtn: '🔊 Tester',
 
   sessionScaleDescription:
     'Choisissez l’échelle utilisée pour noter votre concentration et votre énergie à la fin d’une session.',
-  sessionConcentrationScaleLabel: 'Échelle de concentration',
-  sessionEnergyScaleLabel: 'Échelle d’énergie',
+  sessionConcentrationScaleLabel:
+    'Échelle de concentration',
+  sessionEnergyScaleLabel:
+    'Échelle d’énergie',
 
   // -------------------------------------------------------------------------
   // AIDE
@@ -170,18 +178,23 @@ export const fr = {
   shortcutItalic: 'Italique',
   shortcutUnderline: 'Souligné',
   shortcutZoom: 'Zoom de la page',
-  shortcutWbOpen: 'Ouvrir une fiche World Building',
-  shortcutAlign: 'Aligner (gauche/centre/droite/justifié)',
+  shortcutWbOpen:
+    'Ouvrir une fiche World Building',
+  shortcutAlign:
+    'Aligner (gauche/centre/droite/justifié)',
   shortcutAccents:
     'Accents (façon Word) : `/\'/^/¨ + voyelle, , + c',
   shortcutReplace: 'Rechercher / Remplacer',
   shortcutGlobalSearch: 'Recherche globale',
-  shortcutSwitchTab: 'Onglet suivant / précédent',
-  shortcutZoomKeys: 'Zoom avant / arrière / réinitialiser',
+  shortcutSwitchTab:
+    'Onglet suivant / précédent',
+  shortcutZoomKeys:
+    'Zoom avant / arrière / réinitialiser',
   shortcutCloseTab: "Fermer l'onglet actif",
   shortcutMiddleClose: 'Fermer un onglet',
   shortcutNavigate: 'Naviguer sans souris',
-  shortcutActivate: 'Activer un élément survolé au clavier',
+  shortcutActivate:
+    'Activer un élément survolé au clavier',
   shortcutCloseModal: 'Fermer une fenêtre',
 
   // -------------------------------------------------------------------------
@@ -212,7 +225,8 @@ export const fr = {
   alignJustifyTitle: 'Justifier',
   sizeNormalPx: '16 px (Normal)',
   globalSearchBtn: '🔎 Recherche globale',
-  globalSearchBtnTitle: 'Rechercher dans tout le projet',
+  globalSearchBtnTitle:
+    'Rechercher dans tout le projet',
   replaceBtn: '🔍 Remplacer',
   replaceBtnTitle:
     'Rechercher / Remplacer dans le chapitre actuel',
@@ -233,25 +247,41 @@ export const fr = {
   ariaSheet: 'Fiche',
   ariaTab: 'Onglet {name}',
 
+  sidebarCollapseChapters:
+    'Fermer le panneau des chapitres',
+  sidebarExpandChapters:
+    'Ouvrir le panneau des chapitres',
+  sidebarCollapseWorld:
+    'Fermer le panneau World Building',
+  sidebarExpandWorld:
+    'Ouvrir le panneau World Building',
+
   wbLabel_character: 'Personnage',
   wbLabel_place: 'Lieu',
   wbLabel_object: 'Objet',
   wbLabel_other: 'Autre',
 
   wbNewCustomTypeBtn: 'Nouveau type…',
-  customTypeModalTitle: 'Nouveau type de fiche',
+  customTypeModalTitle:
+    'Nouveau type de fiche',
   customTypeNameLabel: 'Nom du type',
-  customTypeNamePlaceholder: 'ex : Faction, Créature, Artefact…',
+  customTypeNamePlaceholder:
+    'ex : Faction, Créature, Artefact…',
   customTypeIconLabel: 'Icône',
   customTypeColorLabel: 'Couleur par défaut',
-  customTypeFieldsLabel: 'Champs de la fiche',
-  customTypeAddFieldBtn: '+ Ajouter un champ',
-  customTypeFieldLabelPlaceholder: 'Nom du champ',
+  customTypeFieldsLabel:
+    'Champs de la fiche',
+  customTypeAddFieldBtn:
+    '+ Ajouter un champ',
+  customTypeFieldLabelPlaceholder:
+    'Nom du champ',
   customTypeFieldTypeText: 'Ligne simple',
   customTypeFieldTypeTextarea: 'Texte long',
-  customTypeRemoveFieldTitle: 'Retirer ce champ',
+  customTypeRemoveFieldTitle:
+    'Retirer ce champ',
   customTypeDefaultFieldLabel: 'Description',
-  customTypeNameRequired: 'Donnez un nom à ce type de fiche.',
+  customTypeNameRequired:
+    'Donnez un nom à ce type de fiche.',
   customTypeFieldsRequired:
     'Ajoutez au moins un champ avec un nom.',
   customTypeFieldsHint:
@@ -260,7 +290,8 @@ export const fr = {
     'Le champ "{label}" est utilisé plusieurs fois : donnez un nom différent à chacun.',
   customTypeEditTitle: 'Modifier ce type',
   customTypeDeleteTitle: 'Supprimer ce type',
-  customTypeEditModalTitle: 'Modifier le type de fiche',
+  customTypeEditModalTitle:
+    'Modifier le type de fiche',
   customTypeDeleteBlocked:
     'Impossible de supprimer "{label}" : {count} fiche(s) utilisent encore ce type. Supprimez-les ou changez leur type d\'abord.',
   customTypeConfirmDelete:
@@ -270,7 +301,8 @@ export const fr = {
     'Icône de la fiche (change dans la sidebar et les onglets)',
   wbIconCustomPlaceholder: 'Autre…',
   wbIconCustomApply: 'OK',
-  wbColorLabel: 'Couleur de surlignage dans les chapitres',
+  wbColorLabel:
+    'Couleur de surlignage dans les chapitres',
   wbMentionedInLabel: '📖 Mentionné dans',
   wbMentionedInNone:
     'Pas encore mentionné dans un chapitre.',
@@ -310,12 +342,14 @@ export const fr = {
   playPauseTitle: 'Lecture / Pause',
   nextTrackTitle: 'Piste suivante',
 
-  statsNormal: '{words} mots | {chars} car. | Total: {total} m',
+  statsNormal:
+    '{words} mots | {chars} car. | Total: {total} m',
   statsSelected:
     '{words} mots sél. | {chars} car. sél. | Total: {total} m',
   statsSheetMode: 'Mode Fiche',
 
-  saveStatusPending: '● Modifications non enregistrées',
+  saveStatusPending:
+    '● Modifications non enregistrées',
   saveStatusSavedAt: '✓ Enregistré à {time}',
   saveStatusSaved: '✓ Enregistré',
   saveStatusError: '⚠ Échec de la sauvegarde',
@@ -337,7 +371,8 @@ export const fr = {
   timer15: '15 minutes',
   timer25: '25 minutes (Pomodoro)',
   timer60: '1 heure',
-  timerCustomLabel: 'Ou durée personnalisée (minutes)',
+  timerCustomLabel:
+    'Ou durée personnalisée (minutes)',
   timerCustomPlaceholder: 'ex : 45',
 
   replaceModalTitle: 'Rechercher / Remplacer',
@@ -347,7 +382,8 @@ export const fr = {
     'Remplacer dans tout le projet (tous les chapitres)',
   replaceAllBtn: 'Tout remplacer',
 
-  globalSearchModalTitle: 'Recherche dans tout le projet',
+  globalSearchModalTitle:
+    'Recherche dans tout le projet',
   globalSearchPlaceholder:
     'Rechercher un mot, un nom, une phrase...',
   globalSearchHint:
@@ -355,9 +391,11 @@ export const fr = {
   globalSearchNoResults: 'Aucun résultat.',
   occurrences: '{count} occurrence(s)',
 
-  displayPrefsTitle: "Affichage de la page d'écriture",
+  displayPrefsTitle:
+    "Affichage de la page d'écriture",
   prefWidthLabel: 'Largeur de page',
-  prefWidthNarrow: 'Étroite (confort de lecture)',
+  prefWidthNarrow:
+    'Étroite (confort de lecture)',
   prefWidthNormal: 'Normale',
   prefWidthLarge: 'Large',
   prefWidthXLarge: 'Très large',
@@ -367,7 +405,8 @@ export const fr = {
   prefLineNormal: 'Normal (1.6)',
   prefLineAiry: 'Aéré (1.8)',
   prefLineVeryAiry: 'Très aéré (2.2)',
-  prefUiFontSizeLabel: "Taille du texte de l'interface",
+  prefUiFontSizeLabel:
+    "Taille du texte de l'interface",
   prefUiFontLabel: "Police de l'interface",
   prefUiSizeSmall: 'Petite',
   prefUiSizeNormal: 'Normale',
@@ -381,16 +420,19 @@ export const fr = {
   // -------------------------------------------------------------------------
 
   statsMenuBtn: '📊 Statistiques',
-  statsModalTitle: "Statistiques et journal d'écriture",
+  statsModalTitle:
+    "Statistiques et journal d'écriture",
 
   statsTabOverview: 'Vue d’ensemble',
   statsTabSessions: 'Historique',
   statsTabGoals: 'Objectifs',
 
-  statsGoalLabel: '🎯 Objectif quotidien (mots)',
+  statsGoalLabel:
+    '🎯 Objectif quotidien (mots)',
   statsGoalPlaceholder: 'ex : 500',
   statsGoalSaveBtn: 'Enregistrer',
-  statsGoalProgress: '{words} / {goal} mots aujourd’hui',
+  statsGoalProgress:
+    '{words} / {goal} mots aujourd’hui',
 
   statsPeriodDay: 'Par jour',
   statsPeriodWeek: 'Par semaine',
@@ -413,16 +455,38 @@ export const fr = {
   statsWritingTime: 'Temps d’écriture',
   statsWrittenWords: 'Mots écrits',
   statsAverageSession: 'Moyenne par session',
-  statsAverageConcentration: 'Concentration moyenne',
+  statsAverageConcentration:
+    'Concentration moyenne',
   statsAverageEnergy: 'Énergie moyenne',
 
-  statsActivityByDay: 'Activité par jour',
-  statsActivityByHour: 'Activité selon l’heure',
-  statsProductivityByWeekday: 'Productivité selon le jour',
-  statsConcentrationByHour: 'Concentration selon l’heure',
-  statsMoodProductivity: 'Humeur et productivité',
+  statsStreakTitle: 'Séries d’écriture',
+  statsCurrentStreak: 'Série actuelle',
+  statsLongestStreak: 'Meilleure série',
+  statsActiveDays: 'Jours actifs',
+  statsStreakDays:
+    '{count} jour(s) d’écriture consécutif(s)',
 
-  statsSessionHistory: 'Historique des sessions',
+  statsWritingCalendar:
+    'Calendrier d’écriture',
+  statsCalendarWords: 'Mots',
+  statsCalendarDuration: 'Durée',
+  statsCalendarPreviousMonth:
+    'Mois précédent',
+  statsCalendarNextMonth: 'Mois suivant',
+  statsCalendarToday: 'Aujourd’hui',
+
+  statsActivityByDay: 'Activité par jour',
+  statsActivityByHour:
+    'Activité selon l’heure',
+  statsProductivityByWeekday:
+    'Productivité selon le jour',
+  statsConcentrationByHour:
+    'Concentration selon l’heure',
+  statsMoodProductivity:
+    'Humeur et productivité',
+
+  statsSessionHistory:
+    'Historique des sessions',
   statsSessionProject: 'Projet',
   statsSessionDocument: 'Documents',
   statsSessionDuration: 'Durée',
@@ -435,15 +499,28 @@ export const fr = {
   statsSessionStartedAt: 'Début',
   statsSessionEndedAt: 'Fin',
   statsSessionNote: 'Note',
-  statsSessionDetails: 'Détails de la session',
-  statsDeleteSession: 'Supprimer cette session',
+  statsSessionDetails:
+    'Détails de la session',
+  statsDeleteSession:
+    'Supprimer cette session',
   statsConfirmDeleteSession:
     'Supprimer définitivement cette session de l’historique ?',
   statsNoSessions:
     'Aucune session d’écriture pour cette période.',
 
-  loadingStats: 'Chargement des statistiques…',
-  statsNoData: "Pas encore de données d'écriture.",
+  statsSessionChapterBreakdown:
+    'Mots écrits par chapitre',
+  statsSessionChapterWordsBefore:
+    'Mots au début',
+  statsSessionChapterWordsAfter:
+    'Mots à la fin',
+  statsSessionChapterWordsWritten:
+    'Variation',
+
+  loadingStats:
+    'Chargement des statistiques…',
+  statsNoData:
+    "Pas encore de données d'écriture.",
 
   // -------------------------------------------------------------------------
   // OBJECTIFS DE PROJET
@@ -456,7 +533,8 @@ export const fr = {
   goalNamePlaceholder: 'ex : Premier jet',
   goalDeadline: 'Date limite',
   goalNoDeadline: 'Aucune date limite',
-  goalProgressMode: 'Calcul de la progression',
+  goalProgressMode:
+    'Calcul de la progression',
   goalModeWords: 'Nombre de mots',
   goalModeManual: 'Progression manuelle',
   goalTargetWords: 'Objectif de mots',
@@ -469,26 +547,33 @@ export const fr = {
     'Supprimer définitivement l’objectif "{name}" ?',
   goalsNone:
     'Aucun objectif pour ce projet. Ajoutez une échéance ou un objectif de mots pour suivre votre progression.',
-  goalDaysRemaining: '{days} jour(s) restant(s)',
+  goalDaysRemaining:
+    '{days} jour(s) restant(s)',
   goalDueToday: 'Échéance aujourd’hui',
-  goalOverdue: 'En retard de {days} jour(s)',
+  goalOverdue:
+    'En retard de {days} jour(s)',
   goalCompleted: 'Objectif terminé',
-  goalWordsProgress: '{current} / {target} mots',
+  goalWordsProgress:
+    '{current} / {target} mots',
 
   // -------------------------------------------------------------------------
   // MISES À JOUR
   // -------------------------------------------------------------------------
 
-  checkUpdatesMenuBtn: '🔄 Rechercher les mises à jour…',
-  updateAvailableTitle: 'Mise à jour disponible',
+  checkUpdatesMenuBtn:
+    '🔄 Rechercher les mises à jour…',
+  updateAvailableTitle:
+    'Mise à jour disponible',
   updateAvailableMessage:
     'La version {version} de Scriptorium est disponible. Voulez-vous la télécharger et l’installer ?',
-  updateDownloadBtn: 'Télécharger et installer',
+  updateDownloadBtn:
+    'Télécharger et installer',
   updateLaterBtn: 'Plus tard',
   updateReadyTitle: 'Mise à jour prête',
   updateReadyMessage:
     'La version {version} a été téléchargée. Elle sera installée au prochain démarrage. Redémarrer maintenant ?',
-  updateRestartNowBtn: 'Redémarrer maintenant',
+  updateRestartNowBtn:
+    'Redémarrer maintenant',
   updateUpToDateTitle: 'Mises à jour',
   updateUpToDateMessage:
     'Vous utilisez déjà la dernière version.',
@@ -500,7 +585,8 @@ export const fr = {
   // SAUVEGARDES
   // -------------------------------------------------------------------------
 
-  backupsModalTitle: 'Sauvegardes automatiques',
+  backupsModalTitle:
+    'Sauvegardes automatiques',
   backupsDescription:
     "Une sauvegarde horodatée est créée automatiquement pendant que vous travaillez. Restaurer une version antérieure remplace le contenu actuel du projet (une sauvegarde de l'état actuel est créée avant, par sécurité).",
   backupNoneYet:
@@ -508,8 +594,10 @@ export const fr = {
   backupRestoreBtn: 'Restaurer',
   backupConfirmRestore:
     "Restaurer la sauvegarde du {date} ?\n\nLe contenu actuel du projet sera remplacé (une sauvegarde de l'état actuel sera créée juste avant, par sécurité).",
-  backupRestoreSuccess: 'Sauvegarde restaurée avec succès.',
-  backupRestoreError: 'Erreur lors de la restauration : ',
+  backupRestoreSuccess:
+    'Sauvegarde restaurée avec succès.',
+  backupRestoreError:
+    'Erreur lors de la restauration : ',
   unknownDate: 'Date inconnue',
 
   // -------------------------------------------------------------------------
@@ -517,13 +605,17 @@ export const fr = {
   // -------------------------------------------------------------------------
 
   grammarSubmenuLabel: '✔️ Grammaire',
-  nativeSpellcheckLabel: '🔤 Correcteur orthographique natif',
-  grammarToggleLabel: 'Correction grammaticale',
+  nativeSpellcheckLabel:
+    '🔤 Correcteur orthographique natif',
+  grammarToggleLabel:
+    'Correction grammaticale',
   grammarConfigureBtn: 'Configurer…',
-  grammarModalTitle: 'Correcteur de grammaire (LanguageTool)',
+  grammarModalTitle:
+    'Correcteur de grammaire (LanguageTool)',
   grammarModalIntro:
     "Scriptorium peut utiliser LanguageTool en local, entièrement hors ligne, pour détecter les fautes de grammaire, d'accord et de conjugaison (en plus du correcteur d'orthographe déjà intégré).",
-  grammarEnableLabel: 'Activer la correction grammaticale',
+  grammarEnableLabel:
+    'Activer la correction grammaticale',
   grammarJavaLabel: 'Java :',
   grammarJavaOk: '✅ détecté',
   grammarJavaMissing: '❌ introuvable',
@@ -533,17 +625,20 @@ export const fr = {
     'LanguageTool nécessite Java 17 ou supérieur. Installez-le depuis java.com, puis relancez la vérification.',
   grammarJavaOutdatedHint:
     'LanguageTool nécessite Java 17 ou supérieur ; la version installée est trop ancienne et ne peut pas le faire fonctionner. Installez un Java 17+ (par ex. Eclipse Temurin), puis relancez la vérification.',
-  grammarFolderLabel: 'Dossier LanguageTool :',
+  grammarFolderLabel:
+    'Dossier LanguageTool :',
   grammarFolderNotSet: 'non configuré',
   grammarSelectFolderBtn:
     '📂 Choisir le dossier LanguageTool…',
   grammarAutoInstallBtn:
     '📥 Installer LanguageTool automatiquement (~200 Mo)',
   grammarOrManualLabel: 'ou manuellement',
-  grammarOpenJavaBtn: '☕ Ouvrir java.com pour installer Java',
+  grammarOpenJavaBtn:
+    '☕ Ouvrir java.com pour installer Java',
   grammarInstallDownloading:
     'Téléchargement de LanguageTool… {percent}%',
-  grammarInstallExtracting: "Extraction de l'archive…",
+  grammarInstallExtracting:
+    "Extraction de l'archive…",
   grammarInstallDone:
     '✅ LanguageTool installé avec succès !',
   grammarInstallError:
@@ -553,19 +648,22 @@ export const fr = {
   grammarInvalidFolder:
     'Ce dossier ne contient pas de fichier languagetool-server.jar valide.',
   grammarRecheckBtn: '🔄 Revérifier',
-  grammarStatusChecking: 'Vérification en cours…',
+  grammarStatusChecking:
+    'Vérification en cours…',
   grammarStatusStarting:
     'Démarrage du serveur LanguageTool local…',
   grammarStatusReady:
     '✅ Serveur LanguageTool actif (hors ligne, port {port}).',
   grammarStatusError:
     '❌ Impossible de démarrer LanguageTool : {error}',
-  grammarStatusDisabled: 'Correction grammaticale désactivée.',
+  grammarStatusDisabled:
+    'Correction grammaticale désactivée.',
   grammarCheckFailedAlert:
     'La vérification grammaticale a échoué et a été désactivée : {error}\n\nCorrigez le problème puis cliquez sur "Revérifier" dans les Paramètres.',
   grammarIgnoreBtn: 'Ignorer',
   grammarNoSuggestions: 'Aucune suggestion',
-  grammarScanningTooltip: 'Vérification grammaticale…',
+  grammarScanningTooltip:
+    'Vérification grammaticale…',
   grammarStatusBarReady: 'Grammaire ✓',
   grammarStatusBarReadyTitle:
     'Correction grammaticale active (cliquer pour configurer)',
@@ -582,15 +680,21 @@ export const fr = {
 
   nothingToExport: 'Rien à exporter.',
   exportTxtSuccess: 'Export TXT réussi !',
-  exportTxtError: "Erreur lors de l'export TXT : ",
+  exportTxtError:
+    "Erreur lors de l'export TXT : ",
   exportMdSuccess: 'Export Markdown réussi !',
-  exportMdError: "Erreur lors de l'export Markdown : ",
+  exportMdError:
+    "Erreur lors de l'export Markdown : ",
   exportPdfSuccess: 'Export PDF réussi !',
-  exportPdfError: "Erreur lors de l'export PDF : ",
+  exportPdfError:
+    "Erreur lors de l'export PDF : ",
   exportDocxSuccess: 'Export DOCX réussi !',
-  exportDocxError: "Erreur lors de l'export DOCX : ",
-  exportProjectError: "Erreur lors de l'export du projet : ",
-  confirmDeleteItem: 'Voulez-vous vraiment supprimer "{name}" ?',
+  exportDocxError:
+    "Erreur lors de l'export DOCX : ",
+  exportProjectError:
+    "Erreur lors de l'export du projet : ",
+  confirmDeleteItem:
+    'Voulez-vous vraiment supprimer "{name}" ?',
   replaceNoChapterOpen:
     "Ouvrez d'abord un chapitre, ou cochez « tout le projet ».",
   replaceNoneInChapter:
@@ -602,7 +706,8 @@ export const fr = {
   replaceDoneInProject:
     '{count} occurrence(s) remplacée(s) dans {chapters} chapitre(s).',
   loadingBackups: 'Chargement...',
-  itemNotFound: 'Élément introuvable (supprimé ?)',
+  itemNotFound:
+    'Élément introuvable (supprimé ?)',
   initErrorPrefix:
     "Une erreur est survenue au chargement de l'éditeur :\n\n",
   initErrorSuffix:
@@ -638,7 +743,8 @@ export const en: Record<TranslationKey, string> = {
   // -------------------------------------------------------------------------
 
   importProject: '📥 Import',
-  importProjectTitle: 'Import a .scriptorium file',
+  importProjectTitle:
+    'Import a .scriptorium file',
   newProject: '+ New Project',
   noProjects: 'No projects yet. Create one!',
   noProjectsHint:
@@ -652,17 +758,23 @@ export const en: Record<TranslationKey, string> = {
   optionExport: '📤 Export (.scriptorium)',
   optionDelete: '🗑 Delete project',
   projectOptionsTitle: 'Customize',
-  projectStats: '{chapters} chapters • {words} words',
-  projectGoalSummary: '🎯 {progress}% • {remaining}',
+  projectStats:
+    '{chapters} chapters • {words} words',
+  projectGoalSummary:
+    '🎯 {progress}% • {remaining}',
   projectGoalNoDeadline: 'no deadline',
   projectGoalDueToday: 'due today',
-  projectGoalDaysRemaining: '{days} day(s) remaining',
-  projectGoalDaysOverdue: '{days} day(s) overdue',
+  projectGoalDaysRemaining:
+    '{days} day(s) remaining',
+  projectGoalDaysOverdue:
+    '{days} day(s) overdue',
   confirmDeleteProject:
     'Do you really want to permanently delete the project "{name}"?',
-  exportSuccess: 'Project exported successfully!',
+  exportSuccess:
+    'Project exported successfully!',
   exportError: 'Error during export: ',
-  importSuccess: 'Project "{name}" imported successfully!',
+  importSuccess:
+    'Project "{name}" imported successfully!',
   importError:
     'Error during import: this file may not be a valid Scriptorium export.\n\n',
   defaultProjectName: 'Project',
@@ -676,15 +788,20 @@ export const en: Record<TranslationKey, string> = {
   exportMdItem: '📑 Markdown (.md)',
   exportPdfItem: '📕 PDF (.pdf)',
   exportDocxItem: '📝 Word (.docx)',
-  exportProjectItem: '💾 Full project (.scriptorium)',
+  exportProjectItem:
+    '💾 Full project (.scriptorium)',
   backupsBtn: '🕐 Backups',
-  backupsBtnTitle: 'View and restore automatic backups',
+  backupsBtnTitle:
+    'View and restore automatic backups',
   displayPrefsBtn: '⚙️ Display',
   displayPrefsBtnTitle:
     'Customize the writing page display',
-  rulerMarginLeftTitle: 'Left margin (drag to adjust)',
-  rulerMarginRightTitle: 'Right margin (drag to adjust)',
-  rulerIndentTitle: 'First-line indent (drag to adjust)',
+  rulerMarginLeftTitle:
+    'Left margin (drag to adjust)',
+  rulerMarginRightTitle:
+    'Right margin (drag to adjust)',
+  rulerIndentTitle:
+    'First-line indent (drag to adjust)',
   backToProjects: 'Back to projects',
 
   // -------------------------------------------------------------------------
@@ -701,7 +818,8 @@ export const en: Record<TranslationKey, string> = {
   sessionManualStartTitle:
     'Start a writing session without a timer',
   sessionResumeTitle: 'Resume the session',
-  sessionStopTitle: 'Finish and save the session',
+  sessionStopTitle:
+    'Finish and save the session',
   sessionFinishedTitle: 'Session finished',
   sessionSkipFeedback: 'Skip feedback',
   sessionSaveFeedback: 'Save session',
@@ -721,7 +839,8 @@ export const en: Record<TranslationKey, string> = {
   sessionMoodGood: 'Good session',
   sessionMoodNeutral: 'Normal session',
   sessionMoodDifficult: 'Difficult session',
-  sessionMoodVeryDifficult: 'Very difficult session',
+  sessionMoodVeryDifficult:
+    'Very difficult session',
 
   // -------------------------------------------------------------------------
   // THEMES AND SETTINGS
@@ -755,16 +874,19 @@ export const en: Record<TranslationKey, string> = {
   settingsSectionCorrection: 'Proofing',
   settingsSectionUpdates: 'Updates',
   settingsSectionTimer: 'Timer',
-  settingsSectionSessions: 'Writing sessions',
+  settingsSectionSessions:
+    'Writing sessions',
 
-  timerSoundEnabledLabel: '🔔 Timer end sound',
+  timerSoundEnabledLabel:
+    '🔔 Timer end sound',
   timerSoundChoiceLabel: 'Ringtone',
   timerVolumeLabel: 'Volume',
   timerVolumeTestBtn: '🔊 Test',
 
   sessionScaleDescription:
     'Choose the scale used to rate your concentration and energy at the end of a session.',
-  sessionConcentrationScaleLabel: 'Concentration scale',
+  sessionConcentrationScaleLabel:
+    'Concentration scale',
   sessionEnergyScaleLabel: 'Energy scale',
 
   // -------------------------------------------------------------------------
@@ -781,18 +903,23 @@ export const en: Record<TranslationKey, string> = {
   shortcutItalic: 'Italic',
   shortcutUnderline: 'Underline',
   shortcutZoom: 'Zoom the page',
-  shortcutWbOpen: 'Open a World Building sheet',
-  shortcutAlign: 'Align (left/center/right/justify)',
+  shortcutWbOpen:
+    'Open a World Building sheet',
+  shortcutAlign:
+    'Align (left/center/right/justify)',
   shortcutAccents:
     'Accents (Word-style): `/\'/^/¨ + vowel, , + c',
   shortcutReplace: 'Find / Replace',
   shortcutGlobalSearch: 'Global search',
   shortcutSwitchTab: 'Next / previous tab',
-  shortcutZoomKeys: 'Zoom in / out / reset',
+  shortcutZoomKeys:
+    'Zoom in / out / reset',
   shortcutCloseTab: 'Close the active tab',
   shortcutMiddleClose: 'Close a tab',
-  shortcutNavigate: 'Navigate without a mouse',
-  shortcutActivate: 'Activate a focused element',
+  shortcutNavigate:
+    'Navigate without a mouse',
+  shortcutActivate:
+    'Activate a focused element',
   shortcutCloseModal: 'Close a window',
 
   // -------------------------------------------------------------------------
@@ -823,7 +950,8 @@ export const en: Record<TranslationKey, string> = {
   alignJustifyTitle: 'Justify',
   sizeNormalPx: '16 px (Normal)',
   globalSearchBtn: '🔎 Global Search',
-  globalSearchBtnTitle: 'Search across the whole project',
+  globalSearchBtnTitle:
+    'Search across the whole project',
   replaceBtn: '🔍 Replace',
   replaceBtnTitle:
     'Find / Replace in the current chapter',
@@ -844,6 +972,15 @@ export const en: Record<TranslationKey, string> = {
   ariaSheet: 'Sheet',
   ariaTab: 'Tab {name}',
 
+  sidebarCollapseChapters:
+    'Close the chapters panel',
+  sidebarExpandChapters:
+    'Open the chapters panel',
+  sidebarCollapseWorld:
+    'Close the World Building panel',
+  sidebarExpandWorld:
+    'Open the World Building panel',
+
   wbLabel_character: 'Character',
   wbLabel_place: 'Place',
   wbLabel_object: 'Object',
@@ -858,12 +995,15 @@ export const en: Record<TranslationKey, string> = {
   customTypeColorLabel: 'Default color',
   customTypeFieldsLabel: 'Sheet fields',
   customTypeAddFieldBtn: '+ Add a field',
-  customTypeFieldLabelPlaceholder: 'Field name',
+  customTypeFieldLabelPlaceholder:
+    'Field name',
   customTypeFieldTypeText: 'Single line',
   customTypeFieldTypeTextarea: 'Long text',
-  customTypeRemoveFieldTitle: 'Remove this field',
+  customTypeRemoveFieldTitle:
+    'Remove this field',
   customTypeDefaultFieldLabel: 'Description',
-  customTypeNameRequired: 'Give this sheet type a name.',
+  customTypeNameRequired:
+    'Give this sheet type a name.',
   customTypeFieldsRequired:
     'Add at least one field with a name.',
   customTypeFieldsHint:
@@ -872,7 +1012,8 @@ export const en: Record<TranslationKey, string> = {
     'The field "{label}" is used more than once: give each one a different name.',
   customTypeEditTitle: 'Edit this type',
   customTypeDeleteTitle: 'Delete this type',
-  customTypeEditModalTitle: 'Edit sheet type',
+  customTypeEditModalTitle:
+    'Edit sheet type',
   customTypeDeleteBlocked:
     'Cannot delete "{label}": {count} sheet(s) still use this type. Delete them or change their type first.',
   customTypeConfirmDelete:
@@ -882,7 +1023,8 @@ export const en: Record<TranslationKey, string> = {
     'Sheet icon (updates in the sidebar and tabs)',
   wbIconCustomPlaceholder: 'Other…',
   wbIconCustomApply: 'OK',
-  wbColorLabel: 'Highlight color in chapters',
+  wbColorLabel:
+    'Highlight color in chapters',
   wbMentionedInLabel: '📖 Mentioned in',
   wbMentionedInNone:
     'Not mentioned in any chapter yet.',
@@ -908,7 +1050,8 @@ export const en: Record<TranslationKey, string> = {
   wbField_description: 'Description',
   wbField_atmosphere: 'Atmosphere / Mood',
   wbField_history: 'History',
-  wbField_inhabitants: 'Inhabitants / Wildlife',
+  wbField_inhabitants:
+    'Inhabitants / Wildlife',
   wbField_owner: 'Owner',
   wbField_power: 'Power / Purpose',
 
@@ -922,7 +1065,8 @@ export const en: Record<TranslationKey, string> = {
   playPauseTitle: 'Play / Pause',
   nextTrackTitle: 'Next track',
 
-  statsNormal: '{words} words | {chars} ch. | Total: {total} w',
+  statsNormal:
+    '{words} words | {chars} ch. | Total: {total} w',
   statsSelected:
     '{words} sel. words | {chars} sel. ch. | Total: {total} w',
   statsSheetMode: 'Sheet mode',
@@ -949,7 +1093,8 @@ export const en: Record<TranslationKey, string> = {
   timer15: '15 minutes',
   timer25: '25 minutes (Pomodoro)',
   timer60: '1 hour',
-  timerCustomLabel: 'Or custom duration (minutes)',
+  timerCustomLabel:
+    'Or custom duration (minutes)',
   timerCustomPlaceholder: 'e.g. 45',
 
   replaceModalTitle: 'Find / Replace',
@@ -959,7 +1104,8 @@ export const en: Record<TranslationKey, string> = {
     'Replace across the whole project (all chapters)',
   replaceAllBtn: 'Replace all',
 
-  globalSearchModalTitle: 'Search across the project',
+  globalSearchModalTitle:
+    'Search across the project',
   globalSearchPlaceholder:
     'Search for a word, a name, a phrase...',
   globalSearchHint:
@@ -969,7 +1115,8 @@ export const en: Record<TranslationKey, string> = {
 
   displayPrefsTitle: 'Writing page display',
   prefWidthLabel: 'Page width',
-  prefWidthNarrow: 'Narrow (reading comfort)',
+  prefWidthNarrow:
+    'Narrow (reading comfort)',
   prefWidthNormal: 'Normal',
   prefWidthLarge: 'Large',
   prefWidthXLarge: 'Extra large',
@@ -979,7 +1126,8 @@ export const en: Record<TranslationKey, string> = {
   prefLineNormal: 'Normal (1.6)',
   prefLineAiry: 'Airy (1.8)',
   prefLineVeryAiry: 'Very airy (2.2)',
-  prefUiFontSizeLabel: 'Interface text size',
+  prefUiFontSizeLabel:
+    'Interface text size',
   prefUiFontLabel: 'Interface font',
   prefUiSizeSmall: 'Small',
   prefUiSizeNormal: 'Normal',
@@ -993,16 +1141,19 @@ export const en: Record<TranslationKey, string> = {
   // -------------------------------------------------------------------------
 
   statsMenuBtn: '📊 Statistics',
-  statsModalTitle: 'Writing statistics and journal',
+  statsModalTitle:
+    'Writing statistics and journal',
 
   statsTabOverview: 'Overview',
   statsTabSessions: 'History',
   statsTabGoals: 'Goals',
 
-  statsGoalLabel: '🎯 Daily goal (words)',
+  statsGoalLabel:
+    '🎯 Daily goal (words)',
   statsGoalPlaceholder: 'e.g. 500',
   statsGoalSaveBtn: 'Save',
-  statsGoalProgress: '{words} / {goal} words today',
+  statsGoalProgress:
+    '{words} / {goal} words today',
 
   statsPeriodDay: 'By day',
   statsPeriodWeek: 'By week',
@@ -1024,15 +1175,35 @@ export const en: Record<TranslationKey, string> = {
   statsSessionsCount: 'Sessions',
   statsWritingTime: 'Writing time',
   statsWrittenWords: 'Words written',
-  statsAverageSession: 'Average per session',
-  statsAverageConcentration: 'Average concentration',
+  statsAverageSession:
+    'Average per session',
+  statsAverageConcentration:
+    'Average concentration',
   statsAverageEnergy: 'Average energy',
+
+  statsStreakTitle: 'Writing streaks',
+  statsCurrentStreak: 'Current streak',
+  statsLongestStreak: 'Longest streak',
+  statsActiveDays: 'Active days',
+  statsStreakDays:
+    '{count} consecutive writing day(s)',
+
+  statsWritingCalendar: 'Writing calendar',
+  statsCalendarWords: 'Words',
+  statsCalendarDuration: 'Duration',
+  statsCalendarPreviousMonth:
+    'Previous month',
+  statsCalendarNextMonth: 'Next month',
+  statsCalendarToday: 'Today',
 
   statsActivityByDay: 'Activity by day',
   statsActivityByHour: 'Activity by hour',
-  statsProductivityByWeekday: 'Productivity by weekday',
-  statsConcentrationByHour: 'Concentration by hour',
-  statsMoodProductivity: 'Mood and productivity',
+  statsProductivityByWeekday:
+    'Productivity by weekday',
+  statsConcentrationByHour:
+    'Concentration by hour',
+  statsMoodProductivity:
+    'Mood and productivity',
 
   statsSessionHistory: 'Session history',
   statsSessionProject: 'Project',
@@ -1053,6 +1224,15 @@ export const en: Record<TranslationKey, string> = {
     'Permanently delete this session from the history?',
   statsNoSessions:
     'No writing sessions for this period.',
+
+  statsSessionChapterBreakdown:
+    'Words written by chapter',
+  statsSessionChapterWordsBefore:
+    'Words at start',
+  statsSessionChapterWordsAfter:
+    'Words at end',
+  statsSessionChapterWordsWritten:
+    'Change',
 
   loadingStats: 'Loading statistics…',
   statsNoData: 'No writing data yet.',
@@ -1081,21 +1261,25 @@ export const en: Record<TranslationKey, string> = {
     'Permanently delete the goal "{name}"?',
   goalsNone:
     'No goals for this project. Add a deadline or word target to track your progress.',
-  goalDaysRemaining: '{days} day(s) remaining',
+  goalDaysRemaining:
+    '{days} day(s) remaining',
   goalDueToday: 'Due today',
   goalOverdue: '{days} day(s) overdue',
   goalCompleted: 'Goal completed',
-  goalWordsProgress: '{current} / {target} words',
+  goalWordsProgress:
+    '{current} / {target} words',
 
   // -------------------------------------------------------------------------
   // UPDATES
   // -------------------------------------------------------------------------
 
-  checkUpdatesMenuBtn: '🔄 Check for updates…',
+  checkUpdatesMenuBtn:
+    '🔄 Check for updates…',
   updateAvailableTitle: 'Update available',
   updateAvailableMessage:
     'Version {version} of Scriptorium is available. Do you want to download and install it?',
-  updateDownloadBtn: 'Download and install',
+  updateDownloadBtn:
+    'Download and install',
   updateLaterBtn: 'Later',
   updateReadyTitle: 'Update ready',
   updateReadyMessage:
@@ -1120,8 +1304,10 @@ export const en: Record<TranslationKey, string> = {
   backupRestoreBtn: 'Restore',
   backupConfirmRestore:
     "Restore the backup from {date}?\n\nThe project's current content will be replaced (a backup of the current state will be created first, as a safety net).",
-  backupRestoreSuccess: 'Backup restored successfully.',
-  backupRestoreError: 'Error while restoring: ',
+  backupRestoreSuccess:
+    'Backup restored successfully.',
+  backupRestoreError:
+    'Error while restoring: ',
   unknownDate: 'Unknown date',
 
   // -------------------------------------------------------------------------
@@ -1129,13 +1315,16 @@ export const en: Record<TranslationKey, string> = {
   // -------------------------------------------------------------------------
 
   grammarSubmenuLabel: '✔️ Grammar',
-  nativeSpellcheckLabel: '🔤 Native spellchecker',
+  nativeSpellcheckLabel:
+    '🔤 Native spellchecker',
   grammarToggleLabel: 'Grammar checking',
   grammarConfigureBtn: 'Configure…',
-  grammarModalTitle: 'Grammar checker (LanguageTool)',
+  grammarModalTitle:
+    'Grammar checker (LanguageTool)',
   grammarModalIntro:
     'Scriptorium can use LanguageTool locally, fully offline, to detect grammar, agreement and conjugation mistakes (in addition to the built-in spell checker).',
-  grammarEnableLabel: 'Enable grammar checking',
+  grammarEnableLabel:
+    'Enable grammar checking',
   grammarJavaLabel: 'Java:',
   grammarJavaOk: '✅ detected',
   grammarJavaMissing: '❌ not found',
@@ -1156,7 +1345,8 @@ export const en: Record<TranslationKey, string> = {
     '☕ Open java.com to install Java',
   grammarInstallDownloading:
     'Downloading LanguageTool… {percent}%',
-  grammarInstallExtracting: 'Extracting the archive…',
+  grammarInstallExtracting:
+    'Extracting the archive…',
   grammarInstallDone:
     '✅ LanguageTool installed successfully!',
   grammarInstallError:
@@ -1173,12 +1363,14 @@ export const en: Record<TranslationKey, string> = {
     '✅ LanguageTool server running (offline, port {port}).',
   grammarStatusError:
     '❌ Could not start LanguageTool: {error}',
-  grammarStatusDisabled: 'Grammar checking is disabled.',
+  grammarStatusDisabled:
+    'Grammar checking is disabled.',
   grammarCheckFailedAlert:
     'Grammar checking failed and was disabled: {error}\n\nFix the issue then click "Recheck" in Settings.',
   grammarIgnoreBtn: 'Ignore',
   grammarNoSuggestions: 'No suggestions',
-  grammarScanningTooltip: 'Checking grammar…',
+  grammarScanningTooltip:
+    'Checking grammar…',
   grammarStatusBarReady: 'Grammar ✓',
   grammarStatusBarReadyTitle:
     'Grammar checking active (click to configure)',
@@ -1194,15 +1386,23 @@ export const en: Record<TranslationKey, string> = {
   // -------------------------------------------------------------------------
 
   nothingToExport: 'Nothing to export.',
-  exportTxtSuccess: 'TXT export successful!',
+  exportTxtSuccess:
+    'TXT export successful!',
   exportTxtError: 'Error during TXT export: ',
-  exportMdSuccess: 'Markdown export successful!',
-  exportMdError: 'Error during Markdown export: ',
-  exportPdfSuccess: 'PDF export successful!',
-  exportPdfError: 'Error during PDF export: ',
-  exportDocxSuccess: 'DOCX export successful!',
-  exportDocxError: 'Error during DOCX export: ',
-  exportProjectError: 'Error during project export: ',
+  exportMdSuccess:
+    'Markdown export successful!',
+  exportMdError:
+    'Error during Markdown export: ',
+  exportPdfSuccess:
+    'PDF export successful!',
+  exportPdfError:
+    'Error during PDF export: ',
+  exportDocxSuccess:
+    'DOCX export successful!',
+  exportDocxError:
+    'Error during DOCX export: ',
+  exportProjectError:
+    'Error during project export: ',
   confirmDeleteItem:
     'Do you really want to delete "{name}"?',
   replaceNoChapterOpen:
@@ -1216,7 +1416,8 @@ export const en: Record<TranslationKey, string> = {
   replaceDoneInProject:
     '{count} occurrence(s) replaced across {chapters} chapter(s).',
   loadingBackups: 'Loading...',
-  itemNotFound: 'Item not found (deleted?)',
+  itemNotFound:
+    'Item not found (deleted?)',
   initErrorPrefix:
     'An error occurred while loading the editor:\n\n',
   initErrorSuffix:
@@ -1225,4 +1426,7 @@ export const en: Record<TranslationKey, string> = {
     'An error occurred while loading the project list:\n\n'
 };
 
-export const dict = { fr, en };
+export const dict = {
+  fr,
+  en
+};

@@ -6,10 +6,17 @@
 // - session libre sans limite de temps.
 //
 // Tous les chapitres travaillés pendant une même session sont mémorisés.
+// Le nombre de mots ajouté ou supprimé est également enregistré pour chaque
+// chapitre travaillé.
+//
 // À la fin de la session, l’utilisateur peut renseigner son humeur, sa
 // concentration, son énergie et une note facultative.
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, {
+  useEffect,
+  useRef,
+  useState
+} from 'react';
 import { useI18n } from '../../i18n';
 import { Modal } from '../common/Modal';
 import {
@@ -20,10 +27,14 @@ import {
   startTimerSoundLoop,
   type TimerSoundId
 } from '../../lib/sound';
-import { getTotalStats } from '../../lib/stats';
+import {
+  getChapterWordCounts,
+  getTotalStats
+} from '../../lib/stats';
 import type {
   SessionRatingScale,
   WritingSession,
+  WritingSessionDocumentStats,
   WritingSessionMood,
   WritingSessionSource
 } from '../../../shared/types';
@@ -93,8 +104,8 @@ interface ActiveWritingSession {
   /**
    * Premier chapitre ouvert au début de la session.
    *
-   * Ce champ reste conservé pour la compatibilité avec les sessions créées
-   * avant l’ajout du suivi de plusieurs documents.
+   * Ce champ reste conservé pour assurer la compatibilité avec les anciennes
+   * sessions qui ne mémorisaient qu’un seul document.
    */
   documentName: string | null;
 
@@ -105,6 +116,15 @@ interface ActiveWritingSession {
    * revient plusieurs fois dessus.
    */
   documentNames: Set<string>;
+
+  /**
+   * Nombre de mots de chaque chapitre au démarrage de la session.
+   *
+   * Tous les chapitres sont enregistrés dès le départ. Cela permet de calculer
+   * correctement la différence même si le chapitre est ouvert plus tard
+   * pendant la session.
+   */
+  documentWordsBefore: Record<string, number>;
 
   wordsBefore: number;
   activeSeconds: number;
@@ -163,6 +183,30 @@ function formatTimer(seconds: number): string {
   ].join(':');
 }
 
+function formatSignedWords(
+  words: number
+): string {
+  if (words > 0) {
+    return `+${words}`;
+  }
+
+  return String(words);
+}
+
+function getWordsColor(
+  words: number
+): string {
+  if (words > 0) {
+    return '#10b981';
+  }
+
+  if (words < 0) {
+    return '#ef4444';
+  }
+
+  return 'var(--text-muted)';
+}
+
 function normalizeScale(
   value: number | undefined
 ): SessionRatingScale {
@@ -189,28 +233,58 @@ function getCurrentChapterName(
   return activeTab;
 }
 
+/**
+ * Retourne tous les chapitres enregistrés dans une session.
+ *
+ * `documentName` reste utilisé en solution de repli pour les anciennes
+ * sessions ne possédant pas encore `documentNames`.
+ */
 function getSessionDocumentNames(
   session: WritingSession
 ): string[] {
-  const names = session.documentNames ?? [];
+  const names: string[] = [];
 
-  if (names.length > 0) {
-    return Array.from(
-      new Set(
-        names.filter(
-          (name): name is string =>
-            typeof name === 'string' &&
-            name.trim().length > 0
-        )
-      )
-    );
+  if (Array.isArray(session.documentNames)) {
+    names.push(...session.documentNames);
   }
 
   if (session.documentName) {
-    return [session.documentName];
+    names.push(session.documentName);
   }
 
-  return [];
+  if (Array.isArray(session.documentStats)) {
+    session.documentStats.forEach((stats) => {
+      names.push(stats.documentName);
+    });
+  }
+
+  return Array.from(
+    new Set(
+      names
+        .filter(
+          (name): name is string =>
+            typeof name === 'string'
+        )
+        .map((name) => name.trim())
+        .filter((name) => name.length > 0)
+    )
+  );
+}
+
+/**
+ * Retourne les statistiques d’un chapitre dans une session.
+ */
+function getDocumentStats(
+  session: WritingSession,
+  documentName: string
+): WritingSessionDocumentStats | null {
+  return (
+    session.documentStats?.find(
+      (stats) =>
+        stats.documentName ===
+        documentName
+    ) ?? null
+  );
 }
 
 export function Timer({
@@ -348,6 +422,9 @@ export function Timer({
     }, 0);
   };
 
+  /**
+   * Ajoute le chapitre actuellement ouvert aux documents travaillés.
+   */
   const trackCurrentDocument =
     (): void => {
       const activeSession =
@@ -377,6 +454,20 @@ export function Timer({
       if (!activeSession.documentName) {
         activeSession.documentName =
           documentName;
+      }
+
+      /*
+       * Si le chapitre a été créé pendant la session, il n’existait pas dans
+       * la photographie initiale. Sa valeur de départ est donc zéro.
+       */
+      if (
+        activeSession.documentWordsBefore[
+          documentName
+        ] === undefined
+      ) {
+        activeSession.documentWordsBefore[
+          documentName
+        ] = 0;
       }
 
       lastTrackedDocumentRef.current =
@@ -414,20 +505,30 @@ export function Timer({
     void controller.save();
   };
 
+  /**
+   * Termine la session et construit les statistiques globales ainsi que les
+   * statistiques propres à chaque chapitre travaillé.
+   */
   const createFinishedSession = (
     activeSession: ActiveWritingSession,
     completed: boolean
   ): WritingSession => {
     /*
-     * Synchronise les toutes dernières modifications de l’éditeur avant
-     * de calculer le nombre final de mots.
+     * Synchronise les toutes dernières modifications de l’éditeur avant de
+     * calculer les nombres de mots définitifs.
      */
     controller.handleInput();
     trackCurrentDocument();
 
+    const projectData =
+      controller.data();
+
     const wordsAfter = getTotalStats(
-      controller.data()
+      projectData
     ).words;
+
+    const documentWordsAfter =
+      getChapterWordCounts(projectData);
 
     const endedAt =
       new Date().toISOString();
@@ -446,12 +547,40 @@ export function Timer({
       documentNames[0] ??
       null;
 
+    const documentStats: WritingSessionDocumentStats[] =
+      documentNames.map(
+        (documentName) => {
+          const documentWordsBefore =
+            activeSession
+              .documentWordsBefore[
+              documentName
+            ] ?? 0;
+
+          const documentWordsFinal =
+            documentWordsAfter[
+              documentName
+            ] ?? 0;
+
+          return {
+            documentName,
+            wordsBefore:
+              documentWordsBefore,
+            wordsAfter:
+              documentWordsFinal,
+            wordsWritten:
+              documentWordsFinal -
+              documentWordsBefore
+          };
+        }
+      );
+
     const session: WritingSession = {
       id: activeSession.id,
       projectName:
         controller.projectName,
       documentName: firstDocumentName,
       documentNames,
+      documentStats,
       startedAt:
         activeSession.startedAt,
       endedAt,
@@ -634,12 +763,20 @@ export function Timer({
       return;
     }
 
+    /*
+     * Enregistre les dernières modifications du chapitre avant de créer la
+     * photographie initiale du projet.
+     */
     controller.handleInput();
 
+    const projectData =
+      controller.data();
+
     const wordsBefore =
-      getTotalStats(
-        controller.data()
-      ).words;
+      getTotalStats(projectData).words;
+
+    const documentWordsBefore =
+      getChapterWordCounts(projectData);
 
     const initialDocumentName =
       getCurrentChapterName(controller);
@@ -665,6 +802,7 @@ export function Timer({
             ? [initialDocumentName]
             : []
         ),
+        documentWordsBefore,
         wordsBefore,
         activeSeconds: 0,
         plannedSeconds:
@@ -699,6 +837,7 @@ export function Timer({
       return;
     }
 
+    controller.handleInput();
     trackCurrentDocument();
     clearTimerInterval();
     setIsRunning(false);
@@ -804,8 +943,7 @@ export function Timer({
 
   /*
    * Le suivi principal est réalisé chaque seconde, mais ces événements
-   * permettent également de détecter rapidement un changement de chapitre,
-   * notamment si la session est arrêtée immédiatement après le changement.
+   * permettent également de détecter immédiatement un changement de chapitre.
    */
   useEffect(() => {
     const onDocumentInteraction =
@@ -859,7 +997,7 @@ export function Timer({
 
       /*
        * Si l’utilisateur quitte l’éditeur pendant une session active,
-       * la session est enregistrée automatiquement.
+       * la session est automatiquement terminée et enregistrée.
        */
       const activeSession =
         activeSessionRef.current;
@@ -1216,17 +1354,14 @@ export function Timer({
             <strong
               style={{
                 color:
-                  feedbackWords > 0
-                    ? '#10b981'
-                    : feedbackWords < 0
-                      ? '#ef4444'
-                      : 'var(--text-main)'
+                  getWordsColor(
+                    feedbackWords
+                  )
               }}
             >
-              {feedbackWords > 0
-                ? '+'
-                : ''}
-              {feedbackWords}
+              {formatSignedWords(
+                feedbackWords
+              )}
             </strong>
           </div>
 
@@ -1252,7 +1387,7 @@ export function Timer({
               }}
             >
               {t(
-                'sessionDocumentsLabel'
+                'sessionDocumentLabel'
               )}
             </div>
 
@@ -1261,43 +1396,87 @@ export function Timer({
               <div
                 style={{
                   display: 'flex',
-                  flexWrap: 'wrap',
+                  flexDirection:
+                    'column',
                   gap: 6
                 }}
               >
                 {feedbackDocuments.map(
-                  (documentName) => (
-                    <span
-                      key={documentName}
-                      title={
-                        documentName
-                      }
-                      style={{
-                        display:
-                          'inline-block',
-                        maxWidth:
-                          '100%',
-                        overflow:
-                          'hidden',
-                        textOverflow:
-                          'ellipsis',
-                        whiteSpace:
-                          'nowrap',
-                        padding:
-                          '4px 8px',
-                        borderRadius:
-                          999,
-                        background:
-                          'var(--bg-hover)',
-                        border:
-                          '1px solid var(--border)',
-                        fontSize: 12,
-                        fontWeight: 600
-                      }}
-                    >
-                      {documentName}
-                    </span>
-                  )
+                  (documentName) => {
+                    const stats =
+                      feedbackSession
+                        ? getDocumentStats(
+                            feedbackSession,
+                            documentName
+                          )
+                        : null;
+
+                    return (
+                      <div
+                        key={documentName}
+                        title={
+                          documentName
+                        }
+                        style={{
+                          display:
+                            'flex',
+                          alignItems:
+                            'center',
+                          justifyContent:
+                            'space-between',
+                          gap: 10,
+                          width: '100%',
+                          minWidth: 0,
+                          padding:
+                            '7px 9px',
+                          borderRadius:
+                            'var(--radius)',
+                          background:
+                            'var(--bg-hover)',
+                          border:
+                            '1px solid var(--border)',
+                          fontSize: 12
+                        }}
+                      >
+                        <span
+                          style={{
+                            minWidth: 0,
+                            overflow:
+                              'hidden',
+                            textOverflow:
+                              'ellipsis',
+                            whiteSpace:
+                              'nowrap',
+                            fontWeight: 600
+                          }}
+                        >
+                          📄 {documentName}
+                        </span>
+
+                        {stats && (
+                          <span
+                            style={{
+                              flexShrink: 0,
+                              color:
+                                getWordsColor(
+                                  stats.wordsWritten
+                                ),
+                              fontWeight: 700,
+                              whiteSpace:
+                                'nowrap'
+                            }}
+                          >
+                            {formatSignedWords(
+                              stats.wordsWritten
+                            )}{' '}
+                            {t(
+                              'statsWordsUnit'
+                            )}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  }
                 )}
               </div>
             ) : (

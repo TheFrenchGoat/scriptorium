@@ -6,8 +6,12 @@
 
 // --- WORLD BUILDING ---
 
-/** Types de fiches intégrés. Les types personnalisés d'un projet utilisent
- * une clé libre (`custom_xxx`), d'où l'union avec `string`. */
+/**
+ * Types de fiches intégrés.
+ *
+ * Les types personnalisés d'un projet utilisent une clé libre (`custom_xxx`),
+ * d'où l'union avec `string`.
+ */
 export type BuiltinWbType =
   | 'character'
   | 'place'
@@ -30,7 +34,9 @@ export interface WbTemplate {
   fields: WbField[];
 }
 
-/** Définition d'un type de fiche personnalisé, propre à un projet. */
+/**
+ * Définition d'un type de fiche personnalisé, propre à un projet.
+ */
 export interface CustomWbTypeDef {
   label: string;
   icon: string;
@@ -42,10 +48,14 @@ export interface WbItem {
   wbType: WbType;
   content: Record<string, string>;
 
-  /** Icône personnalisée ; à défaut, celle du type. */
+  /**
+   * Icône personnalisée ; à défaut, celle du type.
+   */
   icon?: string;
 
-  /** Couleur de surlignage personnalisée ; à défaut, celle du type. */
+  /**
+   * Couleur de surlignage personnalisée ; à défaut, celle du type.
+   */
   color?: string;
 }
 
@@ -72,19 +82,27 @@ export type WritingSessionMood =
  * - `pomodoro` : session démarrée automatiquement avec le minuteur ;
  * - `manual` : session démarrée manuellement sans minuteur.
  */
-export type WritingSessionSource = 'pomodoro' | 'manual';
+export type WritingSessionSource =
+  | 'pomodoro'
+  | 'manual';
 
 /**
  * Informations propres au Pomodoro associé à une session.
  */
 export interface PomodoroSessionInfo {
-  /** Date et heure ISO du démarrage du Pomodoro. */
+  /**
+   * Date et heure ISO du démarrage du Pomodoro.
+   */
   startedAt: string;
 
-  /** Date et heure ISO de fin ou d'arrêt du Pomodoro. */
+  /**
+   * Date et heure ISO de fin ou d'arrêt du Pomodoro.
+   */
   endedAt: string;
 
-  /** Durée initialement prévue, en secondes. */
+  /**
+   * Durée initialement prévue, en secondes.
+   */
   plannedSeconds: number;
 
   /**
@@ -101,10 +119,42 @@ export interface PomodoroSessionInfo {
 }
 
 /**
+ * Statistiques d'un chapitre travaillé pendant une session.
+ *
+ * Elles permettent de connaître précisément le nombre de mots ajoutés ou
+ * supprimés dans chaque chapitre, indépendamment du total global du projet.
+ */
+export interface WritingSessionDocumentStats {
+  /**
+   * Nom du chapitre au moment de la session.
+   */
+  documentName: string;
+
+  /**
+   * Nombre de mots du chapitre au début de la session.
+   */
+  wordsBefore: number;
+
+  /**
+   * Nombre de mots du chapitre à la fin de la session.
+   */
+  wordsAfter: number;
+
+  /**
+   * Différence nette entre `wordsAfter` et `wordsBefore`.
+   *
+   * Cette valeur peut être négative si du texte a été supprimé.
+   */
+  wordsWritten: number;
+}
+
+/**
  * Session d'écriture enregistrée dans l'historique d'un projet.
  */
 export interface WritingSession {
-  /** Identifiant unique et stable de la session. */
+  /**
+   * Identifiant unique et stable de la session.
+   */
   id: string;
 
   /**
@@ -118,27 +168,37 @@ export interface WritingSession {
   /**
    * Premier chapitre ou document actif au démarrage de la session.
    *
-   * Ce champ est conservé pour assurer la compatibilité avec les sessions
-   * enregistrées avant l'ajout du suivi de plusieurs documents.
-   * Il peut être `null` si aucun chapitre n'était ouvert au démarrage.
+   * Peut être `null` si aucun chapitre n'était ouvert.
+   *
+   * Ce champ reste conservé pour assurer la compatibilité avec les sessions
+   * créées avant l'ajout du suivi de plusieurs documents.
    */
   documentName: string | null;
 
   /**
-   * Liste complète des chapitres ou documents travaillés pendant la session.
+   * Liste de tous les chapitres travaillés pendant la session.
    *
-   * Les noms sont enregistrés dans l'ordre de leur première consultation.
-   * Un même document ne doit apparaître qu'une seule fois dans la liste.
-   *
-   * Ce champ reste facultatif afin que les anciennes sessions contenant
-   * uniquement `documentName` continuent de fonctionner.
+   * Facultatif pour assurer la compatibilité avec les anciennes sessions qui
+   * ne possèdent que `documentName`.
    */
   documentNames?: string[];
 
-  /** Date et heure ISO du début de la session. */
+  /**
+   * Statistiques détaillées des mots écrits dans chaque chapitre travaillé.
+   *
+   * Facultatif pour assurer la compatibilité avec les sessions enregistrées
+   * avant l'ajout du suivi des mots par chapitre.
+   */
+  documentStats?: WritingSessionDocumentStats[];
+
+  /**
+   * Date et heure ISO du début de la session.
+   */
   startedAt: string;
 
-  /** Date et heure ISO de fin de la session. */
+  /**
+   * Date et heure ISO de fin de la session.
+   */
   endedAt: string;
 
   /**
@@ -149,40 +209,61 @@ export interface WritingSession {
    */
   durationSeconds: number;
 
-  /** Nombre total de mots du projet au début de la session. */
+  /**
+   * Nombre total de mots du projet au début de la session.
+   */
   wordsBefore: number;
 
-  /** Nombre total de mots du projet à la fin de la session. */
+  /**
+   * Nombre total de mots du projet à la fin de la session.
+   */
   wordsAfter: number;
 
   /**
    * Différence nette entre le nombre de mots final et initial.
+   *
    * Cette valeur peut être négative si l'utilisateur a supprimé du texte.
    */
   wordsWritten: number;
 
-  /** Origine de la session : Pomodoro ou démarrage manuel. */
+  /**
+   * Origine de la session : Pomodoro ou démarrage manuel.
+   */
   source: WritingSessionSource;
 
-  /** Informations du minuteur lorsque la session provient d'un Pomodoro. */
+  /**
+   * Informations du minuteur lorsque la session provient d'un Pomodoro.
+   */
   pomodoro?: PomodoroSessionInfo;
 
-  /** Humeur choisie à la fin de la session. */
+  /**
+   * Humeur choisie à la fin de la session.
+   */
   mood?: WritingSessionMood | null;
 
-  /** Note de concentration choisie par l'utilisateur. */
+  /**
+   * Note de concentration choisie par l'utilisateur.
+   */
   concentration?: number | null;
 
-  /** Échelle utilisée pour la note de concentration. */
+  /**
+   * Échelle utilisée pour la note de concentration.
+   */
   concentrationScale?: SessionRatingScale;
 
-  /** Niveau d'énergie choisi par l'utilisateur. */
+  /**
+   * Niveau d'énergie choisi par l'utilisateur.
+   */
   energy?: number | null;
 
-  /** Échelle utilisée pour le niveau d'énergie. */
+  /**
+   * Échelle utilisée pour le niveau d'énergie.
+   */
   energyScale?: SessionRatingScale;
 
-  /** Note libre facultative concernant la session. */
+  /**
+   * Note libre facultative concernant la session.
+   */
   note?: string;
 }
 
@@ -194,7 +275,9 @@ export interface WritingSession {
  * - `words` : progression calculée avec le nombre de mots du projet ;
  * - `manual` : pourcentage défini manuellement par l'utilisateur.
  */
-export type ProjectGoalProgressMode = 'words' | 'manual';
+export type ProjectGoalProgressMode =
+  | 'words'
+  | 'manual';
 
 /**
  * Objectif d'écriture associé à un projet.
@@ -202,23 +285,31 @@ export type ProjectGoalProgressMode = 'words' | 'manual';
  * Un projet peut posséder plusieurs objectifs simultanément.
  */
 export interface ProjectGoal {
-  /** Identifiant unique et stable de l'objectif. */
+  /**
+   * Identifiant unique et stable de l'objectif.
+   */
   id: string;
 
-  /** Nom de l'objectif, par exemple « Premier jet ». */
+  /**
+   * Nom de l'objectif, par exemple « Premier jet ».
+   */
   title: string;
 
   /**
    * Date limite au format local `YYYY-MM-DD`.
+   *
    * `null` signifie qu'aucune date limite n'est définie.
    */
   deadline: string | null;
 
-  /** Méthode de calcul de la progression. */
+  /**
+   * Méthode de calcul de la progression.
+   */
   progressMode: ProjectGoalProgressMode;
 
   /**
    * Objectif de mots lorsque `progressMode` vaut `words`.
+   *
    * `null` ou `undefined` signifie qu'aucune cible n'est définie.
    */
   targetWords?: number | null;
@@ -229,24 +320,39 @@ export interface ProjectGoal {
    */
   manualProgress?: number;
 
-  /** Date et heure ISO de création de l'objectif. */
+  /**
+   * Date et heure ISO de création de l'objectif.
+   */
   createdAt: string;
 
-  /** Date et heure ISO de dernière modification. */
+  /**
+   * Date et heure ISO de dernière modification.
+   */
   updatedAt: string;
 }
 
 // --- PROJET ---
 
 export interface ProjectData {
-  /** Nom du chapitre -> HTML du chapitre (ordre des clés = ordre affiché). */
+  /**
+   * Nom du chapitre -> HTML du chapitre.
+   *
+   * L'ordre des clés correspond à l'ordre affiché.
+   */
   chapters: Record<string, string>;
 
-  /** Nom de la fiche -> contenu de la fiche. */
+  /**
+   * Nom de la fiche -> contenu de la fiche.
+   */
   world: Record<string, WbItem>;
 
-  /** Types de fiches World Building personnalisés du projet. */
-  customWbTypes?: Record<string, CustomWbTypeDef>;
+  /**
+   * Types de fiches World Building personnalisés du projet.
+   */
+  customWbTypes?: Record<
+    string,
+    CustomWbTypeDef
+  >;
 
   /**
    * Historique complet des sessions d'écriture du projet.
@@ -264,7 +370,10 @@ export interface ProjectData {
   goals?: ProjectGoal[];
 }
 
-export type ProjectsMap = Record<string, ProjectData>;
+export type ProjectsMap = Record<
+  string,
+  ProjectData
+>;
 
 // --- ÉTAT D'INTERFACE ---
 
@@ -281,7 +390,10 @@ export interface ProjectUiState {
   activeType: ItemType;
 }
 
-export type UiState = Record<string, ProjectUiState>;
+export type UiState = Record<
+  string,
+  ProjectUiState
+>;
 
 export type ThemeName =
   | 'dark'
@@ -297,25 +409,39 @@ export type ThemeName =
 export type LanguageCode = 'fr' | 'en';
 
 export interface EditorPrefs {
-  /** Largeur de la feuille d'écriture, en px. */
+  /**
+   * Largeur de la feuille d'écriture, en px.
+   */
   width: number;
 
-  /** Police de la feuille d'écriture. */
+  /**
+   * Police de la feuille d'écriture.
+   */
   fontFamily?: string;
 
-  /** Interligne de la feuille d'écriture. */
+  /**
+   * Interligne de la feuille d'écriture.
+   */
   lineHeight?: number;
 
-  /** Taille du texte DE L'INTERFACE, distincte de la feuille d'écriture. */
+  /**
+   * Taille du texte DE L'INTERFACE, distincte de la feuille d'écriture.
+   */
   uiFontSize?: number;
 
-  /** Police utilisée par l'interface. */
+  /**
+   * Police utilisée par l'interface.
+   */
   uiFontFamily?: string;
 
-  /** Son joué à la fin du minuteur d'écriture. */
+  /**
+   * Son joué à la fin du minuteur d'écriture.
+   */
   timerSoundEnabled?: boolean;
 
-  /** Volume du son de fin du minuteur, compris entre 0 et 1. */
+  /**
+   * Volume du son de fin de minuteur, compris entre 0 et 1.
+   */
   timerVolume?: number;
 
   /**
@@ -328,6 +454,7 @@ export interface EditorPrefs {
 
   /**
    * Marges gauche et droite de la feuille d'écriture, en pixels.
+   *
    * Elles sont réglables avec la règle graduée.
    */
   marginLeft?: number;
@@ -335,6 +462,7 @@ export interface EditorPrefs {
 
   /**
    * Retrait de première ligne de chaque paragraphe, en pixels.
+   *
    * Peut être négatif pour un retrait inversé.
    */
   firstLineIndent?: number;
@@ -365,10 +493,14 @@ export interface WritingStatsBucket {
   baselineDate: string | null;
   baselineWords: number;
 
-  /** `YYYY-MM-DD` -> nombre net de mots écrits ce jour-là. */
+  /**
+   * `YYYY-MM-DD` -> nombre net de mots écrits ce jour-là.
+   */
   history: Record<string, number>;
 
-  /** Objectif quotidien historique, en nombre de mots. */
+  /**
+   * Objectif quotidien historique, en nombre de mots.
+   */
   dailyGoal?: number | null;
 }
 
@@ -379,9 +511,14 @@ export interface WritingStats {
    * Elles restent séparées pour ne pas mélanger plusieurs romans ou
    * documents sans rapport.
    */
-  projects?: Record<string, WritingStatsBucket>;
+  projects?: Record<
+    string,
+    WritingStatsBucket
+  >;
 
-  /** Champs de l'ancien format global, conservés pour compatibilité. */
+  /**
+   * Champs de l'ancien format global, conservés pour compatibilité.
+   */
   baselineDate?: string | null;
   baselineWords?: number;
   history?: Record<string, number>;
@@ -456,10 +593,14 @@ export interface DocxRun {
   underline?: boolean;
   font?: string;
 
-  /** Taille en points. */
+  /**
+   * Taille en points.
+   */
   size?: number;
 
-  /** Couleur hexadécimale sans `#`. */
+  /**
+   * Couleur hexadécimale sans `#`.
+   */
   color?: string;
 }
 
@@ -482,7 +623,8 @@ export interface SaveDialogOptions {
   }[];
 }
 
-export interface OpenDialogOptions extends SaveDialogOptions {
+export interface OpenDialogOptions
+  extends SaveDialogOptions {
   properties?: (
     | 'openFile'
     | 'openDirectory'
@@ -505,33 +647,61 @@ export interface OpenDialogResult {
 export interface ScriptoriumApi {
   // Persistance des projets
   getProjects(): Promise<ProjectsMap>;
-  saveProjects(projects: ProjectsMap): Promise<boolean>;
+
+  saveProjects(
+    projects: ProjectsMap
+  ): Promise<boolean>;
 
   // État d'interface
   getUiState(): Promise<UiState>;
-  saveUiState(uiState: UiState): Promise<boolean>;
+
+  saveUiState(
+    uiState: UiState
+  ): Promise<boolean>;
 
   // Thème / langue
   getTheme(): Promise<ThemeName>;
-  saveTheme(theme: ThemeName): Promise<boolean>;
+
+  saveTheme(
+    theme: ThemeName
+  ): Promise<boolean>;
+
   getLanguage(): Promise<LanguageCode>;
-  saveLanguage(lang: LanguageCode): Promise<boolean>;
+
+  saveLanguage(
+    lang: LanguageCode
+  ): Promise<boolean>;
 
   // Préférences d'affichage et de sessions
   getEditorPrefs(): Promise<EditorPrefs>;
-  saveEditorPrefs(prefs: EditorPrefs): Promise<boolean>;
+
+  saveEditorPrefs(
+    prefs: EditorPrefs
+  ): Promise<boolean>;
 
   // Anciennes statistiques quotidiennes
   getWritingStats(): Promise<WritingStats>;
-  saveWritingStats(stats: WritingStats): Promise<boolean>;
+
+  saveWritingStats(
+    stats: WritingStats
+  ): Promise<boolean>;
 
   // Correcteur orthographique natif
   getNativeSpellcheck(): Promise<boolean>;
-  setNativeSpellcheck(enabled: boolean): Promise<boolean>;
+
+  setNativeSpellcheck(
+    enabled: boolean
+  ): Promise<boolean>;
 
   // Projet courant
-  getCurrentProject(): Promise<string | null>;
-  setCurrentProject(name: string): Promise<boolean>;
+  getCurrentProject(): Promise<
+    string | null
+  >;
+
+  setCurrentProject(
+    name: string
+  ): Promise<boolean>;
+
   clearCurrentProject(): Promise<boolean>;
 
   // Migration ponctuelle depuis localStorage
@@ -591,7 +761,9 @@ export interface ScriptoriumApi {
   ): Promise<ProjectData>;
 
   // Désinfection HTML à la demande
-  sanitizeHtml(html: string): Promise<string>;
+  sanitizeHtml(
+    html: string
+  ): Promise<string>;
 
   // Correcteur de grammaire hors ligne
   getGrammarPrefs(): Promise<GrammarPrefs>;
@@ -604,7 +776,9 @@ export interface ScriptoriumApi {
 
   checkJavaAvailable(): Promise<JavaInfo>;
 
-  startGrammarServer(): Promise<{ port: number }>;
+  startGrammarServer(): Promise<{
+    port: number;
+  }>;
 
   checkGrammar(
     text: string,
@@ -616,17 +790,25 @@ export interface ScriptoriumApi {
     folderPath: string;
   }>;
 
-  /** Renvoie une fonction de désabonnement. */
+  /**
+   * Renvoie une fonction de désabonnement.
+   */
   onGrammarInstallProgress(
-    callback: (data: GrammarInstallProgress) => void
+    callback: (
+      data: GrammarInstallProgress
+    ) => void
   ): () => void;
 
-  /** Renvoie une fonction de désabonnement. */
+  /**
+   * Renvoie une fonction de désabonnement.
+   */
   onGrammarServerStopped(
     callback: () => void
   ): () => void;
 
-  openExternalLink(url: string): Promise<void>;
+  openExternalLink(
+    url: string
+  ): Promise<void>;
 
   // Mise à jour automatique
   checkForUpdates(): Promise<void>;
@@ -639,19 +821,25 @@ export interface ScriptoriumApi {
    */
   confirmUpdateDownload(): Promise<void>;
 
-  /** Redémarre l'application pour installer la mise à jour téléchargée. */
+  /**
+   * Redémarre l'application pour installer la mise à jour téléchargée.
+   */
   quitAndInstall(): Promise<void>;
 
   /**
    * Une mise à jour a été trouvée.
+   *
    * Renvoie une fonction de désabonnement.
    */
   onUpdateAvailable(
-    callback: (info: { version: string }) => void
+    callback: (info: {
+      version: string;
+    }) => void
   ): () => void;
 
   /**
    * Aucune mise à jour n'a été trouvée.
+   *
    * Renvoie une fonction de désabonnement.
    */
   onUpdateNotAvailable(
@@ -660,14 +848,18 @@ export interface ScriptoriumApi {
 
   /**
    * La mise à jour est téléchargée et prête à être installée.
+   *
    * Renvoie une fonction de désabonnement.
    */
   onUpdateDownloaded(
-    callback: (info: { version: string }) => void
+    callback: (info: {
+      version: string;
+    }) => void
   ): () => void;
 
   /**
    * Échec de la vérification ou du téléchargement.
+   *
    * Renvoie une fonction de désabonnement.
    */
   onUpdateError(
