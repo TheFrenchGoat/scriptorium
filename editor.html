@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scriptorium - Édition</title>
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Merriweather&family=Lora&family=Open+Sans&family=Montserrat&display=swap" rel="stylesheet">
+</head>
+<body class="dark editor-page">
+
+  <header class="editor-header">
+    <div style="display:flex; align-items:center; gap:10px;">
+      <button id="btnBack">←</button>
+      <h2 id="projectTitle">Projet</h2>
+    </div>
+    
+    <div class="header-actions">
+      <div class="dropdown-container" style="position: relative;">
+        <button class="dropdown-btn" id="btnExportMenu" data-i18n="exportMenuBtn">📤 Exporter ▾</button>
+        <div class="dropdown-menu">
+          <div class="dropdown-item" data-export="txt" data-i18n="exportTxtItem">📄 Texte (.txt)</div>
+          <div class="dropdown-item" data-export="md" data-i18n="exportMdItem">📑 Markdown (.md)</div>
+          <div class="dropdown-item" data-export="pdf" data-i18n="exportPdfItem">📕 PDF (.pdf)</div>
+          <div class="dropdown-item" data-export="docx" data-i18n="exportDocxItem">📝 Word (.docx)</div>
+          <div class="dropdown-item" data-export="project" data-i18n="exportProjectItem">💾 Projet complet (.scriptorium)</div>
+        </div>
+      </div>
+      <button id="btnBackups" data-i18n="backupsBtn" data-i18n-title="backupsBtnTitle" title="Voir et restaurer les sauvegardes automatiques">🕐 Sauvegardes</button>
+      <button id="btnStats" data-i18n="statsMenuBtn">📊 Statistiques</button>
+      <button id="btnHelp" data-i18n="helpMenuBtn" data-i18n-title="helpMenuBtnTitle" title="Raccourcis clavier">❓ Aide</button>
+      <button id="btnSettingsToggle" data-i18n="settingsToggle">⚙️ Paramètres</button>
+    </div>
+  </header>
+
+  <div class="toolbar">
+    <button id="undoBtn" data-i18n-title="undoTitle" title="Annuler (Ctrl+Z)">↶</button>
+    <button id="redoBtn" data-i18n-title="redoTitle" title="Rétablir (Ctrl+Y)">↷</button>
+    <div style="width: 1px; height: 20px; background: var(--border); margin: 0 8px;"></div>
+    <button id="boldBtn" data-i18n-title="boldTitle" title="Gras"><b>B</b></button>
+    <button id="italicBtn" data-i18n-title="italicTitle" title="Italique"><i>I</i></button>
+    <button id="underlineBtn" data-i18n-title="underlineTitle" title="Souligné"><u>U</u></button>
+    <div style="width: 1px; height: 20px; background: var(--border); margin: 0 8px;"></div>
+    
+    <div class="dropdown-container" style="position: relative;">
+      <button class="dropdown-btn" data-i18n="fontDropdown">Police ▾</button>
+      <div class="dropdown-menu">
+        <div class="dropdown-item" data-command="fontName" data-value="Roboto" style="font-family: Roboto;">Roboto</div>
+        <div class="dropdown-item" data-command="fontName" data-value="Arial" style="font-family: Arial;">Arial</div>
+        <div class="dropdown-item" data-command="fontName" data-value="Times New Roman" style="font-family: 'Times New Roman';">Times New Roman</div>
+        <div class="dropdown-item" data-command="fontName" data-value="Georgia" style="font-family: Georgia;">Georgia</div>
+        <div class="dropdown-item" data-command="fontName" data-value="Courier New" style="font-family: 'Courier New';">Courier</div>
+        <div class="dropdown-item" data-command="fontName" data-value="Verdana" style="font-family: Verdana;">Verdana</div>
+        <div class="dropdown-item" data-command="fontName" data-value="Tahoma" style="font-family: Tahoma;">Tahoma</div>
+        <div class="dropdown-item" data-command="fontName" data-value="Trebuchet MS" style="font-family: 'Trebuchet MS';">Trebuchet MS</div>
+        <div class="dropdown-item" data-command="fontName" data-value="Merriweather" style="font-family: 'Merriweather';">Merriweather</div>
+      </div>
+    </div>
+
+    <div class="dropdown-container" style="position: relative;">
+      <button class="dropdown-btn" data-i18n="sizeDropdown">Taille ▾</button>
+      <div class="dropdown-menu">
+        <div class="dropdown-item" data-command="fontSizePx" data-value="8">8 px</div>
+        <div class="dropdown-item" data-command="fontSizePx" data-value="10">10 px</div>
+        <div class="dropdown-item" data-command="fontSizePx" data-value="12">12 px</div>
+        <div class="dropdown-item" data-command="fontSizePx" data-value="14">14 px</div>
+        <div class="dropdown-item" data-command="fontSizePx" data-value="16" data-i18n="sizeNormalPx">16 px (Normal)</div>
+        <div class="dropdown-item" data-command="fontSizePx" data-value="18">18 px</div>
+        <div class="dropdown-item" data-command="fontSizePx" data-value="20">20 px</div>
+        <div class="dropdown-item" data-command="fontSizePx" data-value="24">24 px</div>
+        <div class="dropdown-item" data-command="fontSizePx" data-value="28">28 px</div>
+        <div class="dropdown-item" data-command="fontSizePx" data-value="32">32 px</div>
+        <div class="dropdown-item" data-command="fontSizePx" data-value="40">40 px</div>
+        <div class="dropdown-item" data-command="fontSizePx" data-value="48">48 px</div>
+        <div class="dropdown-item" data-command="fontSizePx" data-value="60">60 px</div>
+        <div class="dropdown-item" data-command="fontSizePx" data-value="72">72 px</div>
+      </div>
+    </div>
+
+    <div style="width: 1px; height: 20px; background: var(--border); margin: 0 8px;"></div>
+    <button id="alignLeftBtn" data-i18n-title="alignLeftTitle" title="Aligner à gauche">⇤</button>
+    <button id="alignCenterBtn" data-i18n-title="alignCenterTitle" title="Centrer">⇹</button>
+    <button id="alignRightBtn" data-i18n-title="alignRightTitle" title="Aligner à droite">⇥</button>
+    <div style="width: 1px; height: 20px; background: var(--border); margin: 0 8px;"></div>
+
+    <input type="color" id="colorPicker" data-i18n-title="colorPickerTitle" title="Couleur de texte" value="#f8fafc" style="height:30px; width:30px; border:none; background:transparent; cursor:pointer;">
+
+    <div style="flex-grow:1;"></div>
+    <button id="btnGlobalSearch" data-i18n="globalSearchBtn" data-i18n-title="globalSearchBtnTitle" title="Rechercher dans tout le projet">🔎 Recherche globale</button>
+    <button id="btnReplace" data-i18n="replaceBtn" data-i18n-title="replaceBtnTitle" title="Rechercher / Remplacer dans le chapitre actuel">🔍 Remplacer</button>
+  </div>
+
+  <div class="workspace">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-section" id="sectionChapters">
+        <div class="sidebar-header">
+          <h3 data-i18n="chaptersHeader">Chapitres</h3>
+          <button id="btnNewChapter" class="btn-add-mini" data-i18n-title="newChapterTitle" title="Nouveau chapitre">+</button>
+        </div>
+        <ul id="chapterList" class="item-list"></ul>
+      </div>
+
+      <div class="resize-handle-h" id="sidebarSectionsResizeHandle"></div>
+
+      <div class="sidebar-section" id="sectionWorld">
+        <div class="sidebar-header">
+          <h3 data-i18n="worldBuildingHeader">World Building</h3>
+          <div style="position:relative;">
+            <button id="btnNewWB" class="btn-add-mini" data-i18n-title="addWBTitle" title="Ajouter élément">+</button>
+            <div id="wbMenu" class="wb-menu">
+              <div class="wb-menu-item" data-type="character">👤 <span data-i18n="wbLabel_character">Personnage</span></div>
+              <div class="wb-menu-item" data-type="place">🏰 <span data-i18n="wbLabel_place">Lieu</span></div>
+              <div class="wb-menu-item" data-type="object">💎 <span data-i18n="wbLabel_object">Objet</span></div>
+              <div class="wb-menu-item" data-type="other">📝 <span data-i18n="wbLabel_other">Autre</span></div>
+              <div id="wbCustomTypeMenuItems"></div>
+              <button type="button" class="wb-menu-item wb-menu-item-new-type" id="btnNewCustomWbType">➕ <span data-i18n="wbNewCustomTypeBtn">Nouveau type…</span></button>
+            </div>
+          </div>
+        </div>
+        <ul id="wbList" class="item-list"></ul>
+      </div>
+    </aside>
+
+    <div class="resize-handle-v" id="sidebarResizeHandle"></div>
+
+    <main class="editor-area">
+      <div id="tabs" class="tabs-bar"></div>
+      
+      <div class="editor-scroll-container" id="editorContainer">
+        </div>
+
+      <div class="status">
+        <div class="status-left">
+          <span id="stats">0 mots | 0 caractères</span>
+          <span id="saveStatus" class="save-status saved">✓ Enregistré</span>
+          <button id="grammarStatusIndicator" class="grammar-status-indicator" style="display:none;" title=""></button>
+        </div>
+        <div id="timerContainer" class="timer-container" style="display:flex; gap:5px; align-items:center;">
+          <button id="btnTimer">⏱ Timer</button>
+          <button id="btnTimerPause" style="display:none;" data-i18n-title="timerPauseTitle" title="Mettre en pause">⏸</button>
+          <button id="btnTimerStop" style="display:none;" data-i18n-title="timerStopTitle" title="Arrêter le timer">⏹</button>
+        </div>
+        <div class="music-controls">
+          <input type="file" id="musicInput" multiple accept="audio/*" style="display:none;">
+          <button class="music-btn" id="btnLoadMusic" data-i18n-title="loadMusicTitle" title="Charger des musiques">📁</button>
+          <button class="music-btn" id="btnPrevTrack">⏮</button>
+          <button class="music-btn" id="btnPlayPause">▶</button>
+          <button class="music-btn" id="btnNextTrack">⏭</button>
+          <span id="trackName" class="music-info" data-i18n="noTrack">Aucune musique</span>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div id="addChapterModal" class="modal">
+    <div class="modal-content">
+      <h3 data-i18n="newChapterModalTitle">Nouveau Chapitre</h3>
+      <input type="text" id="chapterNameInput" data-i18n-placeholder="chapterNamePlaceholder" placeholder="Nom du chapitre">
+      <div class="modal-buttons">
+        <button id="cancelChapter" data-i18n="cancel">Annuler</button>
+        <button id="confirmChapter" data-i18n="create">Créer</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="addWBModal" class="modal">
+    <div class="modal-content">
+      <h3 id="wbModalTitle">Nouveau...</h3>
+      <input type="text" id="wbNameInput" data-i18n-placeholder="wbNamePlaceholder" placeholder="Nom de l'élément">
+      <div class="modal-buttons">
+        <button id="cancelWB" data-i18n="cancel">Annuler</button>
+        <button id="confirmWB" data-i18n="create">Créer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Création d'un type de fiche World Building personnalisé (au-delà des 4
+       types intégrés) : nom, icône, couleur par défaut, et une liste de
+       champs libres (comme les 4 types intégrés, mais définis par
+       l'utilisateur pour ce projet). -->
+  <div id="customWbTypeModal" class="modal">
+    <div class="modal-content" style="width:520px; max-height:85vh; overflow-y:auto; overflow-x:hidden;">
+      <h3 id="customTypeModalTitleText" data-i18n="customTypeModalTitle">Nouveau type de fiche</h3>
+
+      <div class="wb-form-group">
+        <label class="wb-label" data-i18n="customTypeNameLabel">Nom du type</label>
+        <input type="text" id="customTypeNameInput" data-i18n-placeholder="customTypeNamePlaceholder" placeholder="ex : Faction, Créature, Artefact…">
+      </div>
+
+      <div style="display:flex; gap:15px;">
+        <div class="wb-form-group" style="flex:0 0 auto;">
+          <label class="wb-label" data-i18n="customTypeIconLabel">Icône</label>
+          <div class="wb-icon-picker-container">
+            <button type="button" id="customTypeIconBtn" class="wb-icon-btn">📁</button>
+            <div id="customTypeIconPicker" class="wb-icon-picker dropdown-menu"></div>
+          </div>
+        </div>
+        <div class="wb-form-group" style="flex:1;">
+          <label class="wb-label" data-i18n="customTypeColorLabel">Couleur par défaut</label>
+          <input type="color" id="customTypeColorInput" value="#94a3b8" style="width:100%; height:52px; cursor:pointer; border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-input);">
+        </div>
+      </div>
+
+      <div class="wb-form-group">
+        <label class="wb-label" data-i18n="customTypeFieldsLabel">Champs de la fiche</label>
+        <p class="custom-type-fields-hint" data-i18n="customTypeFieldsHint">
+          Chaque champ est une information de la fiche (comme "Prénom" ou "Âge" pour un Personnage). Ajoutez-en autant que nécessaire ; le ✕ retire un champ que vous ne voulez plus.
+        </p>
+        <div id="customTypeFieldsList" class="custom-type-fields-list"></div>
+        <button type="button" id="btnAddCustomTypeField" style="width:100%; margin-top:8px;" data-i18n="customTypeAddFieldBtn">+ Ajouter un champ</button>
+      </div>
+
+      <div class="modal-buttons">
+        <button id="cancelCustomWbType" data-i18n="cancel">Annuler</button>
+        <button id="confirmCustomWbType" data-i18n="create">Créer</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="renameModal" class="modal">
+    <div class="modal-content">
+      <h3 data-i18n="renameModalTitle">Renommer</h3>
+      <input type="text" id="renameInput" data-i18n-placeholder="newNamePlaceholder" placeholder="Nouveau nom">
+      <div class="modal-buttons">
+        <button id="cancelRename" data-i18n="cancel">Annuler</button>
+        <button id="confirmRename" data-i18n="rename">Renommer</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="timerModal" class="modal">
+    <div class="modal-content">
+      <h3 data-i18n="timerModalTitle">Configurer le minuteur</h3>
+      
+      <div class="dropdown-container" style="position: relative; width: 100%; margin: 12px 0 20px;">
+        <button class="dropdown-btn modal-dropdown-btn" id="timerDropdownBtn" data-i18n="timer25">25 minutes (Pomodoro) ▾</button>
+        <div class="dropdown-menu" style="width: 100%;">
+          <div class="dropdown-item timer-option" data-value="5" data-i18n="timer5">5 minutes</div>
+          <div class="dropdown-item timer-option" data-value="15" data-i18n="timer15">15 minutes</div>
+          <div class="dropdown-item timer-option" data-value="25" data-i18n="timer25">25 minutes (Pomodoro)</div>
+          <div class="dropdown-item timer-option" data-value="60" data-i18n="timer60">1 heure</div>
+        </div>
+      </div>
+      <input type="hidden" id="timerDurationValue" value="25">
+
+      <div class="wb-form-group" style="margin:0 0 20px;">
+        <label class="wb-label" data-i18n="timerCustomLabel">Ou durée personnalisée (minutes)</label>
+        <input type="text" id="timerCustomInput" inputmode="numeric" data-i18n-placeholder="timerCustomPlaceholder" placeholder="ex : 45">
+      </div>
+
+      <div class="modal-buttons">
+        <button id="cancelTimer" data-i18n="cancel">Annuler</button>
+        <button id="confirmTimer" data-i18n="launch">Lancer</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="replaceModal" class="modal">
+    <div class="modal-content">
+      <h3 data-i18n="replaceModalTitle">Rechercher / Remplacer</h3>
+      <input type="text" id="findInput" data-i18n-placeholder="findPlaceholder" placeholder="Rechercher...">
+      <input type="text" id="replaceInput" data-i18n-placeholder="replacePlaceholder" placeholder="Remplacer par...">
+      <label style="display:flex; align-items:center; gap:8px; margin:-10px 0 20px; font-size:13px; color:var(--text-muted); cursor:pointer;">
+        <input type="checkbox" id="replaceScopeAll" style="width:auto;">
+        <span data-i18n="replaceScopeAllLabel">Remplacer dans tout le projet (tous les chapitres)</span>
+      </label>
+      <div class="modal-buttons">
+        <button id="cancelReplace" data-i18n="close">Fermer</button>
+        <button id="replaceAllBtn" data-i18n="replaceAllBtn">Tout remplacer</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="globalSearchModal" class="modal">
+    <div class="modal-content" style="width:560px;">
+      <h3 data-i18n="globalSearchModalTitle">Recherche dans tout le projet</h3>
+      <input type="text" id="globalSearchInput" data-i18n-placeholder="globalSearchPlaceholder" placeholder="Rechercher un mot, un nom, une phrase..." autocomplete="off">
+      <ul id="globalSearchResults" class="item-list" style="max-height:360px; margin:15px 0 20px; border:1px solid var(--border); border-radius:var(--radius); list-style:none;"></ul>
+      <div class="modal-buttons">
+        <button id="closeGlobalSearch" data-i18n="close">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="settingsModal" class="modal">
+    <div class="modal-content" style="width:460px; max-height:85vh; overflow-y:auto;">
+      <h3 data-i18n="settingsModalTitle">Paramètres</h3>
+
+      <div class="settings-section">
+        <h4 class="settings-section-title" data-i18n="settingsSectionAppearance">Apparence</h4>
+
+        <div class="wb-form-group">
+          <label class="wb-label" data-i18n="themeSubmenuLabel">🎨 Thème</label>
+          <div class="settings-choice-row">
+            <button class="settings-choice-btn theme-choice-btn" data-theme="dark" data-i18n="themeDark">🌙 Sombre</button>
+            <button class="settings-choice-btn theme-choice-btn" data-theme="light" data-i18n="themeLight">☀️ Clair</button>
+            <button class="settings-choice-btn theme-choice-btn" data-theme="sepia" data-i18n="themeSepia">📜 Sépia</button>
+          </div>
+        </div>
+
+        <div class="wb-form-group">
+          <label class="wb-label" data-i18n="langSubmenuLabel">🌐 Langue</label>
+          <div class="settings-choice-row">
+            <button class="settings-choice-btn lang-choice-btn" data-lang="fr" data-i18n="langFr">Français</button>
+            <button class="settings-choice-btn lang-choice-btn" data-lang="en" data-i18n="langEn">English</button>
+          </div>
+        </div>
+
+        <div class="wb-form-group">
+          <label class="wb-label" data-i18n="prefWidthLabel">Largeur de page</label>
+          <select id="prefWidth" class="modal-dropdown-btn" style="width:100%;">
+            <option value="650" data-i18n="prefWidthNarrow">Étroite (confort de lecture)</option>
+            <option value="800" data-i18n="prefWidthNormal">Normale</option>
+            <option value="1000" data-i18n="prefWidthLarge">Large</option>
+            <option value="1300" data-i18n="prefWidthXLarge">Très large</option>
+          </select>
+        </div>
+
+        <div class="wb-form-group">
+          <label class="wb-label" data-i18n="prefUiFontSizeLabel">Taille du texte de l'interface</label>
+          <select id="prefUiFontSize" class="modal-dropdown-btn" style="width:100%;">
+            <option value="12" data-i18n="prefUiSizeSmall">Petite</option>
+            <option value="14" data-i18n="prefUiSizeNormal">Normale</option>
+            <option value="16" data-i18n="prefUiSizeLarge">Grande</option>
+            <option value="18" data-i18n="prefUiSizeXLarge">Très grande</option>
+          </select>
+        </div>
+
+        <div class="wb-form-group" style="margin-bottom:0;">
+          <label class="wb-label" data-i18n="prefUiFontLabel">Police de l'interface</label>
+          <select id="prefUiFont" class="modal-dropdown-btn" style="width:100%;">
+            <option value="'Roboto', sans-serif">Roboto</option>
+            <option value="Arial, sans-serif">Arial</option>
+            <option value="'Segoe UI', sans-serif">Segoe UI</option>
+            <option value="Verdana, sans-serif">Verdana</option>
+            <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
+            <option value="Georgia, serif">Georgia</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h4 class="settings-section-title" data-i18n="settingsSectionCorrection">Correction</h4>
+
+        <label class="settings-checkbox-row">
+          <input type="checkbox" id="nativeSpellcheckToggle">
+          <span data-i18n="nativeSpellcheckLabel">🔤 Correcteur orthographique natif</span>
+        </label>
+
+        <label class="settings-checkbox-row">
+          <input type="checkbox" id="grammarEnableCheckbox">
+          <span data-i18n="grammarToggleLabel">Correction grammaticale</span>
+        </label>
+        <button id="btnGrammarConfigure" data-i18n="grammarConfigureBtn" style="width:100%; margin-top:4px;">Configurer…</button>
+      </div>
+
+      <div class="settings-section" style="border-bottom:none; margin-bottom:0;">
+        <h4 class="settings-section-title" data-i18n="settingsSectionUpdates">Mises à jour</h4>
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+          <span id="settingsAppVersion" style="color:var(--text-muted); font-size:13px;"></span>
+          <button id="btnCheckUpdates" data-i18n="checkUpdatesMenuBtn">🔄 Rechercher les mises à jour…</button>
+        </div>
+      </div>
+
+      <div class="modal-buttons">
+        <button id="closeSettingsModal" data-i18n="close">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modale d'information générique (remplace les alert() natifs du navigateur
+       pour rester visuellement cohérent avec le reste de l'application, ex :
+       résultats du Rechercher/Remplacer). -->
+  <div id="infoModal" class="modal">
+    <div class="modal-content" style="width:420px;">
+      <h3 id="infoModalTitle" data-i18n="infoModalTitle">Information</h3>
+      <p id="infoModalMessage" style="color:var(--text-main); font-size:14px; line-height:1.5; margin: 15px 0 20px;"></p>
+      <div class="modal-buttons">
+        <button id="closeInfoModal" data-i18n="close">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modale de confirmation générique (remplace les confirm() natifs du
+       navigateur), pilotée par showConfirmModal() qui renvoie une Promise. -->
+  <div id="confirmModal" class="modal">
+    <div class="modal-content" style="width:440px;">
+      <h3 id="confirmModalTitle" data-i18n="confirmModalTitle">Confirmer</h3>
+      <p id="confirmModalMessage" style="color:var(--text-main); font-size:14px; line-height:1.5; margin: 15px 0 20px; white-space:pre-line;"></p>
+      <div class="modal-buttons">
+        <button id="confirmModalCancel" data-i18n="cancel">Annuler</button>
+        <button id="confirmModalOk" data-i18n="confirmModalOk">Confirmer</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="helpModal" class="modal">
+    <div class="modal-content" style="width:480px; max-height:80vh; overflow-y:auto;">
+      <h3 data-i18n="helpModalTitle">Raccourcis clavier</h3>
+      <ul class="shortcut-list">
+        <li><span data-i18n="shortcutSave">Enregistrer</span><kbd>Ctrl+S</kbd></li>
+        <li><span data-i18n="shortcutUndo">Annuler</span><kbd>Ctrl+Z</kbd></li>
+        <li><span data-i18n="shortcutRedo">Rétablir</span><kbd>Ctrl+Y</kbd></li>
+        <li><span data-i18n="shortcutBold">Gras</span><kbd>Ctrl+B</kbd></li>
+        <li><span data-i18n="shortcutItalic">Italique</span><kbd>Ctrl+I</kbd></li>
+        <li><span data-i18n="shortcutUnderline">Souligné</span><kbd>Ctrl+U</kbd></li>
+        <li><span data-i18n="shortcutAlign">Aligner (gauche/centre/droite)</span><kbd>Ctrl+L / Ctrl+E / Ctrl+R</kbd></li>
+        <li><span data-i18n="shortcutReplace">Rechercher / Remplacer</span><kbd>Ctrl+F</kbd></li>
+        <li><span data-i18n="shortcutGlobalSearch">Recherche globale</span><kbd>Ctrl+Maj+F</kbd></li>
+        <li><span data-i18n="shortcutSwitchTab">Onglet suivant / précédent</span><kbd>Ctrl+Tab / Ctrl+Maj+Tab</kbd></li>
+        <li><span data-i18n="shortcutZoomKeys">Zoom avant / arrière / réinitialiser</span><kbd>Ctrl++ / Ctrl+- / Ctrl+0</kbd></li>
+        <li><span data-i18n="shortcutZoom">Zoom de la page</span><kbd>Ctrl+Molette</kbd></li>
+        <li><span data-i18n="shortcutWbOpen">Ouvrir une fiche World Building</span><kbd>Ctrl+Clic</kbd></li>
+        <li><span data-i18n="shortcutCloseTab">Fermer l'onglet actif</span><kbd>Delete</kbd></li>
+        <li><span data-i18n="shortcutMiddleClose">Fermer un onglet</span><kbd>Clic molette</kbd></li>
+        <li><span data-i18n="shortcutNavigate">Naviguer sans souris</span><kbd>Tab</kbd></li>
+        <li><span data-i18n="shortcutActivate">Activer un élément survolé au clavier</span><kbd>Entrée / Espace</kbd></li>
+        <li><span data-i18n="shortcutCloseModal">Fermer une fenêtre</span><kbd>Échap</kbd></li>
+      </ul>
+      <div class="modal-buttons">
+        <button id="closeHelpModal" data-i18n="close">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modale Statistiques d'écriture : mots écrits, agrégés par jour, semaine,
+       mois ou année, tous projets confondus. -->
+  <div id="statsModal" class="modal">
+    <div class="modal-content" style="width:480px;">
+      <h3 data-i18n="statsModalTitle">Statistiques d'écriture</h3>
+
+      <div class="wb-form-group" style="margin:15px 0;">
+        <label class="wb-label" data-i18n="statsGoalLabel">🎯 Objectif quotidien (mots)</label>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="statsGoalInput" inputmode="numeric" data-i18n-placeholder="statsGoalPlaceholder" placeholder="ex : 500" style="flex:1;">
+          <button id="statsGoalSaveBtn" data-i18n="statsGoalSaveBtn">Enregistrer</button>
+        </div>
+        <div id="statsGoalProgress" style="margin-top:8px; font-size:13px; color:var(--text-muted);"></div>
+      </div>
+
+      <div class="dropdown-container" style="position:relative; width:100%; margin:15px 0;">
+        <button class="dropdown-btn modal-dropdown-btn" id="statsPeriodBtn"><span id="statsPeriodLabel" data-i18n="statsPeriodDay">Par jour</span> ▾</button>
+        <div class="dropdown-menu" style="width:100%;">
+          <div class="dropdown-item stats-period-option" data-period="day" data-i18n="statsPeriodDay">Par jour</div>
+          <div class="dropdown-item stats-period-option" data-period="week" data-i18n="statsPeriodWeek">Par semaine</div>
+          <div class="dropdown-item stats-period-option" data-period="month" data-i18n="statsPeriodMonth">Par mois</div>
+          <div class="dropdown-item stats-period-option" data-period="year" data-i18n="statsPeriodYear">Par année</div>
+        </div>
+      </div>
+      <ul id="statsList" class="item-list" style="max-height:320px; margin-bottom:20px; border:1px solid var(--border); border-radius:var(--radius); overflow-y:auto;"></ul>
+      <div class="modal-buttons">
+        <button id="closeStats" data-i18n="close">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="backupsModal" class="modal">
+    <div class="modal-content" style="width:480px;">
+      <h3 data-i18n="backupsModalTitle">Sauvegardes automatiques</h3>
+      <p style="color:var(--text-muted); font-size:13px; margin-bottom:15px;" data-i18n="backupsDescription">
+        Une sauvegarde horodatée est créée automatiquement pendant que vous travaillez.
+        Restaurer une version antérieure remplace le contenu actuel du projet
+        (une sauvegarde de l'état actuel est créée avant, par sécurité).
+      </p>
+      <ul id="backupsList" class="item-list" style="max-height:300px; margin-bottom:20px; border:1px solid var(--border); border-radius:var(--radius);"></ul>
+      <div class="modal-buttons">
+        <button id="closeBackups" data-i18n="close">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Configuration LanguageTool (correcteur de grammaire hors ligne) -->
+  <div id="grammarSetupModal" class="modal">
+    <div class="modal-content" style="width:480px;">
+      <h3 data-i18n="grammarModalTitle">Correcteur de grammaire (LanguageTool)</h3>
+      <p style="color:var(--text-muted); font-size:13px; margin-bottom:15px;" data-i18n="grammarModalIntro">
+        Scriptorium peut utiliser LanguageTool en local, entièrement hors ligne, pour détecter les fautes de grammaire, d'accord et de conjugaison (en plus du correcteur d'orthographe déjà intégré).
+      </p>
+
+      <div style="font-size:13px; line-height:1.8; margin-bottom:15px;">
+        <div><span data-i18n="grammarJavaLabel">Java :</span> <strong id="grammarJavaStatus">…</strong></div>
+        <div><span data-i18n="grammarFolderLabel">Dossier LanguageTool :</span> <strong id="grammarFolderStatus" style="word-break:break-all;">…</strong></div>
+      </div>
+
+      <p id="grammarJavaHint" style="display:none; color:var(--text-muted); font-size:12px; margin-bottom:10px;">
+        LanguageTool nécessite Java 17 ou supérieur. Installez-le depuis java.com, puis relancez la vérification.
+      </p>
+      <button id="btnGrammarOpenJava" style="display:none; width:100%; margin-bottom:15px;" data-i18n="grammarOpenJavaBtn">☕ Ouvrir java.com pour installer Java</button>
+
+      <button id="btnGrammarAutoInstall" data-i18n="grammarAutoInstallBtn" style="width:100%; margin-bottom:6px;">📥 Installer LanguageTool automatiquement (~200 Mo)</button>
+      <div id="grammarInstallProgressWrap" style="display:none; margin-bottom:10px;">
+        <div style="background:var(--bg-input); border-radius:6px; overflow:hidden; height:8px;">
+          <div id="grammarInstallProgressBar" style="background:var(--accent); height:100%; width:0%; transition:width 0.2s;"></div>
+        </div>
+        <div id="grammarInstallProgressLabel" style="font-size:12px; color:var(--text-muted); margin-top:4px;"></div>
+      </div>
+
+      <div style="display:flex; align-items:center; gap:10px; margin:12px 0; color:var(--text-muted); font-size:12px;">
+        <div style="flex:1; height:1px; background:var(--border);"></div>
+        <span data-i18n="grammarOrManualLabel">ou manuellement</span>
+        <div style="flex:1; height:1px; background:var(--border);"></div>
+      </div>
+
+      <button id="btnGrammarSelectFolder" data-i18n="grammarSelectFolderBtn" style="width:100%; margin-bottom:10px;">📂 Choisir le dossier LanguageTool…</button>
+      <p style="color:var(--text-muted); font-size:12px; margin-bottom:15px;" data-i18n="grammarDownloadHint">
+        Téléchargez LanguageTool Desktop/Server (languagetool-server.jar) depuis languagetool.org/download, dézippez-le où vous voulez, puis sélectionnez ce dossier ici.
+      </p>
+
+      <div id="grammarStatusMessage" style="font-size:13px; margin-bottom:10px; min-height:18px;"></div>
+
+      <div class="modal-buttons">
+        <button id="btnGrammarRecheck" data-i18n="grammarRecheckBtn">🔄 Revérifier</button>
+        <button id="closeGrammarSetup" data-i18n="close">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Popup flottant de suggestions grammaticales (positionné en JS, hors flux normal) -->
+  <div id="grammarSuggestPopup" class="grammar-suggest-popup" style="display:none;"></div>
+
+  <script type="module" src="js/editor.js"></script>
+</body>
+</html>

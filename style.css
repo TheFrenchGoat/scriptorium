@@ -1,0 +1,619 @@
+/* VARIABLES & THÈMES HARMONISÉS */
+:root {
+  --bg-app: #0f172a;
+  --bg-panel: #1e293b;
+  --bg-page: #152033;
+  --bg-input: #0b1120;
+  --bg-hover: #334155;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --accent: #3b82f6;
+  --accent-hover: #2563eb;
+  --border: #334155;
+  --shadow: 0 10px 15px -3px rgba(0,0,0,0.4);
+  --radius: 8px;
+
+  /* Couleurs World Building */
+  --wb-char: #ef4444;
+  --wb-place: #10b981;
+  --wb-obj: #3b82f6;
+  --wb-other: #a855f7;
+
+  /* Préférences d'interface (taille/police du texte des menus, PAS de la feuille d'écriture) */
+  --ui-font-family: 'Roboto', sans-serif;
+  --ui-font-size: 14px;
+
+  /* Largeur ajustable de la sidebar (voir resize-handle) */
+  --sidebar-width: 250px;
+}
+
+body.light {
+  --bg-app: #e2e8f0;
+  --bg-panel: #f8fafc;
+  --bg-page: #ffffff;
+  --bg-input: #f1f5f9;
+  --bg-hover: #e2e8f0;
+  --text-main: #0f172a;
+  --text-muted: #475569;
+  --border: #cbd5e1;
+  --shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+}
+
+body.sepia {
+  --bg-app: #e6dfd1;
+  --bg-panel: #f4ecd8;
+  --bg-page: #fbf0d9;
+  --bg-input: #efe4ce;
+  --bg-hover: #eaddcf;
+  --text-main: #5c4033;
+  --text-muted: #8b6b5d;
+  --border: #d4c5b0;
+  --shadow: 0 4px 6px -1px rgba(92, 64, 51, 0.1);
+}
+
+/* RESET & BASE */
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: inherit; }
+body {
+  background: var(--bg-app); color: var(--text-main); height: 100vh; display: flex; flex-direction: column;
+  overflow: hidden; transition: background 0.3s, color 0.3s;
+  /* Taille/police du texte des interfaces, réglables dans Paramètres > Affichage.
+     N'affecte jamais la feuille d'écriture (#editor), qui a sa propre police fixe. */
+  font-family: var(--ui-font-family, 'Roboto', sans-serif);
+  font-size: var(--ui-font-size, 14px);
+}
+button { background: var(--bg-hover); color: var(--text-main); border: 1px solid var(--border); padding: 8px 12px; border-radius: var(--radius); cursor: pointer; transition: 0.2s; }
+button:hover { background: var(--border); }
+input[type="text"] { background: var(--bg-input); color: var(--text-main); border: 1px solid var(--border); padding: 8px; border-radius: var(--radius); outline: none; width: 100%; }
+input[type="text"]:focus { border-color: var(--accent); }
+
+/* MENU PRINCIPAL (INDEX) */
+.menu-page { align-items: center; justify-content: center; background: var(--bg-app); }
+.menu-container { width: 90%; max-width: 1000px; background: var(--bg-panel); padding: 30px; border-radius: var(--radius); box-shadow: var(--shadow); }
+.menu-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 1px solid var(--border); padding-bottom: 15px; }
+.projects-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; }
+.project-card { background: var(--bg-app); border: 1px solid var(--border); padding: 20px; border-radius: var(--radius); cursor: pointer; transition: 0.2s; display: flex; flex-direction: column; justify-content: space-between; min-height: 120px; }
+.project-card:hover { transform: translateY(-3px); border-color: var(--accent); box-shadow: var(--shadow); }
+.project-card h3 { margin-bottom: 8px; font-size: 18px; }
+.project-card p { color: var(--text-muted); font-size: 14px; }
+
+/* Menu options projets */
+.project-options .btn-options { background: transparent; border: none; font-size: 20px; padding: 0 8px; color: var(--text-muted); }
+.project-options .btn-options:hover { color: var(--text-main); }
+.project-options .options-menu { right: -10px; left: auto; top: 100%; min-width: 130px; }
+
+/* EDITEUR - LAYOUT GLOBAL */
+.editor-page { flex-direction: column; }
+.editor-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; background: var(--bg-panel); border-bottom: 1px solid var(--border); }
+.header-actions { display: flex; gap: 10px; }
+
+/* TOOLBAR */
+.toolbar { display: flex; padding: 10px 20px; background: var(--bg-panel); border-bottom: 1px solid var(--border); gap: 10px; align-items: center; }
+.toolbar button { background: transparent; border: 1px solid transparent; font-size: 14px; padding: 6px 12px; }
+.toolbar button:hover { background: var(--bg-hover); border: 1px solid var(--border); }
+.toolbar button:disabled { opacity: 0.35; cursor: default; }
+.toolbar button:disabled:hover { background: transparent; border: 1px solid transparent; }
+
+/* WORKSPACE & SIDEBAR SPLIT */
+.workspace { display: flex; flex: 1; overflow: hidden; }
+.sidebar { width: var(--sidebar-width, 250px); flex-shrink: 0; background: var(--bg-panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+.sidebar-section { 
+  flex: 1; 
+  display: flex; 
+  flex-direction: column; 
+  border-bottom: 4px solid var(--bg-app); 
+  min-height: 80px; 
+}
+
+/* POIGNÉES DE REDIMENSIONNEMENT (façon Premiere Pro) : permet d'étendre ou
+   réduire la sidebar horizontalement, et les deux sections de la sidebar
+   (Chapitres / World Building) verticalement l'une par rapport à l'autre. */
+.resize-handle-v {
+  width: 5px;
+  flex-shrink: 0;
+  cursor: col-resize;
+  background: transparent;
+  position: relative;
+}
+.resize-handle-v::after {
+  content: '';
+  position: absolute; top: 0; bottom: 0; left: 2px; width: 1px;
+  background: var(--border);
+}
+.resize-handle-v:hover::after, .resize-handle-v.dragging::after { background: var(--accent); width: 2px; left: 1.5px; }
+
+.resize-handle-h {
+  height: 5px;
+  flex-shrink: 0;
+  cursor: row-resize;
+  background: transparent;
+  position: relative;
+}
+.resize-handle-h::after {
+  content: '';
+  position: absolute; left: 0; right: 0; top: 2px; height: 1px;
+  background: var(--border);
+}
+.resize-handle-h:hover::after, .resize-handle-h.dragging::after { background: var(--accent); height: 2px; top: 1.5px; }
+.sidebar-header { padding: 10px 15px; background: var(--bg-hover); display: flex; justify-content: space-between; align-items: center; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: bold; }
+.btn-add-mini { background: transparent; border: none; font-size: 18px; padding: 0 5px; color: var(--text-muted); }
+.btn-add-mini:hover { color: var(--accent); }
+.item-list { list-style: none; overflow-y: auto; flex: 1; min-height: 0; }
+.item-list li { padding: 10px 15px; cursor: pointer; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; transition: background 0.2s; }
+.item-list li:hover { background: var(--bg-hover); }
+.item-list li.current { border-left: 3px solid var(--accent); background: var(--bg-app); }
+.item-actions button { background: transparent; border: none; padding: 2px 5px; font-size: 12px; opacity: 0; transition: opacity 0.2s; }
+.item-list li:hover .item-actions button, .item-list li:focus-within .item-actions button { opacity: 1; }
+
+/* MAIN AREA & TABS MODIFIÉS */
+.editor-area { flex: 1; display: flex; flex-direction: column; background: var(--bg-app); overflow: hidden; }
+
+/* Scrollbar horizontale pour les onglets - AGRANDIE */
+.tabs-bar { 
+  display: flex; 
+  background: var(--bg-panel); 
+  border-bottom: 1px solid var(--border); 
+  overflow-x: auto; 
+  white-space: nowrap;
+  flex-shrink: 0;
+  padding-bottom: 2px; /* Espace pour ne pas coller à la scrollbar */
+}
+
+/* Style AGRANDI pour la scrollbar des onglets */
+.tabs-bar::-webkit-scrollbar { height: 10px; } /* Augmenté de 4px à 10px */
+.tabs-bar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 5px; border: 2px solid var(--bg-panel); }
+.tabs-bar::-webkit-scrollbar-track { background: var(--bg-panel); }
+
+.tab { 
+  padding: 10px 15px; 
+  cursor: pointer; 
+  border-right: 1px solid var(--border); 
+  display: flex; 
+  align-items: center; 
+  gap: 8px; 
+  background: var(--bg-panel); 
+  font-size: 14px; 
+  user-select: none;
+  min-width: 120px; 
+  max-width: 200px;
+  flex-shrink: 0; 
+  position: relative;
+}
+.tab span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.tab:hover { background: var(--bg-hover); }
+.tab.active { background: var(--bg-app); border-bottom: 2px solid var(--accent); font-weight: 500; }
+.close-tab { color: var(--text-muted); font-weight: bold; cursor: pointer; margin-left: auto; }
+.close-tab:hover { color: #ef4444; }
+
+/* CONTENEUR DE LA PAGE DE TEXTE */
+.editor-scroll-container { flex: 1; overflow-y: auto; padding: 20px; display: flex; justify-content: center; }
+#editor {
+  background: var(--bg-page);
+  max-width: var(--editor-width, 800px);
+  width: 100%;
+  min-height: 1000px; 
+  height: max-content; 
+  padding: 60px 80px; 
+  box-shadow: var(--shadow);
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  outline: none;
+  font-size: 16px;
+  font-family: var(--editor-font, 'Roboto', sans-serif);
+  line-height: var(--editor-line-height, 1.6);
+  white-space: pre-wrap;
+}
+#editor:empty:before { content: attr(placeholder); color: var(--text-muted); pointer-events: none; }
+
+/* WORLD BUILDING MENTIONS */
+.wb-mention {
+  border-bottom: 2px solid;
+  cursor: text;
+  transition: all 0.2s;
+  position: relative;
+  display: inline;
+}
+.wb-mention.type-character { color: var(--wb-char); border-color: rgba(239, 68, 68, 0.3); }
+.wb-mention.type-place { color: var(--wb-place); border-color: rgba(16, 185, 129, 0.3); }
+.wb-mention.type-object { color: var(--wb-obj); border-color: rgba(59, 130, 246, 0.3); }
+.wb-mention.type-other { color: var(--wb-other); border-color: rgba(168, 85, 247, 0.3); }
+
+.wb-mention:hover { background: rgba(255, 255, 255, 0.05); }
+.wb-mention:hover::after {
+  content: attr(data-type-label);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-panel);
+  color: var(--text-main);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  white-space: nowrap;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  pointer-events: none;
+  z-index: 1000;
+  margin-bottom: 4px;
+  animation: fadeIn 0.2s;
+}
+
+/* WORLD BUILDING FORMULAIRES */
+.wb-container { max-width: 800px; margin: 0 auto; padding: 40px 40px 100px; width: 100%; }
+.wb-header { display: flex; align-items: center; gap: 15px; margin-bottom: 30px; border-bottom: 1px solid var(--border); padding-bottom: 15px; }
+.wb-icon { font-size: 32px; }
+.wb-title { font-size: 24px; font-weight: bold; }
+
+.wb-icon-picker-container { position: relative; flex-shrink: 0; }
+.wb-icon-btn {
+  width: 52px; height: 52px; font-size: 26px; line-height: 1;
+  background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius);
+  display: flex; align-items: center; justify-content: center; padding: 0;
+}
+.wb-icon-btn:hover { border-color: var(--accent); }
+.wb-icon-picker { top: 100%; left: 0; margin-top: 8px; width: 280px; padding: 12px; }
+.wb-icon-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; margin-bottom: 12px; max-height: 220px; overflow-y: auto; }
+.wb-icon-choice {
+  font-size: 18px; padding: 6px 0; background: transparent; border: 1px solid transparent; border-radius: 4px;
+}
+.wb-icon-choice:hover { background: var(--bg-hover); border-color: var(--border); }
+.wb-icon-custom-row { display: flex; gap: 6px; }
+.wb-icon-custom-row input {
+  flex: 1; min-width: 0; background: var(--bg-input); color: var(--text-main); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 6px 8px; outline: none; font-size: 16px; text-align: center;
+}
+.wb-icon-custom-row button { padding: 6px 10px; font-size: 12px; }
+
+/* .wb-title-input est un input[type="text"] : la règle globale du même
+   sélecteur (RESET & BASE, plus haut) a une spécificité légèrement
+   supérieure à une simple classe et écrasait sinon width/flex ici, forçant
+   ce champ (et par ricochet toute la ligne d'en-tête) à un rendu cassé. Le
+   sélecteur descendant ci-dessous a une spécificité suffisante pour gagner
+   sans recourir à !important. */
+.wb-header .wb-title-input {
+  flex: 1; min-width: 0; width: auto; font-size: 22px; font-weight: bold; background: transparent;
+  border: 1px solid transparent; border-radius: var(--radius); padding: 6px 8px; color: var(--text-main);
+  text-align: center;
+}
+.wb-header .wb-title-input:hover, .wb-header .wb-title-input:focus { background: var(--bg-input); border-color: var(--border); outline: none; }
+.wb-color-label {
+  display: flex; align-items: center; cursor: pointer; flex-shrink: 0;
+  border: 1px solid var(--border); border-radius: var(--radius); padding: 4px;
+}
+.wb-color-label input[type="color"] { width: 34px; height: 34px; border: none; background: transparent; cursor: pointer; padding: 0; }
+
+.wb-mentioned-chapters { display: flex; flex-wrap: wrap; gap: 8px; }
+.wb-mentioned-chapter-btn {
+  background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 6px 12px; font-size: 13px; color: var(--text-main);
+}
+.wb-mentioned-chapter-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+.wb-readmode-btn {
+  flex-shrink: 0; font-size: 13px; padding: 8px 12px; display: flex; align-items: center; gap: 6px;
+}
+.wb-readmode-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(59, 130, 246, 0.08); }
+.wb-input:read-only, .wb-textarea:read-only,
+.wb-title-input:read-only {
+  background: transparent; border-color: transparent; cursor: default;
+}
+.wb-icon-btn:disabled, .wb-color-label input:disabled { opacity: 0.5; cursor: default; }
+
+.custom-type-fields-list { display: flex; flex-direction: column; gap: 8px; }
+.custom-type-fields-hint { color: var(--text-muted); font-size: 12px; line-height: 1.5; margin: -4px 0 10px; }
+.custom-type-field-row {
+  display: grid;
+  grid-template-columns: 1fr 130px 32px;
+  gap: 8px;
+  align-items: center;
+}
+.custom-type-field-row .custom-type-field-label {
+  width: 100% !important;
+  min-width: 0;
+  height: 42px;
+  padding: 0 10px !important;
+  margin-bottom: 0 !important;
+  box-sizing: border-box;
+}
+.custom-type-field-row .custom-type-field-type {
+  width: 100% !important;
+  height: 42px;
+  box-sizing: border-box;
+  background: var(--bg-input); color: var(--text-main); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 0 8px; outline: none;
+  margin-bottom: 0 !important;
+}
+.custom-type-field-row .btn-remove-field {
+  width: 32px !important; height: 32px; padding: 0 !important;
+  color: #ef4444; border-color: transparent; background: transparent;
+}
+.custom-type-field-row .btn-remove-field:hover { background: rgba(239, 68, 68, 0.12); }
+
+.wb-menu-item-new-type { border-top: 1px solid var(--border); color: var(--accent); }
+
+.info-modal-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: -5px 0 20px; }
+.info-modal-actions button { font-size: 13px; padding: 6px 12px; }
+.wb-form-group { margin-bottom: 20px; }
+.wb-label { display: block; margin-bottom: 8px; color: var(--text-muted); font-size: 14px; font-weight: 600; }
+
+.wb-input, .wb-textarea { 
+  width: 100%; 
+  background: var(--bg-input); 
+  color: var(--text-main); 
+  border: 1px solid var(--border); 
+  padding: 12px; 
+  border-radius: var(--radius); 
+  outline: none; 
+  font-size: 15px; 
+}
+.wb-input:focus, .wb-textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2); }
+.wb-textarea { min-height: 120px; resize: vertical; line-height: 1.5; }
+
+/* STATUS BAR & MUSIC */
+.status { background: var(--bg-panel); padding: 5px 20px; border-top: 1px solid var(--border); font-size: 12px; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; }
+.status-left { display: flex; align-items: center; gap: 15px; }
+.save-status { transition: color 0.2s; }
+.save-status.saved { color: #10b981; }
+.save-status.pending { color: var(--text-muted); }
+.save-status.error { color: #ef4444; }
+
+.grammar-status-indicator {
+  display: inline-flex; align-items: center; gap: 5px; font-size: 12px;
+  background: transparent; border: none; padding: 0; color: var(--text-muted);
+}
+.grammar-status-indicator::before {
+  content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex-shrink: 0;
+}
+.grammar-status-indicator.status-ready { color: #10b981; }
+.grammar-status-indicator.status-error { color: #ef4444; }
+.grammar-status-indicator.status-starting { color: #f59e0b; }
+
+.backup-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; border-bottom: 1px solid var(--border); }
+.backup-item:last-child { border-bottom: none; }
+.backup-item button { font-size: 12px; padding: 4px 10px; }
+
+.search-result { padding: 10px 15px; border-bottom: 1px solid var(--border); cursor: pointer; }
+.search-result:last-child { border-bottom: none; }
+.search-result:hover { background: var(--bg-hover); }
+.search-result-header { display:flex; justify-content:space-between; font-weight:600; margin-bottom:4px; }
+.search-result-count { color: var(--text-muted); font-weight: normal; font-size: 12px; }
+.search-result-snippet { font-size: 13px; color: var(--text-muted); margin-top: 3px; }
+.search-result-snippet mark { background: rgba(59,130,246,0.35); color: inherit; border-radius: 2px; }
+.music-controls { display: flex; align-items: center; gap: 5px; }
+.music-btn { background: transparent; border: none; padding: 4px 8px; width:30px; text-align: center; }
+.music-info { margin-left: 10px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* MODALS */
+.modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
+.modal-content { background: var(--bg-panel); padding: 25px; border-radius: var(--radius); width: 400px; box-shadow: var(--shadow); border: 1px solid var(--border); }
+.modal-content h3 { margin-bottom: 15px; }
+.modal-content input, .modal-content select { width: 100%; margin-bottom: 20px; padding: 10px; background: var(--bg-input); color: var(--text-main); border: 1px solid var(--border); border-radius: var(--radius); outline: none; }
+.modal-buttons { display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px; }
+.modal-dropdown-btn { width: 100%; text-align: left; background: var(--bg-input); color: var(--text-main); padding: 10px; border: 1px solid var(--border); border-radius: var(--radius); }
+
+/* DROPDOWNS */
+.dropdown-menu, .theme-dropdown, .wb-menu {
+  display: none; position: absolute;
+  background: var(--bg-panel); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow);
+  z-index: 100;
+  min-width: 160px;
+  overflow: hidden;
+  margin-top: 8px;
+  animation: fadeIn 0.15s ease-out;
+}
+.theme-dropdown { left: 50%; margin-left: -80px; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.dropdown-menu.show, .theme-dropdown.show, .wb-menu.show { display: block; }
+.dropdown-item, .theme-item, .wb-menu-item, .wb-menu-item-main {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  font: inherit;
+  padding: 10px 16px;
+  cursor: pointer;
+  color: var(--text-main);
+  font-size: 14px;
+  transition: background 0.2s, color 0.2s;
+}
+.dropdown-item:hover, .theme-item:hover, .wb-menu-item:hover, .wb-menu-item-main:hover {
+  background: var(--bg-hover);
+  color: var(--accent);
+}
+
+/* Entrée de type personnalisé dans le menu "+" : le bouton principal (nom du
+   type) partage l'apparence des autres entrées, avec des actions ✏️/🗑
+   révélées au survol ou au focus clavier (même principe que les actions de
+   la sidebar). */
+.wb-menu-item-custom { display: flex; align-items: stretch; padding: 0; }
+.wb-menu-item-custom .wb-menu-item-main { flex: 1; min-width: 0; }
+.wb-menu-item-actions { display: flex; align-items: center; padding-right: 8px; gap: 2px; opacity: 0; transition: opacity 0.2s; }
+.wb-menu-item-custom:hover .wb-menu-item-actions, .wb-menu-item-custom:focus-within .wb-menu-item-actions { opacity: 1; }
+.wb-menu-item-actions button { padding: 4px 6px; font-size: 12px; background: transparent; border: none; width: auto; }
+.wb-menu-item-actions button:hover { background: var(--bg-hover); border-radius: 4px; }
+
+/* Menu "Paramètres" : Thème / Langue s'ouvrent désormais en accordéon
+   JUSTE EN DESSOUS de leur ligne (et non plus en volet sur le côté).
+   Un volet latéral partait hors de l'écran quand "Paramètres" est proche du
+   bord de la fenêtre (ex: en haut à droite) : la fenêtre coupant tout ce qui
+   dépasse, il restait invisible bien que fonctionnel. L'accordéon, lui,
+   reste toujours visible quelle que soit la largeur de la fenêtre. */
+.dropdown-item.settings-parent { padding: 0; position: relative; }
+.dropdown-item.settings-parent:hover { background: transparent; color: var(--text-main); }
+.settings-parent-row {
+  display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  padding: 10px 16px; cursor: pointer; transition: background 0.2s, color 0.2s;
+}
+.settings-parent-row:hover { background: var(--bg-hover); color: var(--accent); }
+.submenu-arrow { color: var(--text-muted); display: inline-block; transition: transform 0.15s; transform: rotate(-90deg); }
+.settings-parent-row.open .submenu-arrow { transform: rotate(0deg); }
+
+.submenu-panel {
+  display: none;
+  background: rgba(0, 0, 0, 0.18);
+}
+.submenu-panel.show { display: block; }
+.submenu-panel .theme-item { padding-left: 34px; }
+
+/* Case à cocher des modales : alignée avec son libellé (le style global des
+   <input> de modale ajoute padding/marge conçus pour des champs texte, pas
+   adaptés à une case à cocher). */
+.modal-content label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  padding: 0;
+  flex-shrink: 0;
+  accent-color: var(--accent);
+}
+#infoModalMessage { white-space: pre-line; }
+
+/* MODALE PARAMÈTRES : sections regroupées (Apparence / Correction / Mises à
+   jour), remplace l'ancien menu déroulant en accordéon. Chaque section est
+   séparée par une fine ligne, sans ré-empiler des cadres visuellement. */
+.settings-section {
+  padding-bottom: 18px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+}
+.settings-section-title {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin-bottom: 14px;
+  font-weight: 700;
+}
+.settings-choice-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.settings-choice-btn {
+  flex: 1;
+  min-width: 100px;
+  padding: 8px 10px;
+  font-size: 13px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.settings-choice-btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(59, 130, 246, 0.08);
+  font-weight: 600;
+}
+.settings-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+.settings-checkbox-row:last-of-type { margin-bottom: 0; }
+
+.shortcut-list { list-style: none; margin: 15px 0 5px; }
+.shortcut-list li {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 14px;
+}
+.shortcut-list li:last-child { border-bottom: none; }
+.shortcut-list kbd {
+  background: var(--bg-input); border: 1px solid var(--border); border-radius: 4px;
+  padding: 3px 8px; font-size: 12px; font-family: inherit; color: var(--text-muted);
+  white-space: nowrap; margin-left: 15px;
+}
+
+/* ACCESSIBILITÉ : indicateur de focus visible pour la navigation clavier */
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible,
+[contenteditable]:focus-visible, li:focus-visible, .dropdown-item:focus-visible, .theme-item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.item-list li:focus-visible { background: var(--bg-hover); }
+
+#btnTimer.running { color: #10b981; border-color: #10b981; font-weight: bold; }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--bg-app); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 5px; border: 2px solid var(--bg-app); }
+
+.item-list li[draggable="true"] { cursor: grab; user-select: none; }
+.item-list li.dragging { opacity: 0.4; background: var(--accent) !important; border: 2px dashed var(--accent); transform: scale(0.98); }
+
+/* Appliquée uniquement PENDANT un glisser-déposer de poignée de
+   redimensionnement (sidebar / sections), pour empêcher que le
+   déplacement de la souris ne sélectionne aussi du texte au passage.
+   Contrairement à un style inline posé/retiré à la main, cette classe est
+   toujours garantie d'être retirée (voir setupPanelResize dans editor.js),
+   donc elle ne bloque jamais la sélection de texte en dehors d'un drag. */
+body.resizing-panel, body.resizing-panel * { user-select: none !important; cursor: inherit; }
+/* CORRECTEUR DE GRAMMAIRE (LanguageTool) : surlignage des fautes détectées,
+   distinct du soulignement rouge natif du correcteur orthographique. */
+mark.grammar-error {
+  background: transparent;
+  color: inherit;
+  /* "wavy" n'existe pas pour border-style (valeurs valides : solid, dashed,
+     dotted, double...) : ça ne s'appliquait qu'au border-bottom-color sans
+     jamais dessiner de trait. text-decoration-style est la bonne propriété
+     pour un soulignement ondulé. */
+  text-decoration: underline;
+  text-decoration-style: wavy;
+  text-decoration-color: #3b82f6;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+mark.grammar-error:hover { background: rgba(59, 130, 246, 0.12); }
+
+.grammar-suggest-popup {
+  position: fixed;
+  z-index: 2000;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 10px;
+  max-width: 320px;
+  font-size: 13px;
+}
+.grammar-suggest-popup .gsp-message {
+  color: var(--text-main);
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+.grammar-suggest-popup .gsp-suggestion {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 6px 10px;
+  margin-bottom: 4px;
+  background: var(--bg-hover);
+  border: none;
+  border-radius: 6px;
+  color: var(--accent);
+  cursor: pointer;
+  font-weight: 500;
+}
+.grammar-suggest-popup .gsp-suggestion:hover { background: var(--accent); color: #fff; }
+.grammar-suggest-popup .gsp-ignore {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 6px 10px;
+  margin-top: 4px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.grammar-suggest-popup .gsp-ignore:hover { color: var(--text-main); }
