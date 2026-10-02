@@ -1,0 +1,21 @@
+# Dépendances (régénérées via `npm install`, ne jamais committer)
+node_modules/
+
+# Sorties de build (tsc, vite, electron-builder)
+dist/
+release/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Fichiers système
+.DS_Store
+Thumbs.db
+
+# Éditeurs
+.vscode/
+.idea/
+
+# Variables d'environnement
+.env
