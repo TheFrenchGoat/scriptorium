@@ -8,12 +8,22 @@
 // Le début et la fin sont enregistrés automatiquement. À la fin de la
 // session, l’utilisateur peut renseigner son humeur, sa concentration,
 // son énergie et une note facultative.
+//
+// Tous les documents ouverts pendant la session sont mémorisés dans
+// `documentNames`. Le champ historique `documentName` reste rempli pour
+// assurer la compatibilité avec les anciennes versions de l’application.
 
 import React, { useEffect, useRef, useState } from 'react';
 import { useI18n } from '../../i18n';
 import { Modal } from '../common/Modal';
-import { Dropdown, DropdownItem } from '../common/Dropdown';
-import { startTimerSoundLoop, type TimerSoundId } from '../../lib/sound';
+import {
+  Dropdown,
+  DropdownItem
+} from '../common/Dropdown';
+import {
+  startTimerSoundLoop,
+  type TimerSoundId
+} from '../../lib/sound';
 import { getTotalStats } from '../../lib/stats';
 import type {
   SessionRatingScale,
@@ -71,7 +81,18 @@ interface ActiveWritingSession {
   id: string;
   source: WritingSessionSource;
   startedAt: string;
+
+  /**
+   * Premier document actif au début de la session.
+   *
+   * Ce champ est conservé pour produire `WritingSession.documentName`,
+   * utilisé par les anciennes versions des statistiques.
+   */
   documentName: string | null;
+
+  /** Tous les documents ouverts pendant la session. */
+  documentNames: string[];
+
   wordsBefore: number;
   activeSeconds: number;
   plannedSeconds?: number;
@@ -97,7 +118,9 @@ function createSessionId(): string {
 function formatTimer(seconds: number): string {
   const safeSeconds = Math.max(0, Math.floor(seconds));
   const hours = Math.floor(safeSeconds / 3600);
-  const minutes = Math.floor((safeSeconds % 3600) / 60);
+  const minutes = Math.floor(
+    (safeSeconds % 3600) / 60
+  );
   const remainingSeconds = safeSeconds % 60;
 
   if (hours > 0) {
@@ -114,9 +137,42 @@ function formatTimer(seconds: number): string {
   ].join(':');
 }
 
-function normalizeScale(value: number | undefined): SessionRatingScale {
-  if (value === 5 || value === 20) return value;
+function normalizeScale(
+  value: number | undefined
+): SessionRatingScale {
+  if (value === 5 || value === 20) {
+    return value;
+  }
+
   return 10;
+}
+
+/**
+ * Renvoie tous les documents d’une session, y compris pour les anciennes
+ * sessions qui ne possèdent encore que le champ `documentName`.
+ */
+function getSessionDocumentNames(
+  session: WritingSession
+): string[] {
+  const names: string[] = [];
+
+  const addName = (
+    name: string | null | undefined
+  ): void => {
+    const normalizedName = name?.trim();
+
+    if (
+      normalizedName &&
+      !names.includes(normalizedName)
+    ) {
+      names.push(normalizedName);
+    }
+  };
+
+  session.documentNames?.forEach(addName);
+  addName(session.documentName);
+
+  return names;
 }
 
 export function Timer({
@@ -124,41 +180,60 @@ export function Timer({
 }: TimerProps): React.ReactElement {
   const { t } = useI18n();
 
-  const [modalOpen, setModalOpen] = useState(false);
-  const [selectedPreset, setSelectedPreset] = useState(25);
-  const [customValue, setCustomValue] = useState('');
+  const [modalOpen, setModalOpen] =
+    useState(false);
+  const [selectedPreset, setSelectedPreset] =
+    useState(25);
+  const [customValue, setCustomValue] =
+    useState('');
 
-  const [timeRemaining, setTimeRemaining] = useState(0);
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  const [isRunning, setIsRunning] = useState(false);
+  const [timeRemaining, setTimeRemaining] =
+    useState(0);
+  const [elapsedSeconds, setElapsedSeconds] =
+    useState(0);
+  const [isRunning, setIsRunning] =
+    useState(false);
   const [activeSource, setActiveSource] =
     useState<WritingSessionSource | null>(null);
 
-  const [justFinished, setJustFinished] = useState(false);
+  const [justFinished, setJustFinished] =
+    useState(false);
   const [feedbackSession, setFeedbackSession] =
     useState<WritingSession | null>(null);
 
   const [selectedMood, setSelectedMood] =
     useState<WritingSessionMood | null>(null);
-  const [concentration, setConcentration] = useState(0);
+  const [concentration, setConcentration] =
+    useState(0);
   const [energy, setEnergy] = useState(0);
-  const [sessionNote, setSessionNote] = useState('');
+  const [sessionNote, setSessionNote] =
+    useState('');
 
   const intervalRef =
-    useRef<ReturnType<typeof setInterval> | null>(null);
+    useRef<ReturnType<typeof setInterval> | null>(
+      null
+    );
+
   const flashTimeoutRef =
-    useRef<ReturnType<typeof setTimeout> | null>(null);
-  const soundLoopStopRef = useRef<(() => void) | null>(null);
+    useRef<ReturnType<typeof setTimeout> | null>(
+      null
+    );
+
+  const soundLoopStopRef =
+    useRef<(() => void) | null>(null);
 
   const activeSessionRef =
     useRef<ActiveWritingSession | null>(null);
+
   const remainingSecondsRef = useRef(0);
   const finishingRef = useRef(false);
 
   const prefs = controller.prefs();
+
   const concentrationScale = normalizeScale(
     prefs.sessionConcentrationScale
   );
+
   const energyScale = normalizeScale(
     prefs.sessionEnergyScale
   );
@@ -177,12 +252,47 @@ export function Timer({
 
   const focusEditor = (): void => {
     window.setTimeout(() => {
-      const editor = document.getElementById('editor');
+      const editor =
+        document.getElementById('editor');
 
       if (editor instanceof HTMLElement) {
         editor.focus();
       }
     }, 0);
+  };
+
+  /**
+   * Ajoute le document actuellement actif à la session en cours.
+   *
+   * La liste évite les doublons tout en conservant l’ordre dans lequel les
+   * documents ont été consultés.
+   */
+  const trackCurrentDocument = (): void => {
+    const activeSession =
+      activeSessionRef.current;
+
+    if (!activeSession) {
+      return;
+    }
+
+    const activeTab = controller.activeTab();
+
+    if (!activeTab) {
+      return;
+    }
+
+    const documentName = activeTab.trim();
+
+    if (
+      documentName &&
+      !activeSession.documentNames.includes(
+        documentName
+      )
+    ) {
+      activeSession.documentNames.push(
+        documentName
+      );
+    }
   };
 
   const persistSession = (
@@ -194,14 +304,17 @@ export function Timer({
       projectData.writingSessions = [];
     }
 
-    const existingIndex = projectData.writingSessions.findIndex(
-      (item) => item.id === session.id
-    );
+    const existingIndex =
+      projectData.writingSessions.findIndex(
+        (item) => item.id === session.id
+      );
 
     if (existingIndex === -1) {
       projectData.writingSessions.push(session);
     } else {
-      projectData.writingSessions[existingIndex] = session;
+      projectData.writingSessions[
+        existingIndex
+      ] = session;
     }
 
     void controller.save();
@@ -212,29 +325,54 @@ export function Timer({
     completed: boolean
   ): WritingSession => {
     /*
+     * On relève une dernière fois le document actif afin de ne pas perdre
+     * un document ouvert juste avant l’arrêt de la session.
+     */
+    trackCurrentDocument();
+
+    /*
      * Le contenu de l’éditeur est normalement synchronisé à chaque frappe.
      * Cet appel garantit néanmoins que les toutes dernières modifications
      * sont présentes avant de compter les mots de fin de session.
      */
     controller.handleInput();
 
-    const wordsAfter = getTotalStats(controller.data()).words;
+    const wordsAfter = getTotalStats(
+      controller.data()
+    ).words;
+
     const endedAt = new Date().toISOString();
+
     const activeSeconds = Math.max(
       1,
       activeSession.activeSeconds
     );
 
+    const documentNames = [
+      ...activeSession.documentNames
+    ];
+
     const session: WritingSession = {
       id: activeSession.id,
       projectName: controller.projectName,
-      documentName: activeSession.documentName,
+
+      /*
+       * `documentName` reste renseigné avec le document initial, ou avec le
+       * premier document détecté si aucun onglet n’était actif au démarrage.
+       */
+      documentName:
+        activeSession.documentName ??
+        documentNames[0] ??
+        null,
+
+      documentNames,
       startedAt: activeSession.startedAt,
       endedAt,
       durationSeconds: activeSeconds,
       wordsBefore: activeSession.wordsBefore,
       wordsAfter,
-      wordsWritten: wordsAfter - activeSession.wordsBefore,
+      wordsWritten:
+        wordsAfter - activeSession.wordsBefore,
       source: activeSession.source
     };
 
@@ -245,7 +383,8 @@ export function Timer({
       session.pomodoro = {
         startedAt: activeSession.startedAt,
         endedAt,
-        plannedSeconds: activeSession.plannedSeconds,
+        plannedSeconds:
+          activeSession.plannedSeconds,
         activeSeconds,
         completed
       };
@@ -268,10 +407,16 @@ export function Timer({
     completed: boolean,
     playEndSound: boolean
   ): void => {
-    if (finishingRef.current) return;
+    if (finishingRef.current) {
+      return;
+    }
 
-    const activeSession = activeSessionRef.current;
-    if (!activeSession) return;
+    const activeSession =
+      activeSessionRef.current;
+
+    if (!activeSession) {
+      return;
+    }
 
     finishingRef.current = true;
     clearTimerInterval();
@@ -297,26 +442,34 @@ export function Timer({
 
       const currentPrefs = controller.prefs();
 
-      if (currentPrefs.timerSoundEnabled !== false) {
+      if (
+        currentPrefs.timerSoundEnabled !== false
+      ) {
         const soundId =
           (currentPrefs.timerSoundId as TimerSoundId) ||
           'chime';
 
-        soundLoopStopRef.current = startTimerSoundLoop(
-          soundId,
-          currentPrefs.timerVolume ?? 0.5
-        );
+        soundLoopStopRef.current =
+          startTimerSoundLoop(
+            soundId,
+            currentPrefs.timerVolume ?? 0.5
+          );
       }
 
       setJustFinished(true);
 
       if (flashTimeoutRef.current) {
-        clearTimeout(flashTimeoutRef.current);
+        clearTimeout(
+          flashTimeoutRef.current
+        );
       }
 
-      flashTimeoutRef.current = setTimeout(() => {
-        setJustFinished(false);
-      }, 4000);
+      flashTimeoutRef.current = setTimeout(
+        () => {
+          setJustFinished(false);
+        },
+        4000
+      );
     }
 
     finishingRef.current = false;
@@ -326,17 +479,30 @@ export function Timer({
     clearTimerInterval();
 
     intervalRef.current = setInterval(() => {
-      const activeSession = activeSessionRef.current;
+      const activeSession =
+        activeSessionRef.current;
 
       if (!activeSession) {
         clearTimerInterval();
         return;
       }
 
-      activeSession.activeSeconds += 1;
-      setElapsedSeconds(activeSession.activeSeconds);
+      /*
+       * Ce relevé régulier complète le suivi effectué lors des clics et des
+       * raccourcis clavier. Il permet notamment de détecter un changement
+       * d’onglet déclenché par une autre partie de l’interface.
+       */
+      trackCurrentDocument();
 
-      if (activeSession.source !== 'pomodoro') {
+      activeSession.activeSeconds += 1;
+
+      setElapsedSeconds(
+        activeSession.activeSeconds
+      );
+
+      if (
+        activeSession.source !== 'pomodoro'
+      ) {
         return;
       }
 
@@ -345,7 +511,9 @@ export function Timer({
         remainingSecondsRef.current - 1
       );
 
-      remainingSecondsRef.current = nextRemaining;
+      remainingSecondsRef.current =
+        nextRemaining;
+
       setTimeRemaining(nextRemaining);
 
       if (nextRemaining === 0) {
@@ -358,7 +526,9 @@ export function Timer({
     source: WritingSessionSource,
     plannedSeconds?: number
   ): void => {
-    if (activeSessionRef.current) return;
+    if (activeSessionRef.current) {
+      return;
+    }
 
     controller.handleInput();
 
@@ -366,30 +536,41 @@ export function Timer({
       controller.data()
     ).words;
 
-    const activeTab = controller.activeTab();
-    const activeType = controller.activeType();
+    const activeTab =
+      controller.activeTab();
 
+    /*
+     * On accepte aussi les fiches World Building : elles sont elles aussi
+     * des documents réellement consultés ou travaillés pendant la session.
+     */
     const documentName =
-      activeType === 'chapter' && activeTab
-        ? activeTab
-        : null;
+      activeTab?.trim() || null;
+
+    const documentNames = documentName
+      ? [documentName]
+      : [];
 
     const normalizedPlannedSeconds =
       source === 'pomodoro'
         ? Math.max(1, plannedSeconds ?? 1)
         : undefined;
 
-    const activeSession: ActiveWritingSession = {
-      id: createSessionId(),
-      source,
-      startedAt: new Date().toISOString(),
-      documentName,
-      wordsBefore,
-      activeSeconds: 0,
-      plannedSeconds: normalizedPlannedSeconds
-    };
+    const activeSession: ActiveWritingSession =
+      {
+        id: createSessionId(),
+        source,
+        startedAt: new Date().toISOString(),
+        documentName,
+        documentNames,
+        wordsBefore,
+        activeSeconds: 0,
+        plannedSeconds:
+          normalizedPlannedSeconds
+      };
 
-    activeSessionRef.current = activeSession;
+    activeSessionRef.current =
+      activeSession;
+
     remainingSecondsRef.current =
       normalizedPlannedSeconds ?? 0;
 
@@ -406,15 +587,24 @@ export function Timer({
   };
 
   const pauseSession = (): void => {
-    if (!activeSessionRef.current) return;
+    if (!activeSessionRef.current) {
+      return;
+    }
 
+    trackCurrentDocument();
     clearTimerInterval();
     setIsRunning(false);
   };
 
   const resumeSession = (): void => {
-    if (!activeSessionRef.current || isRunning) return;
+    if (
+      !activeSessionRef.current ||
+      isRunning
+    ) {
+      return;
+    }
 
+    trackCurrentDocument();
     setIsRunning(true);
     startInterval();
     focusEditor();
@@ -425,7 +615,10 @@ export function Timer({
   };
 
   const confirmTimerModal = (): void => {
-    const custom = parseInt(customValue, 10);
+    const custom = parseInt(
+      customValue,
+      10
+    );
 
     const minutes =
       Number.isFinite(custom) && custom > 0
@@ -434,7 +627,11 @@ export function Timer({
 
     setCustomValue('');
     setModalOpen(false);
-    beginSession('pomodoro', minutes * 60);
+
+    beginSession(
+      'pomodoro',
+      minutes * 60
+    );
   };
 
   const closeTimerModal = (): void => {
@@ -443,18 +640,21 @@ export function Timer({
     focusEditor();
   };
 
-  const closeFeedbackWithoutDetails = (): void => {
-    stopSoundLoop();
-    setFeedbackSession(null);
-    setSelectedMood(null);
-    setConcentration(0);
-    setEnergy(0);
-    setSessionNote('');
-    focusEditor();
-  };
+  const closeFeedbackWithoutDetails =
+    (): void => {
+      stopSoundLoop();
+      setFeedbackSession(null);
+      setSelectedMood(null);
+      setConcentration(0);
+      setEnergy(0);
+      setSessionNote('');
+      focusEditor();
+    };
 
   const saveFeedback = (): void => {
-    if (!feedbackSession) return;
+    if (!feedbackSession) {
+      return;
+    }
 
     const updatedSession: WritingSession = {
       ...feedbackSession,
@@ -467,10 +667,14 @@ export function Timer({
         concentration > 0
           ? concentrationScale
           : undefined,
-      energy: energy > 0 ? energy : undefined,
+      energy:
+        energy > 0 ? energy : undefined,
       energyScale:
-        energy > 0 ? energyScale : undefined,
-      note: sessionNote.trim() || undefined
+        energy > 0
+          ? energyScale
+          : undefined,
+      note:
+        sessionNote.trim() || undefined
     };
 
     persistSession(updatedSession);
@@ -483,12 +687,67 @@ export function Timer({
     focusEditor();
   };
 
+  /*
+   * Les changements de document sont souvent déclenchés par un clic dans la
+   * sidebar, un clic sur un onglet ou un raccourci clavier. Le setTimeout
+   * laisse d’abord le contrôleur mettre à jour son onglet actif, puis relève
+   * le nouveau document.
+   */
+  useEffect(() => {
+    const trackAfterInteraction = (): void => {
+      window.setTimeout(() => {
+        trackCurrentDocument();
+      }, 0);
+    };
+
+    const trackAfterInput = (): void => {
+      trackCurrentDocument();
+    };
+
+    document.addEventListener(
+      'click',
+      trackAfterInteraction
+    );
+
+    document.addEventListener(
+      'keydown',
+      trackAfterInteraction
+    );
+
+    document.addEventListener(
+      'input',
+      trackAfterInput
+    );
+
+    return () => {
+      document.removeEventListener(
+        'click',
+        trackAfterInteraction
+      );
+
+      document.removeEventListener(
+        'keydown',
+        trackAfterInteraction
+      );
+
+      document.removeEventListener(
+        'input',
+        trackAfterInput
+      );
+    };
+
+    // Le contrôleur reste stable pendant la vie de l’éditeur.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [controller]);
+
   useEffect(() => {
     return () => {
       clearTimerInterval();
 
       if (flashTimeoutRef.current) {
-        clearTimeout(flashTimeoutRef.current);
+        clearTimeout(
+          flashTimeoutRef.current
+        );
       }
 
       stopSoundLoop();
@@ -497,15 +756,17 @@ export function Timer({
        * Si l’utilisateur quitte l’éditeur pendant une session active, celle-ci
        * est tout de même enregistrée. Le formulaire de ressenti ne peut plus
        * être affiché puisque le composant est démonté, mais les horaires, la
-       * durée et le nombre de mots ne sont pas perdus.
+       * durée, les documents consultés et le nombre de mots ne sont pas perdus.
        */
-      const activeSession = activeSessionRef.current;
+      const activeSession =
+        activeSessionRef.current;
 
       if (activeSession) {
-        const session = createFinishedSession(
-          activeSession,
-          false
-        );
+        const session =
+          createFinishedSession(
+            activeSession,
+            false
+          );
 
         activeSessionRef.current = null;
         persistSession(session);
@@ -518,38 +779,55 @@ export function Timer({
 
   const currentPresetLabel =
     PRESETS.find(
-      (preset) => preset.value === selectedPreset
+      (preset) =>
+        preset.value === selectedPreset
     )?.key ?? 'timer25';
 
   let mainLabel = t('timerBtn');
 
   if (activeSource === 'pomodoro') {
-    mainLabel = `⏱ ${formatTimer(timeRemaining)}`;
+    mainLabel = `⏱ ${formatTimer(
+      timeRemaining
+    )}`;
   } else if (activeSource === 'manual') {
-    mainLabel = `✍ ${formatTimer(elapsedSeconds)}`;
+    mainLabel = `✍ ${formatTimer(
+      elapsedSeconds
+    )}`;
   }
 
-  const feedbackDuration = feedbackSession
-    ? formatTimer(feedbackSession.durationSeconds)
-    : '00:00';
+  const feedbackDuration =
+    feedbackSession
+      ? formatTimer(
+          feedbackSession.durationSeconds
+        )
+      : '00:00';
 
   const feedbackWords =
     feedbackSession?.wordsWritten ?? 0;
+
+  const feedbackDocumentNames =
+    feedbackSession
+      ? getSessionDocumentNames(
+          feedbackSession
+        )
+      : [];
+
+  const feedbackDocumentsText =
+    feedbackDocumentNames.length > 0
+      ? feedbackDocumentNames.join(', ')
+      : t('sessionNoDocument');
 
   return (
     <div
       id="timerContainer"
       className="timer-container"
-      style={{
-        display: 'flex',
-        gap: 5,
-        alignItems: 'center'
-      }}
     >
       <button
         id="btnTimer"
         type="button"
-        className={`${isRunning ? 'running' : ''} ${
+        className={`${
+          isRunning ? 'running' : ''
+        } ${
           justFinished
             ? 'timer-finished-flash'
             : ''
@@ -560,7 +838,9 @@ export function Timer({
             : t('timerModalTitle')
         }
         onClick={() => {
-          if (!activeSessionRef.current) {
+          if (
+            !activeSessionRef.current
+          ) {
             setModalOpen(true);
             return;
           }
@@ -577,10 +857,14 @@ export function Timer({
         <button
           id="btnWritingSession"
           type="button"
-          title={t('sessionManualStartTitle')}
-          onClick={() => beginSession('manual')}
+          title={t(
+            'sessionManualStartTitle'
+          )}
+          onClick={() =>
+            beginSession('manual')
+          }
         >
-          ✍
+          {t('sessionManualButton')}
         </button>
       )}
 
@@ -659,7 +943,9 @@ export function Timer({
                   key={preset.value}
                   className="dropdown-item timer-option"
                   onSelect={() => {
-                    setSelectedPreset(preset.value);
+                    setSelectedPreset(
+                      preset.value
+                    );
                     close();
                   }}
                 >
@@ -672,7 +958,9 @@ export function Timer({
 
         <div
           className="wb-form-group"
-          style={{ margin: '0 0 20px' }}
+          style={{
+            margin: '0 0 20px'
+          }}
         >
           <label className="wb-label">
             {t('timerCustomLabel')}
@@ -686,7 +974,9 @@ export function Timer({
             )}
             value={customValue}
             onChange={(event) => {
-              setCustomValue(event.target.value);
+              setCustomValue(
+                event.target.value
+              );
             }}
           />
         </div>
@@ -697,12 +987,16 @@ export function Timer({
         title={t('sessionFinishedTitle')}
         width={520}
         maxHeight="88vh"
-        onCancel={closeFeedbackWithoutDetails}
+        onCancel={
+          closeFeedbackWithoutDetails
+        }
         footer={
           <>
             <button
               type="button"
-              onClick={closeFeedbackWithoutDetails}
+              onClick={
+                closeFeedbackWithoutDetails
+              }
             >
               {t('sessionSkipFeedback')}
             </button>
@@ -739,14 +1033,18 @@ export function Timer({
           <div
             style={{
               padding: 10,
-              border: '1px solid var(--border)',
-              borderRadius: 'var(--radius)',
-              background: 'var(--bg-input)'
+              border:
+                '1px solid var(--border)',
+              borderRadius:
+                'var(--radius)',
+              background:
+                'var(--bg-input)'
             }}
           >
             <div
               style={{
-                color: 'var(--text-muted)',
+                color:
+                  'var(--text-muted)',
                 fontSize: 12,
                 marginBottom: 4
               }}
@@ -754,20 +1052,26 @@ export function Timer({
               {t('sessionDurationLabel')}
             </div>
 
-            <strong>{feedbackDuration}</strong>
+            <strong>
+              {feedbackDuration}
+            </strong>
           </div>
 
           <div
             style={{
               padding: 10,
-              border: '1px solid var(--border)',
-              borderRadius: 'var(--radius)',
-              background: 'var(--bg-input)'
+              border:
+                '1px solid var(--border)',
+              borderRadius:
+                'var(--radius)',
+              background:
+                'var(--bg-input)'
             }}
           >
             <div
               style={{
-                color: 'var(--text-muted)',
+                color:
+                  'var(--text-muted)',
                 fontSize: 12,
                 marginBottom: 4
               }}
@@ -785,7 +1089,9 @@ export function Timer({
                       : 'var(--text-main)'
               }}
             >
-              {feedbackWords > 0 ? '+' : ''}
+              {feedbackWords > 0
+                ? '+'
+                : ''}
               {feedbackWords}
             </strong>
           </div>
@@ -793,15 +1099,19 @@ export function Timer({
           <div
             style={{
               padding: 10,
-              border: '1px solid var(--border)',
-              borderRadius: 'var(--radius)',
-              background: 'var(--bg-input)',
+              border:
+                '1px solid var(--border)',
+              borderRadius:
+                'var(--radius)',
+              background:
+                'var(--bg-input)',
               minWidth: 0
             }}
           >
             <div
               style={{
-                color: 'var(--text-muted)',
+                color:
+                  'var(--text-muted)',
                 fontSize: 12,
                 marginBottom: 4
               }}
@@ -816,12 +1126,9 @@ export function Timer({
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap'
               }}
-              title={
-                feedbackSession?.documentName || ''
-              }
+              title={feedbackDocumentsText}
             >
-              {feedbackSession?.documentName ||
-                t('sessionNoDocument')}
+              {feedbackDocumentsText}
             </strong>
           </div>
         </div>
@@ -855,7 +1162,9 @@ export function Timer({
                       : 'settings-choice-btn'
                   }
                   onClick={() => {
-                    setSelectedMood(mood.value);
+                    setSelectedMood(
+                      mood.value
+                    );
                   }}
                   style={{
                     minWidth: 0,
@@ -875,7 +1184,10 @@ export function Timer({
             className="wb-label"
             htmlFor="sessionConcentrationInput"
           >
-            {t('sessionConcentrationLabel')} :{' '}
+            {t(
+              'sessionConcentrationLabel'
+            )}{' '}
+            :{' '}
             {concentration > 0
               ? `${concentration}/${concentrationScale}`
               : `—/${concentrationScale}`}
@@ -890,12 +1202,16 @@ export function Timer({
             value={concentration}
             onChange={(event) => {
               setConcentration(
-                parseInt(event.target.value, 10)
+                parseInt(
+                  event.target.value,
+                  10
+                )
               );
             }}
             style={{
               width: '100%',
-              accentColor: 'var(--accent)'
+              accentColor:
+                'var(--accent)'
             }}
           />
         </div>
@@ -920,12 +1236,16 @@ export function Timer({
             value={energy}
             onChange={(event) => {
               setEnergy(
-                parseInt(event.target.value, 10)
+                parseInt(
+                  event.target.value,
+                  10
+                )
               );
             }}
             style={{
               width: '100%',
-              accentColor: 'var(--accent)'
+              accentColor:
+                'var(--accent)'
             }}
           />
         </div>
@@ -944,10 +1264,14 @@ export function Timer({
           <textarea
             id="sessionNoteInput"
             className="wb-textarea"
-            placeholder={t('sessionNotePlaceholder')}
+            placeholder={t(
+              'sessionNotePlaceholder'
+            )}
             value={sessionNote}
             onChange={(event) => {
-              setSessionNote(event.target.value);
+              setSessionNote(
+                event.target.value
+              );
             }}
             style={{ minHeight: 90 }}
           />

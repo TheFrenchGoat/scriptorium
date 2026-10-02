@@ -2,17 +2,9 @@
 //
 // Tableau de bord des sessions d’écriture.
 //
-// Cette modale permet de consulter :
-// - le résumé d’une période ;
-// - l’activité par jour, heure et jour de la semaine ;
-// - la concentration et l’énergie moyennes ;
-// - la relation entre humeur et productivité ;
-// - l’historique détaillé des sessions ;
-// - les objectifs du projet.
-//
-// Les sessions et les objectifs sont stockés directement dans ProjectData.
-// Aucune nouvelle API IPC n’est donc nécessaire : la persistance utilise le
-// système existant de sauvegarde des projets.
+// Cette version prend en charge les anciennes sessions contenant seulement
+// `documentName` ainsi que les nouvelles sessions contenant `documentNames`.
+// Tous les documents travaillés pendant une session sont donc affichés.
 
 import React, {
   useCallback,
@@ -103,13 +95,20 @@ const CARD_STYLE: React.CSSProperties = {
   padding: 14
 };
 
-function clamp(value: number, min: number, max: number): number {
+function clamp(
+  value: number,
+  min: number,
+  max: number
+): number {
   return Math.min(max, Math.max(min, value));
 }
 
 function inputDateValue(date: Date): string {
   const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(
+    2,
+    '0'
+  );
   const day = String(date.getDate()).padStart(2, '0');
 
   return `${year}-${month}-${day}`;
@@ -118,11 +117,47 @@ function inputDateValue(date: Date): string {
 function createGoalId(): string {
   const cryptoApi = globalThis.crypto;
 
-  if (cryptoApi && typeof cryptoApi.randomUUID === 'function') {
+  if (
+    cryptoApi &&
+    typeof cryptoApi.randomUUID === 'function'
+  ) {
     return cryptoApi.randomUUID();
   }
 
-  return `goal_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+  return `goal_${Date.now()}_${Math.random()
+    .toString(36)
+    .slice(2, 10)}`;
+}
+
+/**
+ * Renvoie la liste complète des documents travaillés pendant une session.
+ *
+ * `documentName` reste pris en charge pour les anciennes sessions créées
+ * avant l’ajout de `documentNames`.
+ */
+function getSessionDocumentNames(
+  session: WritingSession
+): string[] {
+  const names: string[] = [];
+
+  if (
+    Array.isArray(session.documentNames) &&
+    session.documentNames.length > 0
+  ) {
+    names.push(...session.documentNames);
+  }
+
+  if (session.documentName) {
+    names.push(session.documentName);
+  }
+
+  return Array.from(
+    new Set(
+      names
+        .map((name) => name.trim())
+        .filter((name) => name.length > 0)
+    )
+  );
 }
 
 function moodTranslationKey(
@@ -217,10 +252,16 @@ function ActivityChart({
     bucket: SessionActivityBucket;
   }[];
   value: (bucket: SessionActivityBucket) => number;
-  formatValue: (value: number, bucket: SessionActivityBucket) => string;
+  formatValue: (
+    value: number,
+    bucket: SessionActivityBucket
+  ) => string;
   emptyText: string;
 }): React.ReactElement {
-  const maxValue = Math.max(0, ...rows.map((row) => value(row.bucket)));
+  const maxValue = Math.max(
+    0,
+    ...rows.map((row) => value(row.bucket))
+  );
 
   if (rows.length === 0 || maxValue <= 0) {
     return <EmptyPanel>{emptyText}</EmptyPanel>;
@@ -238,7 +279,12 @@ function ActivityChart({
         const currentValue = value(row.bucket);
         const width =
           maxValue > 0
-            ? Math.max(2, Math.round((currentValue / maxValue) * 100))
+            ? Math.max(
+                2,
+                Math.round(
+                  (currentValue / maxValue) * 100
+                )
+              )
             : 0;
 
         return (
@@ -246,7 +292,8 @@ function ActivityChart({
             key={row.key}
             style={{
               display: 'grid',
-              gridTemplateColumns: '115px minmax(100px, 1fr) 110px',
+              gridTemplateColumns:
+                '115px minmax(100px, 1fr) 110px',
               alignItems: 'center',
               gap: 10
             }}
@@ -293,11 +340,62 @@ function ActivityChart({
                 whiteSpace: 'nowrap'
               }}
             >
-              {formatValue(currentValue, row.bucket)}
+              {formatValue(
+                currentValue,
+                row.bucket
+              )}
             </span>
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function DocumentsList({
+  session,
+  fallback
+}: {
+  session: WritingSession;
+  fallback: string;
+}): React.ReactElement {
+  const documents = getSessionDocumentNames(session);
+
+  if (documents.length === 0) {
+    return <>{fallback}</>;
+  }
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: 6,
+        marginTop: 7
+      }}
+    >
+      {documents.map((documentName) => (
+        <span
+          key={documentName}
+          title={documentName}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            maxWidth: '100%',
+            padding: '4px 8px',
+            background: 'var(--bg-app)',
+            border: '1px solid var(--border)',
+            borderRadius: 999,
+            color: 'var(--text-main)',
+            fontSize: 12,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          📄 {documentName}
+        </span>
+      ))}
     </div>
   );
 }
@@ -309,26 +407,33 @@ export function StatsModal({
 }: StatsModalProps): React.ReactElement {
   const { t, lang } = useI18n();
 
-  const [tab, setTab] = useState<StatsTab>('overview');
-  const [period, setPeriod] = useState<SessionStatsPeriod>('week');
+  const [tab, setTab] =
+    useState<StatsTab>('overview');
 
-  const [customStart, setCustomStart] = useState('');
-  const [customEnd, setCustomEnd] = useState('');
+  const [period, setPeriod] =
+    useState<SessionStatsPeriod>('week');
 
-  /*
-   * ProjectData est géré de manière impérative par le contrôleur.
-   * revision permet de recalculer les useMemo après suppression d’une
-   * session ou modification d’un objectif.
-   */
+  const [customStart, setCustomStart] =
+    useState('');
+
+  const [customEnd, setCustomEnd] =
+    useState('');
+
   const [revision, setRevision] = useState(0);
 
-  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(
-    null
-  );
-  const [sessionToDelete, setSessionToDelete] =
-    useState<WritingSession | null>(null);
+  const [
+    selectedSessionId,
+    setSelectedSessionId
+  ] = useState<string | null>(null);
 
-  const [goalDraft, setGoalDraft] = useState<GoalDraft | null>(null);
+  const [
+    sessionToDelete,
+    setSessionToDelete
+  ] = useState<WritingSession | null>(null);
+
+  const [goalDraft, setGoalDraft] =
+    useState<GoalDraft | null>(null);
+
   const [goalToDelete, setGoalToDelete] =
     useState<ProjectGoal | null>(null);
 
@@ -339,9 +444,14 @@ export function StatsModal({
 
     const now = new Date();
     const thirtyDaysAgo = new Date(now);
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29);
 
-    setCustomStart(inputDateValue(thirtyDaysAgo));
+    thirtyDaysAgo.setDate(
+      thirtyDaysAgo.getDate() - 29
+    );
+
+    setCustomStart(
+      inputDateValue(thirtyDaysAgo)
+    );
     setCustomEnd(inputDateValue(now));
     setSelectedSessionId(null);
     setSessionToDelete(null);
@@ -354,7 +464,7 @@ export function StatsModal({
 
   const allSessions = useMemo(
     () => getProjectSessions(projectData),
-    // revision est nécessaire car projectData peut conserver la même référence.
+    // Le contrôleur conserve la même référence d’objet.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [projectData, revision, open]
   );
@@ -379,21 +489,27 @@ export function StatsModal({
   }, [period, customStart, customEnd]);
 
   const filteredSessions = useMemo(
-    () => filterSessionsByRange(allSessions, dateRange),
+    () =>
+      filterSessionsByRange(
+        allSessions,
+        dateRange
+      ),
     [allSessions, dateRange]
+  );
+
+  const sortedSessions = useMemo(
+    () =>
+      [...filteredSessions].sort(
+        (a, b) =>
+          new Date(b.startedAt).getTime() -
+          new Date(a.startedAt).getTime()
+      ),
+    [filteredSessions]
   );
 
   const summary = useMemo(
     () => summarizeSessions(filteredSessions),
     [filteredSessions]
-  );
-
-  const selectedSession = useMemo(
-    () =>
-      allSessions.find(
-        (session) => session.id === selectedSessionId
-      ) ?? null,
-    [allSessions, selectedSessionId]
   );
 
   const goalProgress = useMemo(
@@ -404,46 +520,29 @@ export function StatsModal({
 
   const dayBuckets = useMemo(() => {
     const rangeDurationDays = Math.ceil(
-      (dateRange.end.getTime() - dateRange.start.getTime()) /
+      (dateRange.end.getTime() -
+        dateRange.start.getTime()) /
         86_400_000
     );
 
-    /*
-     * Pour les périodes courtes, les jours sans activité sont conservés afin
-     * de rendre visibles les pauses dans l’écriture. Pour une année entière,
-     * afficher 365 lignes serait peu lisible : seuls les jours actifs sont
-     * alors affichés.
-     */
     return groupSessionsByDay(
       filteredSessions,
-      rangeDurationDays <= 40 ? dateRange : undefined
+      rangeDurationDays <= 40
+        ? dateRange
+        : undefined
     );
   }, [filteredSessions, dateRange]);
 
-  const hourBuckets = useMemo(() => {
-    const grouped = groupSessionsByHour(filteredSessions);
-    const byHour = new Map(
-      grouped.map((bucket) => [bucket.key, bucket])
-    );
-
-    return Array.from({ length: 24 }, (_, hour) => {
-      const key = String(hour).padStart(2, '0');
-
-      return (
-        byHour.get(key) ?? {
-          key,
-          sessionCount: 0,
-          durationSeconds: 0,
-          wordsWritten: 0,
-          averageConcentration10: null,
-          averageEnergy10: null
-        }
-      );
-    });
-  }, [filteredSessions]);
+  const hourBuckets = useMemo(
+    () => groupSessionsByHour(filteredSessions),
+    [filteredSessions]
+  );
 
   const weekdayBuckets = useMemo(
-    () => groupSessionsByWeekday(filteredSessions),
+    () =>
+      groupSessionsByWeekday(
+        filteredSessions
+      ),
     [filteredSessions]
   );
 
@@ -452,7 +551,8 @@ export function StatsModal({
     [filteredSessions]
   );
 
-  const locale = lang === 'en' ? 'en-US' : 'fr-FR';
+  const locale =
+    lang === 'en' ? 'en-US' : 'fr-FR';
 
   const weekdayLabels =
     lang === 'en'
@@ -474,194 +574,6 @@ export function StatsModal({
           'Samedi',
           'Dimanche'
         ];
-
-  const sortedSessions = useMemo(
-    () =>
-      [...filteredSessions].sort(
-        (a, b) =>
-          new Date(b.startedAt).getTime() -
-          new Date(a.startedAt).getTime()
-      ),
-    [filteredSessions]
-  );
-
-  /**
-   * Sauvegarde les données enrichies du projet.
-   *
-   * controller.save() est appelé en premier pour synchroniser le chapitre
-   * actuellement ouvert. On relit ensuite la carte complète des projets afin
-   * d’y replacer les sessions et objectifs du projet courant.
-   */
-  const persistProjectMetadata = useCallback(async (): Promise<void> => {
-    setSaving(true);
-
-    try {
-      await controller.save();
-
-      const projects: ProjectsMap =
-        (await window.api.getProjects()) || {};
-
-      projects[controller.projectName] = controller.data();
-
-      await window.api.saveProjects(projects);
-    } finally {
-      setSaving(false);
-    }
-  }, [controller]);
-
-  const deleteSession = useCallback(async () => {
-    if (!sessionToDelete) return;
-
-    const data = controller.data();
-    const sessions = getProjectSessions(data);
-
-    data.writingSessions = sessions.filter(
-      (session) => session.id !== sessionToDelete.id
-    );
-
-    if (selectedSessionId === sessionToDelete.id) {
-      setSelectedSessionId(null);
-    }
-
-    setSessionToDelete(null);
-    setRevision((value) => value + 1);
-
-    try {
-      await persistProjectMetadata();
-    } catch (error) {
-      console.error(
-        "Impossible de supprimer la session d’écriture :",
-        error
-      );
-    }
-  }, [
-    controller,
-    persistProjectMetadata,
-    selectedSessionId,
-    sessionToDelete
-  ]);
-
-  const openNewGoal = (): void => {
-    setGoalDraft({ ...EMPTY_GOAL_DRAFT });
-  };
-
-  const openGoalEdition = (goal: ProjectGoal): void => {
-    setGoalDraft({
-      id: goal.id,
-      title: goal.title,
-      deadline: goal.deadline ?? '',
-      progressMode: goal.progressMode,
-      targetWords:
-        goal.targetWords !== undefined &&
-        goal.targetWords !== null
-          ? String(goal.targetWords)
-          : '',
-      manualProgress:
-        goal.manualProgress !== undefined
-          ? String(goal.manualProgress)
-          : '0'
-    });
-  };
-
-  const saveGoal = useCallback(async () => {
-    if (!goalDraft) return;
-
-    const title = goalDraft.title.trim();
-
-    if (!title) return;
-
-    const now = new Date().toISOString();
-
-    const parsedTargetWords = parseInt(
-      goalDraft.targetWords,
-      10
-    );
-
-    const parsedManualProgress = parseFloat(
-      goalDraft.manualProgress.replace(',', '.')
-    );
-
-    const existingGoals = controller.data().goals ?? [];
-    const existingGoal = goalDraft.id
-      ? existingGoals.find((goal) => goal.id === goalDraft.id)
-      : undefined;
-
-    const goal: ProjectGoal = {
-      id: goalDraft.id ?? createGoalId(),
-      title,
-      deadline: goalDraft.deadline || null,
-      progressMode: goalDraft.progressMode,
-      targetWords:
-        goalDraft.progressMode === 'words' &&
-        Number.isFinite(parsedTargetWords) &&
-        parsedTargetWords > 0
-          ? parsedTargetWords
-          : null,
-      manualProgress:
-        goalDraft.progressMode === 'manual'
-          ? clamp(
-              Number.isFinite(parsedManualProgress)
-                ? parsedManualProgress
-                : 0,
-              0,
-              100
-            )
-          : undefined,
-      createdAt: existingGoal?.createdAt ?? now,
-      updatedAt: now
-    };
-
-    if (existingGoal) {
-      controller.data().goals = existingGoals.map((item) =>
-        item.id === goal.id ? goal : item
-      );
-    } else {
-      controller.data().goals = [...existingGoals, goal];
-    }
-
-    setGoalDraft(null);
-    setRevision((value) => value + 1);
-
-    try {
-      await persistProjectMetadata();
-    } catch (error) {
-      console.error(
-        "Impossible d’enregistrer l’objectif :",
-        error
-      );
-    }
-  }, [controller, goalDraft, persistProjectMetadata]);
-
-  const deleteGoal = useCallback(async () => {
-    if (!goalToDelete) return;
-
-    const goals = controller.data().goals ?? [];
-
-    controller.data().goals = goals.filter(
-      (goal) => goal.id !== goalToDelete.id
-    );
-
-    if (goalDraft?.id === goalToDelete.id) {
-      setGoalDraft(null);
-    }
-
-    setGoalToDelete(null);
-    setRevision((value) => value + 1);
-
-    try {
-      await persistProjectMetadata();
-    } catch (error) {
-      console.error(
-        "Impossible de supprimer l’objectif :",
-        error
-      );
-    }
-  }, [
-    controller,
-    goalDraft,
-    goalToDelete,
-    persistProjectMetadata
-  ]);
 
   const dayRows = dayBuckets.map((bucket) => {
     const date = parseDateKey(bucket.key);
@@ -688,31 +600,249 @@ export function StatsModal({
     )
     .map((bucket) => ({
       key: bucket.key,
-      label: `${bucket.key}h`,
+      label: bucket.key.endsWith('h')
+        ? bucket.key
+        : `${bucket.key}h`,
       bucket
     }));
 
-  const weekdayRows = weekdayBuckets.map((bucket) => ({
-    key: bucket.key,
-    label:
-      weekdayLabels[parseInt(bucket.key, 10)] ??
-      bucket.key,
-    bucket
-  }));
+  const weekdayRows = weekdayBuckets.map(
+    (bucket) => ({
+      key: bucket.key,
+      label:
+        weekdayLabels[
+          parseInt(bucket.key, 10)
+        ] ?? bucket.key,
+      bucket
+    })
+  );
 
   const concentrationHourRows = hourBuckets
     .filter(
-      (bucket) => bucket.averageConcentration10 !== null
+      (bucket) =>
+        bucket.averageConcentration10 !== null
     )
     .map((bucket) => ({
       key: bucket.key,
-      label: `${bucket.key}h`,
+      label: bucket.key.endsWith('h')
+        ? bucket.key
+        : `${bucket.key}h`,
       bucket
     }));
 
   const periodLabel =
-    PERIODS.find((item) => item.value === period)?.labelKey ??
-    'statsRangeWeek';
+    PERIODS.find(
+      (item) => item.value === period
+    )?.labelKey ?? 'statsRangeWeek';
+
+  const persistProjectMetadata =
+    useCallback(async (): Promise<void> => {
+      setSaving(true);
+
+      try {
+        await controller.save();
+
+        const projects: ProjectsMap =
+          (await window.api.getProjects()) || {};
+
+        projects[controller.projectName] =
+          controller.data();
+
+        await window.api.saveProjects(projects);
+      } finally {
+        setSaving(false);
+      }
+    }, [controller]);
+
+  const deleteSession =
+    useCallback(async (): Promise<void> => {
+      if (!sessionToDelete) return;
+
+      const data = controller.data();
+      const sessions = getProjectSessions(data);
+
+      data.writingSessions = sessions.filter(
+        (session) =>
+          session.id !== sessionToDelete.id
+      );
+
+      if (
+        selectedSessionId ===
+        sessionToDelete.id
+      ) {
+        setSelectedSessionId(null);
+      }
+
+      setSessionToDelete(null);
+      setRevision((value) => value + 1);
+
+      try {
+        await persistProjectMetadata();
+      } catch (error) {
+        console.error(
+          "Impossible de supprimer la session d’écriture :",
+          error
+        );
+      }
+    }, [
+      controller,
+      persistProjectMetadata,
+      selectedSessionId,
+      sessionToDelete
+    ]);
+
+  const openNewGoal = (): void => {
+    setGoalDraft({ ...EMPTY_GOAL_DRAFT });
+  };
+
+  const openGoalEdition = (
+    goal: ProjectGoal
+  ): void => {
+    setGoalDraft({
+      id: goal.id,
+      title: goal.title,
+      deadline: goal.deadline ?? '',
+      progressMode: goal.progressMode,
+      targetWords:
+        goal.targetWords !== undefined &&
+        goal.targetWords !== null
+          ? String(goal.targetWords)
+          : '',
+      manualProgress:
+        goal.manualProgress !== undefined
+          ? String(goal.manualProgress)
+          : '0'
+    });
+  };
+
+  const saveGoal =
+    useCallback(async (): Promise<void> => {
+      if (!goalDraft) return;
+
+      const title = goalDraft.title.trim();
+
+      if (!title) return;
+
+      const now = new Date().toISOString();
+
+      const parsedTargetWords = parseInt(
+        goalDraft.targetWords,
+        10
+      );
+
+      const parsedManualProgress = parseFloat(
+        goalDraft.manualProgress.replace(',', '.')
+      );
+
+      const existingGoals =
+        controller.data().goals ?? [];
+
+      const existingGoal = goalDraft.id
+        ? existingGoals.find(
+            (goal) =>
+              goal.id === goalDraft.id
+          )
+        : undefined;
+
+      const goal: ProjectGoal = {
+        id: goalDraft.id ?? createGoalId(),
+        title,
+        deadline:
+          goalDraft.deadline || null,
+        progressMode:
+          goalDraft.progressMode,
+        targetWords:
+          goalDraft.progressMode === 'words' &&
+          Number.isFinite(
+            parsedTargetWords
+          ) &&
+          parsedTargetWords > 0
+            ? parsedTargetWords
+            : null,
+        manualProgress:
+          goalDraft.progressMode === 'manual'
+            ? clamp(
+                Number.isFinite(
+                  parsedManualProgress
+                )
+                  ? parsedManualProgress
+                  : 0,
+                0,
+                100
+              )
+            : undefined,
+        createdAt:
+          existingGoal?.createdAt ?? now,
+        updatedAt: now
+      };
+
+      if (existingGoal) {
+        controller.data().goals =
+          existingGoals.map((item) =>
+            item.id === goal.id
+              ? goal
+              : item
+          );
+      } else {
+        controller.data().goals = [
+          ...existingGoals,
+          goal
+        ];
+      }
+
+      setGoalDraft(null);
+      setRevision((value) => value + 1);
+
+      try {
+        await persistProjectMetadata();
+      } catch (error) {
+        console.error(
+          "Impossible d’enregistrer l’objectif :",
+          error
+        );
+      }
+    }, [
+      controller,
+      goalDraft,
+      persistProjectMetadata
+    ]);
+
+  const deleteGoal =
+    useCallback(async (): Promise<void> => {
+      if (!goalToDelete) return;
+
+      const goals =
+        controller.data().goals ?? [];
+
+      controller.data().goals =
+        goals.filter(
+          (goal) =>
+            goal.id !== goalToDelete.id
+        );
+
+      if (
+        goalDraft?.id === goalToDelete.id
+      ) {
+        setGoalDraft(null);
+      }
+
+      setGoalToDelete(null);
+      setRevision((value) => value + 1);
+
+      try {
+        await persistProjectMetadata();
+      } catch (error) {
+        console.error(
+          "Impossible de supprimer l’objectif :",
+          error
+        );
+      }
+    }, [
+      controller,
+      goalDraft,
+      goalToDelete,
+      persistProjectMetadata
+    ]);
 
   const overview = (
     <>
@@ -732,7 +862,9 @@ export function StatsModal({
 
         <MetricCard
           label={t('statsWritingTime')}
-          value={formatDuration(summary.durationSeconds)}
+          value={formatDuration(
+            summary.durationSeconds
+          )}
         />
 
         <MetricCard
@@ -746,15 +878,22 @@ export function StatsModal({
 
         <MetricCard
           label={t('statsAverageSession')}
-          value={formatDuration(summary.averageDurationSeconds)}
+          value={formatDuration(
+            summary.averageDurationSeconds
+          )}
         />
 
         <MetricCard
-          label={t('statsAverageConcentration')}
+          label={t(
+            'statsAverageConcentration'
+          )}
           value={
-            summary.averageConcentration10 === null
+            summary.averageConcentration10 ===
+            null
               ? '—'
-              : `${summary.averageConcentration10.toFixed(1)}/10`
+              : `${summary.averageConcentration10.toFixed(
+                  1
+                )}/10`
           }
         />
 
@@ -763,7 +902,9 @@ export function StatsModal({
           value={
             summary.averageEnergy10 === null
               ? '—'
-              : `${summary.averageEnergy10.toFixed(1)}/10`
+              : `${summary.averageEnergy10.toFixed(
+                  1
+                )}/10`
           }
         />
       </div>
@@ -775,8 +916,12 @@ export function StatsModal({
 
         <ActivityChart
           rows={dayRows}
-          value={(bucket) => bucket.durationSeconds}
-          formatValue={(value) => formatDuration(value)}
+          value={(bucket) =>
+            bucket.durationSeconds
+          }
+          formatValue={(value) =>
+            formatDuration(value)
+          }
           emptyText={t('statsNoData')}
         />
       </section>
@@ -788,22 +933,11 @@ export function StatsModal({
 
         <ActivityChart
           rows={hourRows}
-          value={(bucket) => bucket.durationSeconds}
-          formatValue={(value) => formatDuration(value)}
-          emptyText={t('statsNoData')}
-        />
-      </section>
-
-      <section style={{ marginBottom: 25 }}>
-        <h4 style={{ marginBottom: 14 }}>
-          {t('statsProductivityByWeekday')}
-        </h4>
-
-        <ActivityChart
-          rows={weekdayRows}
-          value={(bucket) => Math.max(0, bucket.wordsWritten)}
+          value={(bucket) =>
+            bucket.durationSeconds
+          }
           formatValue={(value) =>
-            `${Math.round(value)} ${t('statsWordsUnit')}`
+            formatDuration(value)
           }
           emptyText={t('statsNoData')}
         />
@@ -811,18 +945,51 @@ export function StatsModal({
 
       <section style={{ marginBottom: 25 }}>
         <h4 style={{ marginBottom: 14 }}>
-          {t('statsConcentrationByHour')}
+          {t(
+            'statsProductivityByWeekday'
+          )}
+        </h4>
+
+        <ActivityChart
+          rows={weekdayRows}
+          value={(bucket) =>
+            Math.max(
+              0,
+              bucket.wordsWritten
+            )
+          }
+          formatValue={(value) =>
+            `${Math.round(value)} ${t(
+              'statsWordsUnit'
+            )}`
+          }
+          emptyText={t('statsNoData')}
+        />
+      </section>
+
+      <section style={{ marginBottom: 25 }}>
+        <h4 style={{ marginBottom: 14 }}>
+          {t(
+            'statsConcentrationByHour'
+          )}
         </h4>
 
         <ActivityChart
           rows={concentrationHourRows}
           value={(bucket) =>
-            bucket.averageConcentration10 ?? 0
+            bucket.averageConcentration10 ??
+            0
           }
-          formatValue={(_value, bucket) =>
-            bucket.averageConcentration10 === null
+          formatValue={(
+            _value,
+            bucket
+          ) =>
+            bucket.averageConcentration10 ===
+            null
               ? '—'
-              : `${bucket.averageConcentration10.toFixed(1)}/10`
+              : `${bucket.averageConcentration10.toFixed(
+                  1
+                )}/10`
           }
           emptyText={t('statsNoData')}
         />
@@ -834,9 +1001,12 @@ export function StatsModal({
         </h4>
 
         {moodBuckets.every(
-          (bucket) => bucket.sessionCount === 0
+          (bucket) =>
+            bucket.sessionCount === 0
         ) ? (
-          <EmptyPanel>{t('statsNoData')}</EmptyPanel>
+          <EmptyPanel>
+            {t('statsNoData')}
+          </EmptyPanel>
         ) : (
           <div
             style={{
@@ -847,7 +1017,10 @@ export function StatsModal({
             }}
           >
             {moodBuckets
-              .filter((bucket) => bucket.sessionCount > 0)
+              .filter(
+                (bucket) =>
+                  bucket.sessionCount > 0
+              )
               .map((bucket) => (
                 <div
                   key={bucket.mood}
@@ -859,7 +1032,9 @@ export function StatsModal({
                       marginBottom: 8
                     }}
                   >
-                    {getMoodEmoji(bucket.mood)}
+                    {getMoodEmoji(
+                      bucket.mood
+                    )}
                   </div>
 
                   <div
@@ -868,27 +1043,38 @@ export function StatsModal({
                       marginBottom: 6
                     }}
                   >
-                    {t(moodTranslationKey(bucket.mood))}
+                    {t(
+                      moodTranslationKey(
+                        bucket.mood
+                      )
+                    )}
                   </div>
 
                   <div
                     style={{
-                      color: 'var(--text-muted)',
+                      color:
+                        'var(--text-muted)',
                       fontSize: 12,
                       lineHeight: 1.6
                     }}
                   >
                     <div>
                       {bucket.sessionCount}{' '}
-                      {t('statsSessionsCount').toLowerCase()}
+                      {t(
+                        'statsSessionsCount'
+                      ).toLowerCase()}
                     </div>
 
                     <div>
-                      {formatDuration(bucket.durationSeconds)}
+                      {formatDuration(
+                        bucket.durationSeconds
+                      )}
                     </div>
 
                     <div>
-                      {bucket.wordsWritten > 0 ? '+' : ''}
+                      {bucket.wordsWritten > 0
+                        ? '+'
+                        : ''}
                       {bucket.wordsWritten}{' '}
                       {t('statsWordsUnit')}
                     </div>
@@ -908,7 +1094,9 @@ export function StatsModal({
       </h4>
 
       {sortedSessions.length === 0 ? (
-        <EmptyPanel>{t('statsNoSessions')}</EmptyPanel>
+        <EmptyPanel>
+          {t('statsNoSessions')}
+        </EmptyPanel>
       ) : (
         <div
           style={{
@@ -919,7 +1107,18 @@ export function StatsModal({
         >
           {sortedSessions.map((session) => {
             const isSelected =
-              selectedSessionId === session.id;
+              selectedSessionId ===
+              session.id;
+
+            const documentNames =
+              getSessionDocumentNames(
+                session
+              );
+
+            const documentsSummary =
+              documentNames.length > 0
+                ? documentNames.join(', ')
+                : t('sessionNoDocument');
 
             return (
               <div
@@ -930,8 +1129,10 @@ export function StatsModal({
                       ? 'var(--accent)'
                       : 'var(--border)'
                   }`,
-                  borderRadius: 'var(--radius)',
-                  background: 'var(--bg-input)',
+                  borderRadius:
+                    'var(--radius)',
+                  background:
+                    'var(--bg-input)',
                   overflow: 'hidden'
                 }}
               >
@@ -941,25 +1142,35 @@ export function StatsModal({
                     width: '100%',
                     border: 'none',
                     borderRadius: 0,
-                    background: 'transparent',
+                    background:
+                      'transparent',
                     textAlign: 'left',
                     padding: 14
                   }}
                   onClick={() =>
                     setSelectedSessionId(
-                      isSelected ? null : session.id
+                      isSelected
+                        ? null
+                        : session.id
                     )
                   }
                 >
                   <div
                     style={{
                       display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'flex-start',
+                      justifyContent:
+                        'space-between',
+                      alignItems:
+                        'flex-start',
                       gap: 15
                     }}
                   >
-                    <div style={{ minWidth: 0 }}>
+                    <div
+                      style={{
+                        minWidth: 0,
+                        flex: 1
+                      }}
+                    >
                       <div
                         style={{
                           fontWeight: 700,
@@ -973,15 +1184,17 @@ export function StatsModal({
 
                       <div
                         style={{
-                          color: 'var(--text-muted)',
+                          color:
+                            'var(--text-muted)',
                           fontSize: 12,
                           overflow: 'hidden',
-                          textOverflow: 'ellipsis',
+                          textOverflow:
+                            'ellipsis',
                           whiteSpace: 'nowrap'
                         }}
+                        title={documentsSummary}
                       >
-                        {session.documentName ||
-                          t('sessionNoDocument')}
+                        {documentsSummary}
                       </div>
                     </div>
 
@@ -1002,14 +1215,18 @@ export function StatsModal({
                         style={{
                           marginTop: 4,
                           color:
-                            session.wordsWritten > 0
+                            session.wordsWritten >
+                            0
                               ? '#10b981'
-                              : session.wordsWritten < 0
+                              : session.wordsWritten <
+                                  0
                                 ? '#ef4444'
                                 : 'var(--text-muted)'
                         }}
                       >
-                        {session.wordsWritten > 0 ? '+' : ''}
+                        {session.wordsWritten > 0
+                          ? '+'
+                          : ''}
                         {session.wordsWritten}{' '}
                         {t('statsWordsUnit')}
                       </div>
@@ -1036,22 +1253,20 @@ export function StatsModal({
                     >
                       <div>
                         <strong>
-                          {t('statsSessionProject')} :
+                          {t(
+                            'statsSessionProject'
+                          )}{' '}
+                          :
                         </strong>{' '}
                         {session.projectName}
                       </div>
 
                       <div>
                         <strong>
-                          {t('statsSessionDocument')} :
-                        </strong>{' '}
-                        {session.documentName ||
-                          t('sessionNoDocument')}
-                      </div>
-
-                      <div>
-                        <strong>
-                          {t('statsSessionStartedAt')} :
+                          {t(
+                            'statsSessionStartedAt'
+                          )}{' '}
+                          :
                         </strong>{' '}
                         {formatSessionDateTime(
                           session.startedAt
@@ -1060,7 +1275,10 @@ export function StatsModal({
 
                       <div>
                         <strong>
-                          {t('statsSessionEndedAt')} :
+                          {t(
+                            'statsSessionEndedAt'
+                          )}{' '}
+                          :
                         </strong>{' '}
                         {formatSessionDateTime(
                           session.endedAt
@@ -1069,7 +1287,10 @@ export function StatsModal({
 
                       <div>
                         <strong>
-                          {t('statsSessionDuration')} :
+                          {t(
+                            'statsSessionDuration'
+                          )}{' '}
+                          :
                         </strong>{' '}
                         {formatDuration(
                           session.durationSeconds
@@ -1078,18 +1299,28 @@ export function StatsModal({
 
                       <div>
                         <strong>
-                          {t('statsSessionWords')} :
+                          {t(
+                            'statsSessionWords'
+                          )}{' '}
+                          :
                         </strong>{' '}
-                        {session.wordsWritten > 0 ? '+' : ''}
+                        {session.wordsWritten > 0
+                          ? '+'
+                          : ''}
                         {session.wordsWritten}
                       </div>
 
                       <div>
                         <strong>
-                          {t('statsSessionMood')} :
+                          {t(
+                            'statsSessionMood'
+                          )}{' '}
+                          :
                         </strong>{' '}
                         {session.mood
-                          ? `${getMoodEmoji(session.mood)} ${t(
+                          ? `${getMoodEmoji(
+                              session.mood
+                            )} ${t(
                               moodTranslationKey(
                                 session.mood
                               )
@@ -1106,6 +1337,8 @@ export function StatsModal({
                         </strong>{' '}
                         {session.concentration !==
                           undefined &&
+                        session.concentration !==
+                          null &&
                         session.concentrationScale
                           ? `${session.concentration}/${session.concentrationScale}`
                           : '—'}
@@ -1113,9 +1346,14 @@ export function StatsModal({
 
                       <div>
                         <strong>
-                          {t('statsSessionEnergy')} :
+                          {t(
+                            'statsSessionEnergy'
+                          )}{' '}
+                          :
                         </strong>{' '}
-                        {session.energy !== undefined &&
+                        {session.energy !==
+                          undefined &&
+                        session.energy !== null &&
                         session.energyScale
                           ? `${session.energy}/${session.energyScale}`
                           : '—'}
@@ -1123,12 +1361,40 @@ export function StatsModal({
 
                       <div>
                         <strong>
-                          {t('statsSessionDetails')} :
+                          {t(
+                            'statsSessionDetails'
+                          )}{' '}
+                          :
                         </strong>{' '}
-                        {session.source === 'pomodoro'
-                          ? t('statsSessionPomodoro')
-                          : t('statsSessionManual')}
+                        {session.source ===
+                        'pomodoro'
+                          ? t(
+                              'statsSessionPomodoro'
+                            )
+                          : t(
+                              'statsSessionManual'
+                            )}
                       </div>
+                    </div>
+
+                    <div
+                      style={{
+                        ...CARD_STYLE,
+                        marginBottom: 14
+                      }}
+                    >
+                      <strong>
+                        {t(
+                          'statsSessionDocument'
+                        )}
+                      </strong>
+
+                      <DocumentsList
+                        session={session}
+                        fallback={t(
+                          'sessionNoDocument'
+                        )}
+                      />
                     </div>
 
                     {session.pomodoro && (
@@ -1141,27 +1407,41 @@ export function StatsModal({
                         }}
                       >
                         <strong>
-                          {t('statsSessionPomodoro')}
+                          {t(
+                            'statsSessionPomodoro'
+                          )}
                         </strong>
 
                         <div>
-                          {t('statsSessionStartedAt')} :{' '}
+                          {t(
+                            'statsSessionStartedAt'
+                          )}{' '}
+                          :{' '}
                           {formatSessionTime(
-                            session.pomodoro.startedAt
+                            session.pomodoro
+                              .startedAt
                           )}
                         </div>
 
                         <div>
-                          {t('statsSessionEndedAt')} :{' '}
+                          {t(
+                            'statsSessionEndedAt'
+                          )}{' '}
+                          :{' '}
                           {formatSessionTime(
-                            session.pomodoro.endedAt
+                            session.pomodoro
+                              .endedAt
                           )}
                         </div>
 
                         <div>
-                          {t('statsSessionDuration')} :{' '}
+                          {t(
+                            'statsSessionDuration'
+                          )}{' '}
+                          :{' '}
                           {formatDuration(
-                            session.pomodoro.activeSeconds
+                            session.pomodoro
+                              .activeSeconds
                           )}
                         </div>
                       </div>
@@ -1177,10 +1457,17 @@ export function StatsModal({
                         }}
                       >
                         <strong>
-                          {t('statsSessionNote')} :
+                          {t(
+                            'statsSessionNote'
+                          )}{' '}
+                          :
                         </strong>
 
-                        <div style={{ marginTop: 6 }}>
+                        <div
+                          style={{
+                            marginTop: 6
+                          }}
+                        >
                           {session.note}
                         </div>
                       </div>
@@ -1189,17 +1476,24 @@ export function StatsModal({
                     <div
                       style={{
                         display: 'flex',
-                        justifyContent: 'flex-end'
+                        justifyContent:
+                          'flex-end'
                       }}
                     >
                       <button
                         type="button"
-                        style={{ color: '#ef4444' }}
+                        style={{
+                          color: '#ef4444'
+                        }}
                         onClick={() =>
-                          setSessionToDelete(session)
+                          setSessionToDelete(
+                            session
+                          )
                         }
                       >
-                        {t('statsDeleteSession')}
+                        {t(
+                          'statsDeleteSession'
+                        )}
                       </button>
                     </div>
                   </div>
@@ -1247,20 +1541,38 @@ export function StatsModal({
           {goalProgress.map((progress) => {
             const { goal } = progress;
 
-            let deadlineText = t('goalNoDeadline');
+            let deadlineText =
+              t('goalNoDeadline');
 
             if (progress.completed) {
-              deadlineText = t('goalCompleted');
+              deadlineText =
+                t('goalCompleted');
             } else if (progress.overdue) {
-              deadlineText = t('goalOverdue');
-            } else if (progress.daysRemaining === 0) {
-              deadlineText = t('goalDueToday');
+              deadlineText = t(
+                'goalOverdue',
+                {
+                  days:
+                    Math.abs(
+                      progress.daysRemaining ??
+                        0
+                    )
+                }
+              );
+            } else if (
+              progress.daysRemaining === 0
+            ) {
+              deadlineText =
+                t('goalDueToday');
             } else if (
               progress.daysRemaining !== null
             ) {
-              deadlineText = t('goalDaysRemaining', {
-                count: progress.daysRemaining
-              });
+              deadlineText = t(
+                'goalDaysRemaining',
+                {
+                  days:
+                    progress.daysRemaining
+                }
+              );
             }
 
             return (
@@ -1274,15 +1586,20 @@ export function StatsModal({
                 <div
                   style={{
                     display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'flex-start',
+                    justifyContent:
+                      'space-between',
+                    alignItems:
+                      'flex-start',
                     gap: 12
                   }}
                 >
-                  <div style={{ minWidth: 0 }}>
+                  <div
+                    style={{ minWidth: 0 }}
+                  >
                     <h4
                       style={{
-                        overflowWrap: 'anywhere'
+                        overflowWrap:
+                          'anywhere'
                       }}
                     >
                       {goal.title}
@@ -1290,11 +1607,12 @@ export function StatsModal({
 
                     <div
                       style={{
-                        color: progress.overdue
-                          ? '#ef4444'
-                          : progress.completed
-                            ? '#10b981'
-                            : 'var(--text-muted)',
+                        color:
+                          progress.overdue
+                            ? '#ef4444'
+                            : progress.completed
+                              ? '#10b981'
+                              : 'var(--text-muted)',
                         fontSize: 12,
                         marginTop: 5
                       }}
@@ -1314,6 +1632,7 @@ export function StatsModal({
                   >
                     <button
                       type="button"
+                      title={t('edit')}
                       onClick={() =>
                         openGoalEdition(goal)
                       }
@@ -1323,7 +1642,10 @@ export function StatsModal({
 
                     <button
                       type="button"
-                      style={{ color: '#ef4444' }}
+                      title={t('delete')}
+                      style={{
+                        color: '#ef4444'
+                      }}
                       onClick={() =>
                         setGoalToDelete(goal)
                       }
@@ -1337,8 +1659,10 @@ export function StatsModal({
                   style={{
                     marginTop: 15,
                     height: 14,
-                    background: 'var(--bg-app)',
-                    border: '1px solid var(--border)',
+                    background:
+                      'var(--bg-app)',
+                    border:
+                      '1px solid var(--border)',
                     borderRadius: 999,
                     overflow: 'hidden'
                   }}
@@ -1351,11 +1675,13 @@ export function StatsModal({
                         100
                       )}%`,
                       height: '100%',
-                      background: progress.completed
-                        ? '#10b981'
-                        : 'var(--accent)',
+                      background:
+                        progress.completed
+                          ? '#10b981'
+                          : 'var(--accent)',
                       borderRadius: 999,
-                      transition: 'width 0.2s ease'
+                      transition:
+                        'width 0.2s ease'
                     }}
                   />
                 </div>
@@ -1363,29 +1689,44 @@ export function StatsModal({
                 <div
                   style={{
                     display: 'flex',
-                    justifyContent: 'space-between',
+                    justifyContent:
+                      'space-between',
                     alignItems: 'center',
                     gap: 10,
                     marginTop: 8,
-                    color: 'var(--text-muted)',
+                    color:
+                      'var(--text-muted)',
                     fontSize: 12
                   }}
                 >
-                  <span>{progress.percent}%</span>
+                  <span>
+                    {progress.percent}%
+                  </span>
 
-                  {goal.progressMode === 'words' &&
-                  progress.targetValue !== null ? (
+                  {goal.progressMode ===
+                    'words' &&
+                  progress.targetValue !==
+                    null ? (
                     <span>
-                      {t('goalWordsProgress', {
-                        words: progress.currentValue,
-                        goal: progress.targetValue
-                      })}
+                      {t(
+                        'goalWordsProgress',
+                        {
+                          current:
+                            progress.currentValue,
+                          target:
+                            progress.targetValue
+                        }
+                      )}
                     </span>
                   ) : (
                     <span>
-                      {t('goalManualProgressLabel', {
-                        percent: progress.percent
-                      })}
+                      {t(
+                        'goalManualProgressLabel',
+                        {
+                          progress:
+                            progress.percent
+                        }
+                      )}
                     </span>
                   )}
                 </div>
@@ -1406,7 +1747,10 @@ export function StatsModal({
         maxHeight="90vh"
         onCancel={onClose}
         footer={
-          <button type="button" onClick={onClose}>
+          <button
+            type="button"
+            onClick={onClose}
+          >
             {t('close')}
           </button>
         }
@@ -1427,7 +1771,9 @@ export function StatsModal({
                 : 'settings-choice-btn'
             }
             style={TAB_BUTTON_STYLE}
-            onClick={() => setTab('overview')}
+            onClick={() =>
+              setTab('overview')
+            }
           >
             {t('statsTabOverview')}
           </button>
@@ -1440,7 +1786,9 @@ export function StatsModal({
                 : 'settings-choice-btn'
             }
             style={TAB_BUTTON_STYLE}
-            onClick={() => setTab('sessions')}
+            onClick={() =>
+              setTab('sessions')
+            }
           >
             {t('statsTabSessions')}
           </button>
@@ -1489,7 +1837,9 @@ export function StatsModal({
                       ? 'settings-choice-btn active'
                       : 'settings-choice-btn'
                   }
-                  onClick={() => setPeriod(item.value)}
+                  onClick={() =>
+                    setPeriod(item.value)
+                  }
                 >
                   {t(item.labelKey)}
                 </button>
@@ -1509,26 +1859,39 @@ export function StatsModal({
                 <label>
                   <span
                     className="wb-label"
-                    style={{ marginBottom: 6 }}
+                    style={{
+                      marginBottom: 6
+                    }}
                   >
-                    {t('statsCustomStart')}
+                    {t(
+                      'statsCustomStart'
+                    )}
                   </span>
 
                   <input
                     type="date"
                     value={customStart}
-                    max={customEnd || undefined}
-                    onChange={(event) =>
-                      setCustomStart(event.target.value)
+                    max={
+                      customEnd ||
+                      undefined
                     }
-                    style={{ width: '100%' }}
+                    onChange={(event) =>
+                      setCustomStart(
+                        event.target.value
+                      )
+                    }
+                    style={{
+                      width: '100%'
+                    }}
                   />
                 </label>
 
                 <label>
                   <span
                     className="wb-label"
-                    style={{ marginBottom: 6 }}
+                    style={{
+                      marginBottom: 6
+                    }}
                   >
                     {t('statsCustomEnd')}
                   </span>
@@ -1536,11 +1899,18 @@ export function StatsModal({
                   <input
                     type="date"
                     value={customEnd}
-                    min={customStart || undefined}
-                    onChange={(event) =>
-                      setCustomEnd(event.target.value)
+                    min={
+                      customStart ||
+                      undefined
                     }
-                    style={{ width: '100%' }}
+                    onChange={(event) =>
+                      setCustomEnd(
+                        event.target.value
+                      )
+                    }
+                    style={{
+                      width: '100%'
+                    }}
                   />
                 </label>
               </div>
@@ -1559,7 +1929,8 @@ export function StatsModal({
         )}
 
         {tab === 'overview' && overview}
-        {tab === 'sessions' && sessionsHistory}
+        {tab === 'sessions' &&
+          sessionsHistory}
         {tab === 'goals' && goalsPanel}
       </Modal>
 
@@ -1567,13 +1938,19 @@ export function StatsModal({
         open={sessionToDelete !== null}
         title={t('statsDeleteSession')}
         width={430}
-        onCancel={() => setSessionToDelete(null)}
-        onPrimary={() => void deleteSession()}
+        onCancel={() =>
+          setSessionToDelete(null)
+        }
+        onPrimary={() =>
+          void deleteSession()
+        }
         footer={
           <>
             <button
               type="button"
-              onClick={() => setSessionToDelete(null)}
+              onClick={() =>
+                setSessionToDelete(null)
+              }
             >
               {t('cancel')}
             </button>
@@ -1582,7 +1959,9 @@ export function StatsModal({
               type="button"
               style={{ color: '#ef4444' }}
               disabled={saving}
-              onClick={() => void deleteSession()}
+              onClick={() =>
+                void deleteSession()
+              }
             >
               {t('statsDeleteSession')}
             </button>
@@ -1595,7 +1974,9 @@ export function StatsModal({
             lineHeight: 1.6
           }}
         >
-          {t('statsConfirmDeleteSession')}
+          {t(
+            'statsConfirmDeleteSession'
+          )}
         </p>
       </Modal>
 
@@ -1608,13 +1989,17 @@ export function StatsModal({
         }
         width={500}
         maxHeight="85vh"
-        onCancel={() => setGoalDraft(null)}
+        onCancel={() =>
+          setGoalDraft(null)
+        }
         onPrimary={() => void saveGoal()}
         footer={
           <>
             <button
               type="button"
-              onClick={() => setGoalDraft(null)}
+              onClick={() =>
+                setGoalDraft(null)
+              }
             >
               {t('cancel')}
             </button>
@@ -1623,9 +2008,12 @@ export function StatsModal({
               type="button"
               className="btn-primary"
               disabled={
-                saving || !goalDraft?.title.trim()
+                saving ||
+                !goalDraft?.title.trim()
               }
-              onClick={() => void saveGoal()}
+              onClick={() =>
+                void saveGoal()
+              }
             >
               {t('goalSave')}
             </button>
@@ -1642,16 +2030,21 @@ export function StatsModal({
               <input
                 type="text"
                 autoFocus
-                placeholder={t('goalNamePlaceholder')}
+                placeholder={t(
+                  'goalNamePlaceholder'
+                )}
                 value={goalDraft.title}
                 onChange={(event) =>
-                  setGoalDraft((current) =>
-                    current
-                      ? {
-                          ...current,
-                          title: event.target.value
-                        }
-                      : current
+                  setGoalDraft(
+                    (current) =>
+                      current
+                        ? {
+                            ...current,
+                            title:
+                              event.target
+                                .value
+                          }
+                        : current
                   )
                 }
               />
@@ -1664,15 +2057,20 @@ export function StatsModal({
 
               <input
                 type="date"
-                value={goalDraft.deadline}
+                value={
+                  goalDraft.deadline
+                }
                 onChange={(event) =>
-                  setGoalDraft((current) =>
-                    current
-                      ? {
-                          ...current,
-                          deadline: event.target.value
-                        }
-                      : current
+                  setGoalDraft(
+                    (current) =>
+                      current
+                        ? {
+                            ...current,
+                            deadline:
+                              event.target
+                                .value
+                          }
+                        : current
                   )
                 }
                 style={{ width: '100%' }}
@@ -1686,23 +2084,29 @@ export function StatsModal({
 
               <div
                 className="settings-choice-row"
-                style={{ display: 'flex', gap: 8 }}
+                style={{
+                  display: 'flex',
+                  gap: 8
+                }}
               >
                 <button
                   type="button"
                   className={
-                    goalDraft.progressMode === 'words'
+                    goalDraft.progressMode ===
+                    'words'
                       ? 'settings-choice-btn active'
                       : 'settings-choice-btn'
                   }
                   onClick={() =>
-                    setGoalDraft((current) =>
-                      current
-                        ? {
-                            ...current,
-                            progressMode: 'words'
-                          }
-                        : current
+                    setGoalDraft(
+                      (current) =>
+                        current
+                          ? {
+                              ...current,
+                              progressMode:
+                                'words'
+                            }
+                          : current
                     )
                   }
                 >
@@ -1712,18 +2116,21 @@ export function StatsModal({
                 <button
                   type="button"
                   className={
-                    goalDraft.progressMode === 'manual'
+                    goalDraft.progressMode ===
+                    'manual'
                       ? 'settings-choice-btn active'
                       : 'settings-choice-btn'
                   }
                   onClick={() =>
-                    setGoalDraft((current) =>
-                      current
-                        ? {
-                            ...current,
-                            progressMode: 'manual'
-                          }
-                        : current
+                    setGoalDraft(
+                      (current) =>
+                        current
+                          ? {
+                              ...current,
+                              progressMode:
+                                'manual'
+                            }
+                          : current
                     )
                   }
                 >
@@ -1732,7 +2139,8 @@ export function StatsModal({
               </div>
             </div>
 
-            {goalDraft.progressMode === 'words' ? (
+            {goalDraft.progressMode ===
+            'words' ? (
               <div
                 className="wb-form-group"
                 style={{ marginBottom: 0 }}
@@ -1747,19 +2155,22 @@ export function StatsModal({
                   placeholder={t(
                     'goalTargetWordsPlaceholder'
                   )}
-                  value={goalDraft.targetWords}
+                  value={
+                    goalDraft.targetWords
+                  }
                   onChange={(event) =>
-                    setGoalDraft((current) =>
-                      current
-                        ? {
-                            ...current,
-                            targetWords:
-                              event.target.value.replace(
-                                /[^\d]/g,
-                                ''
-                              )
-                          }
-                        : current
+                    setGoalDraft(
+                      (current) =>
+                        current
+                          ? {
+                              ...current,
+                              targetWords:
+                                event.target.value.replace(
+                                  /[^\d]/g,
+                                  ''
+                                )
+                            }
+                          : current
                     )
                   }
                 />
@@ -1770,7 +2181,9 @@ export function StatsModal({
                 style={{ marginBottom: 0 }}
               >
                 <label className="wb-label">
-                  {t('goalManualProgress')}
+                  {t(
+                    'goalManualProgress'
+                  )}
                 </label>
 
                 <div
@@ -1794,14 +2207,16 @@ export function StatsModal({
                       100
                     )}
                     onChange={(event) =>
-                      setGoalDraft((current) =>
-                        current
-                          ? {
-                              ...current,
-                              manualProgress:
-                                event.target.value
-                            }
-                          : current
+                      setGoalDraft(
+                        (current) =>
+                          current
+                            ? {
+                                ...current,
+                                manualProgress:
+                                  event.target
+                                    .value
+                              }
+                            : current
                       )
                     }
                     style={{ flex: 1 }}
@@ -1810,7 +2225,9 @@ export function StatsModal({
                   <input
                     type="text"
                     inputMode="numeric"
-                    value={goalDraft.manualProgress}
+                    value={
+                      goalDraft.manualProgress
+                    }
                     onChange={(event) => {
                       const raw =
                         event.target.value.replace(
@@ -1823,20 +2240,24 @@ export function StatsModal({
                           ? ''
                           : String(
                               clamp(
-                                parseInt(raw, 10) || 0,
+                                parseInt(
+                                  raw,
+                                  10
+                                ) || 0,
                                 0,
                                 100
                               )
                             );
 
-                      setGoalDraft((current) =>
-                        current
-                          ? {
-                              ...current,
-                              manualProgress:
-                                numericValue
-                            }
-                          : current
+                      setGoalDraft(
+                        (current) =>
+                          current
+                            ? {
+                                ...current,
+                                manualProgress:
+                                  numericValue
+                              }
+                            : current
                       );
                     }}
                     style={{ width: 70 }}
@@ -1854,13 +2275,17 @@ export function StatsModal({
         open={goalToDelete !== null}
         title={t('goalDelete')}
         width={430}
-        onCancel={() => setGoalToDelete(null)}
+        onCancel={() =>
+          setGoalToDelete(null)
+        }
         onPrimary={() => void deleteGoal()}
         footer={
           <>
             <button
               type="button"
-              onClick={() => setGoalToDelete(null)}
+              onClick={() =>
+                setGoalToDelete(null)
+              }
             >
               {t('cancel')}
             </button>
@@ -1869,7 +2294,9 @@ export function StatsModal({
               type="button"
               style={{ color: '#ef4444' }}
               disabled={saving}
-              onClick={() => void deleteGoal()}
+              onClick={() =>
+                void deleteGoal()
+              }
             >
               {t('goalDelete')}
             </button>
@@ -1883,7 +2310,8 @@ export function StatsModal({
           }}
         >
           {t('goalConfirmDelete', {
-            name: goalToDelete?.title ?? ''
+            name:
+              goalToDelete?.title ?? ''
           })}
         </p>
       </Modal>

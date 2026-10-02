@@ -87,6 +87,7 @@ export const fr = {
   timerFinished: 'Fini !',
   timerFinishedTitle: '⏱ Minuteur terminé',
 
+  sessionManualButton: '✍ Session',
   sessionManualStartTitle: 'Démarrer une session sans minuteur',
   sessionResumeTitle: 'Reprendre la session',
   sessionStopTitle: 'Terminer et enregistrer la session',
@@ -97,7 +98,7 @@ export const fr = {
     'Votre session a été enregistrée. Vous pouvez maintenant ajouter votre ressenti.',
   sessionDurationLabel: 'Durée',
   sessionWordsLabel: 'Mots écrits',
-  sessionDocumentLabel: 'Document travaillé',
+  sessionDocumentLabel: 'Documents travaillés',
   sessionNoDocument: 'Aucun chapitre ouvert',
   sessionMoodLabel: 'Humeur',
   sessionConcentrationLabel: 'Concentration',
@@ -423,7 +424,7 @@ export const fr = {
 
   statsSessionHistory: 'Historique des sessions',
   statsSessionProject: 'Projet',
-  statsSessionDocument: 'Document',
+  statsSessionDocument: 'Documents',
   statsSessionDuration: 'Durée',
   statsSessionWords: 'Mots',
   statsSessionConcentration: 'Concentration',
@@ -696,6 +697,7 @@ export const en: Record<TranslationKey, string> = {
   timerFinished: 'Time is up!',
   timerFinishedTitle: '⏱ Timer finished',
 
+  sessionManualButton: '✍ Session',
   sessionManualStartTitle:
     'Start a writing session without a timer',
   sessionResumeTitle: 'Resume the session',
@@ -707,7 +709,7 @@ export const en: Record<TranslationKey, string> = {
     'Your session has been saved. You can now add how you felt.',
   sessionDurationLabel: 'Duration',
   sessionWordsLabel: 'Words written',
-  sessionDocumentLabel: 'Document',
+  sessionDocumentLabel: 'Documents worked on',
   sessionNoDocument: 'No chapter open',
   sessionMoodLabel: 'Mood',
   sessionConcentrationLabel: 'Concentration',
@@ -1034,7 +1036,7 @@ export const en: Record<TranslationKey, string> = {
 
   statsSessionHistory: 'Session history',
   statsSessionProject: 'Project',
-  statsSessionDocument: 'Document',
+  statsSessionDocument: 'Documents',
   statsSessionDuration: 'Duration',
   statsSessionWords: 'Words',
   statsSessionConcentration: 'Concentration',
