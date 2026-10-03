@@ -1,78 +1,189 @@
 // src/renderer/components/common/Dropdown.tsx
-// Menu déroulant réutilisable, reprenant le balisage CSS existant
-// (.dropdown-container / .dropdown-btn / .dropdown-menu / .dropdown-item).
+// Menu déroulant réutilisable.
 //
-// - clic extérieur : ferme le menu
-// - Échap : ferme le menu
-// - items activables au clavier (Tab pour s'y déplacer, Entrée/Espace pour
-//   choisir), sans dupliquer la logique de clic
+// Fonctionnalités :
+// - fermeture lors d'un clic extérieur ;
+// - fermeture avec Échap ;
+// - navigation clavier avec Entrée/Espace ;
+// - conservation facultative de la sélection de l'éditeur ;
+// - personnalisation complète du bouton déclencheur.
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useRef,
+  useState
+} from 'react';
 
 export interface DropdownProps {
   label: React.ReactNode;
-  /** Classe du bouton déclencheur (défaut : "dropdown-btn"). */
+
+  /** Classe CSS du bouton déclencheur. */
   buttonClassName?: string;
+
+  /** Styles appliqués directement au bouton déclencheur. */
+  buttonStyle?: React.CSSProperties;
+
   buttonId?: string;
   buttonTitle?: string;
+
   menuClassName?: string;
   menuStyle?: React.CSSProperties;
+
   containerStyle?: React.CSSProperties;
   containerClassName?: string;
-  children: (close: () => void) => React.ReactNode;
+
+  /**
+   * Empêche le bouton déclencheur de retirer le focus de l'éditeur.
+   *
+   * Cette option est indispensable pour les menus Police et Taille :
+   * sans elle, cliquer sur le bouton détruit la sélection avant que
+   * l'utilisateur ne choisisse une valeur.
+   */
+  preserveSelection?: boolean;
+
+  children: (
+    close: () => void
+  ) => React.ReactNode;
 }
 
 export function Dropdown({
   label,
   buttonClassName = 'dropdown-btn',
+  buttonStyle,
   buttonId,
   buttonTitle,
   menuClassName = 'dropdown-menu',
   menuStyle,
   containerStyle,
   containerClassName = 'dropdown-container',
+  preserveSelection = false,
   children
 }: DropdownProps): React.ReactElement {
-  const [open, setOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [open, setOpen] =
+    useState(false);
 
-  const close = useCallback(() => setOpen(false), []);
+  const containerRef =
+    useRef<HTMLDivElement | null>(null);
+
+  const buttonRef =
+    useRef<HTMLButtonElement | null>(null);
+
+  const close = useCallback(() => {
+    setOpen(false);
+  }, []);
 
   useEffect(() => {
-    if (!open) return;
-    const onDocumentClick = (e: MouseEvent) => {
-      if (!containerRef.current?.contains(e.target as Node)) close();
+    if (!open) {
+      return;
+    }
+
+    const onDocumentMouseDown = (
+      event: MouseEvent
+    ): void => {
+      const target = event.target;
+
+      if (
+        target instanceof Node &&
+        !containerRef.current?.contains(target)
+      ) {
+        close();
+      }
     };
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') close();
+
+    const onDocumentKeyDown = (
+      event: KeyboardEvent
+    ): void => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        close();
+
+        /*
+         * Le bouton ne reprend le focus que si la sélection de l'éditeur
+         * n'a pas besoin d'être conservée.
+         */
+        if (!preserveSelection) {
+          buttonRef.current?.focus();
+        }
+      }
     };
-    document.addEventListener('click', onDocumentClick);
-    document.addEventListener('keydown', onKeyDown);
+
+    document.addEventListener(
+      'mousedown',
+      onDocumentMouseDown
+    );
+
+    document.addEventListener(
+      'keydown',
+      onDocumentKeyDown
+    );
+
     return () => {
-      document.removeEventListener('click', onDocumentClick);
-      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener(
+        'mousedown',
+        onDocumentMouseDown
+      );
+
+      document.removeEventListener(
+        'keydown',
+        onDocumentKeyDown
+      );
     };
-  }, [open, close]);
+  }, [
+    open,
+    close,
+    preserveSelection
+  ]);
 
   return (
     <div
       ref={containerRef}
       className={containerClassName}
-      style={{ position: 'relative', ...containerStyle }}
+      style={{
+        position: 'relative',
+        ...containerStyle
+      }}
     >
       <button
+        ref={buttonRef}
         type="button"
         id={buttonId}
         title={buttonTitle}
         className={buttonClassName}
-        onClick={(e) => {
-          e.stopPropagation();
-          setOpen((v) => !v);
+        aria-haspopup="menu"
+        aria-expanded={open}
+        style={buttonStyle}
+        onMouseDown={
+          preserveSelection
+            ? (event) => {
+                /*
+                 * Conserve le Range actif dans le contentEditable.
+                 * Le clic continue ensuite normalement et ouvre le menu.
+                 */
+                event.preventDefault();
+              }
+            : undefined
+        }
+        onClick={(event) => {
+          event.stopPropagation();
+
+          setOpen(
+            (currentOpen) =>
+              !currentOpen
+          );
         }}
       >
         {label}
       </button>
-      <div className={`${menuClassName}${open ? ' show' : ''}`} style={menuStyle}>
+
+      <div
+        className={`${menuClassName}${
+          open ? ' show' : ''
+        }`}
+        style={menuStyle}
+        role="menu"
+        aria-hidden={!open}
+      >
         {children(close)}
       </div>
     </div>
@@ -84,13 +195,13 @@ export interface DropdownItemProps {
   className?: string;
   style?: React.CSSProperties;
   title?: string;
-  /** Empêche le clic de déplacer le focus hors de l'éditeur, ce qui
-   *  détruirait la sélection de texte AVANT que l'action ne soit traitée.
-   *  Sans ça, "police"/"taille" ne s'appliquaient à rien : au moment où le
-   *  code lisait window.getSelection(), elle avait déjà disparu. C'est la
-   *  technique qu'utilisent Google Docs, Quill, TinyMCE pour leurs barres
-   *  d'outils. */
+
+  /**
+   * Empêche le clic de déplacer le focus hors de l'éditeur et de détruire
+   * sa sélection avant l'application de la commande.
+   */
   preserveSelection?: boolean;
+
   children: React.ReactNode;
 }
 
@@ -99,9 +210,13 @@ export function DropdownItem({
   className = 'dropdown-item',
   style,
   title,
-  preserveSelection,
+  preserveSelection = false,
   children
 }: DropdownItemProps): React.ReactElement {
+  const activate = (): void => {
+    onSelect();
+  };
+
   return (
     <div
       className={className}
@@ -109,15 +224,29 @@ export function DropdownItem({
       title={title}
       role="menuitem"
       tabIndex={0}
-      onMouseDown={preserveSelection ? (e) => e.preventDefault() : undefined}
-      onClick={(e) => {
-        e.stopPropagation();
-        onSelect();
+      onMouseDown={
+        preserveSelection
+          ? (event) => {
+              /*
+               * Empêche Chromium de placer le focus sur l'élément du menu,
+               * ce qui ferait disparaître la sélection du contentEditable.
+               */
+              event.preventDefault();
+            }
+          : undefined
+      }
+      onClick={(event) => {
+        event.stopPropagation();
+        activate();
       }}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onSelect();
+      onKeyDown={(event) => {
+        if (
+          event.key === 'Enter' ||
+          event.key === ' '
+        ) {
+          event.preventDefault();
+          event.stopPropagation();
+          activate();
         }
       }}
     >
