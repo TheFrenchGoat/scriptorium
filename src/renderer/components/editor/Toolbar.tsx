@@ -8,6 +8,11 @@
 // que la couleur choisie corresponde exactement à celle du texte. Les
 // mentions World Building (.wb-mention) sont volontairement exclues : leur
 // couleur reste gérée par le système World Building.
+//
+// Pour éviter les ralentissements pendant le déplacement dans le sélecteur
+// natif de couleur, aucune modification du document n’est effectuée pendant
+// les événements "input". La couleur n’est appliquée qu’une seule fois, lors
+// de l’événement natif "change", lorsque le choix est validé.
 
 import React, {
   useCallback,
@@ -647,6 +652,16 @@ export function Toolbar({
   const savedRangeRef =
     useRef<Range | null>(null);
 
+  /*
+   * Référence directe vers le sélecteur de couleur.
+   *
+   * Elle permet d’écouter le véritable événement DOM "change". Contrairement
+   * au onChange synthétique de React, cet événement n’est déclenché qu’après
+   * validation du choix dans la palette native de Chromium.
+   */
+  const colorInputRef =
+    useRef<HTMLInputElement | null>(null);
+
   const [formatting, setFormatting] =
     useState<SelectionFormatting>({
       fontFamily: DEFAULT_FONT,
@@ -662,9 +677,6 @@ export function Toolbar({
     useState(
       String(DEFAULT_FONT_SIZE)
     );
-
-  const [textColor, setTextColor] =
-    useState('#000000');
 
   const rememberCurrentSelection =
     useCallback((): void => {
@@ -1035,7 +1047,6 @@ export function Toolbar({
   const applyTextColor =
     useCallback(
       (color: string): void => {
-        setTextColor(color);
         restoreSavedSelection();
 
         const editor = getEditor();
@@ -1107,6 +1118,51 @@ export function Toolbar({
         restoreSavedSelection
       ]
     );
+
+  /*
+   * React traite onChange de certains champs comme un événement "input".
+   * Pour <input type="color">, cela peut déclencher le traitement à chaque
+   * déplacement dans la palette et reconstruire de nombreux spans dans le
+   * chapitre.
+   *
+   * L’écoute directe de l’événement DOM "change" garantit que l’application
+   * de la couleur ne se produit qu’une seule fois, après validation.
+   */
+  useEffect(() => {
+    const colorInput =
+      colorInputRef.current;
+
+    if (!colorInput) {
+      return;
+    }
+
+    const commitColor = (
+      event: Event
+    ): void => {
+      const target =
+        event.currentTarget;
+
+      if (
+        !(target instanceof HTMLInputElement)
+      ) {
+        return;
+      }
+
+      applyTextColor(target.value);
+    };
+
+    colorInput.addEventListener(
+      'change',
+      commitColor
+    );
+
+    return () => {
+      colorInput.removeEventListener(
+        'change',
+        commitColor
+      );
+    };
+  }, [applyTextColor]);
 
   const insertSpecialCharacter =
     useCallback(
@@ -1425,6 +1481,7 @@ export function Toolbar({
         }}
       >
         <input
+          ref={colorInputRef}
           id="colorPicker"
           type="color"
           aria-label={t(
@@ -1433,14 +1490,9 @@ export function Toolbar({
           title={t(
             'colorPickerTitle'
           )}
-          value={textColor}
+          defaultValue="#000000"
           onMouseDown={() => {
             rememberCurrentSelection();
-          }}
-          onChange={(event) => {
-            applyTextColor(
-              event.currentTarget.value
-            );
           }}
           style={{
             width: 32,
