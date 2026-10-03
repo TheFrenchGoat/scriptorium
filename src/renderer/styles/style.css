@@ -1,4 +1,6 @@
-/* VARIABLES ET THÈMES */
+/* ==========================================================================
+   VARIABLES ET THÈMES
+   ========================================================================== */
 
 :root {
   --bg-app: #0f172a;
@@ -133,7 +135,9 @@ body.ocean {
   --shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.5);
 }
 
-/* RESET ET BASE */
+/* ==========================================================================
+   RESET ET BASE
+   ========================================================================== */
 
 * {
   box-sizing: border-box;
@@ -142,13 +146,19 @@ body.ocean {
   font-family: inherit;
 }
 
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+}
+
 #root {
   display: contents;
 }
 
 body {
   display: flex;
-  height: 100vh;
   flex-direction: column;
   overflow: hidden;
   background: var(--bg-app);
@@ -188,11 +198,18 @@ button:disabled {
   opacity: 0.5;
 }
 
+input,
+select,
+textarea {
+  font: inherit;
+}
+
 input[type='text'],
 input[type='date'],
 input[type='number'],
-select,
-textarea {
+select {
+  width: 100%;
+  padding: 8px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   outline: none;
@@ -200,23 +217,10 @@ textarea {
   color: var(--text-main);
 }
 
-input[type='text'] {
-  width: 100%;
-  padding: 8px;
-}
-
-input[type='date'],
-input[type='number'],
-select {
-  min-height: 38px;
-  padding: 8px 10px;
-}
-
 input[type='text']:focus,
 input[type='date']:focus,
 input[type='number']:focus,
-select:focus,
-textarea:focus {
+select:focus {
   border-color: var(--accent);
 }
 
@@ -224,7 +228,9 @@ input[type='range'] {
   accent-color: var(--accent);
 }
 
-/* PAGE DES PROJETS */
+/* ==========================================================================
+   PAGE DES PROJETS
+   ========================================================================== */
 
 .menu-page {
   align-items: center;
@@ -378,6 +384,10 @@ input[type='range'] {
   font-size: 14px;
 }
 
+.project-options {
+  position: relative;
+}
+
 .project-options .btn-options {
   padding: 0 8px;
   border: none;
@@ -397,56 +407,70 @@ input[type='range'] {
   min-width: 130px;
 }
 
-/* STRUCTURE DE L'ÉDITEUR */
+/* ==========================================================================
+   STRUCTURE DE L’ÉDITEUR
+   ========================================================================== */
 
 .editor-page {
   flex-direction: column;
 }
 
 .editor-header {
+  position: relative;
+  z-index: 600;
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: space-between;
-  flex-shrink: 0;
-  gap: 15px;
   padding: 10px 20px;
   border-bottom: 1px solid var(--border);
   background: var(--bg-panel);
-}
-
-.editor-header h2 {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .header-actions {
-  display: flex;
-  flex-shrink: 0;
-  gap: 10px;
-}
-
-/* BARRE D'OUTILS */
-
-.toolbar {
+  position: relative;
   display: flex;
   align-items: center;
-  flex-shrink: 0;
   gap: 10px;
-  padding: 10px 20px;
-  overflow-x: auto;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg-panel);
-  scrollbar-width: none;
 }
 
-.toolbar::-webkit-scrollbar {
-  display: none;
+/* ==========================================================================
+   BARRE D’OUTILS
+   ========================================================================== */
+
+.toolbar {
+  /*
+   * Important :
+   * overflow visible empêche les menus Police, Taille et Caractères
+   * d’être découpés par la barre d’outils.
+   */
+  position: relative;
+  z-index: 500;
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 20px;
+  overflow: visible;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-panel);
+  isolation: isolate;
+}
+
+.toolbar > * {
+  flex-shrink: 0;
+}
+
+.toolbar > div {
+  position: relative;
+}
+
+.toolbar > div:focus-within {
+  z-index: 2100;
 }
 
 .toolbar button {
-  flex-shrink: 0;
   padding: 6px 12px;
   border: 1px solid transparent;
   background: transparent;
@@ -468,9 +492,29 @@ input[type='range'] {
   background: transparent;
 }
 
-/* ESPACE DE TRAVAIL ET SIDEBAR */
+/*
+ * Les menus déroulants de la barre d’outils doivent rester au-dessus
+ * des onglets, de la règle, de la sidebar et de la feuille d’écriture.
+ */
+.toolbar .dropdown-menu,
+.toolbar .theme-dropdown,
+.toolbar .wb-menu {
+  z-index: 2200;
+}
+
+.toolbar .dropdown-menu.show,
+.toolbar .theme-dropdown.show,
+.toolbar .wb-menu.show {
+  z-index: 2200;
+}
+
+/* ==========================================================================
+   ESPACE DE TRAVAIL ET SIDEBAR
+   ========================================================================== */
 
 .workspace {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex: 1;
   min-height: 0;
@@ -478,52 +522,76 @@ input[type='range'] {
 }
 
 .sidebar {
+  position: relative;
   display: flex;
   width: var(--sidebar-width, 250px);
+  min-width: 0;
   min-height: 0;
   flex-shrink: 0;
   flex-direction: column;
   overflow: hidden;
   border-right: 1px solid var(--border);
   background: var(--bg-panel);
+  transition:
+    width 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.sidebar.collapsed {
+  width: 0;
+  border-right-color: transparent;
 }
 
 .sidebar-section {
   display: flex;
   min-height: 80px;
-  flex: 1 1 0;
+  flex: 1;
   flex-direction: column;
   overflow: hidden;
   border-bottom: 4px solid var(--bg-app);
-  transition:
-    min-height 0.2s ease,
-    flex-basis 0.2s ease;
 }
 
 .sidebar-section:last-child {
   border-bottom: none;
 }
 
-.sidebar-section.collapsed {
-  min-height: 42px;
-  flex: 0 0 42px !important;
+.sidebar-toggle-btn {
+  display: inline-flex;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 18px;
 }
 
-.sidebar-section.collapsed .item-list {
-  display: none;
+.sidebar-toggle-btn:hover {
+  border-color: var(--border);
+  background: var(--bg-hover);
+  color: var(--text-main);
 }
 
-.sidebar-section.collapsed .sidebar-header {
-  height: 42px;
-  flex: 0 0 42px;
-}
-
-.sidebar-section.collapsed .sidebar-header-action {
-  display: none;
+.sidebar-open-btn {
+  position: absolute;
+  z-index: 30;
+  top: 8px;
+  left: 8px;
+  display: inline-flex;
+  width: 34px;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  box-shadow: var(--shadow);
 }
 
 .resize-handle-v {
   position: relative;
+  z-index: 2;
   width: 5px;
   flex-shrink: 0;
   background: transparent;
@@ -547,13 +615,22 @@ input[type='range'] {
   background: var(--accent);
 }
 
+.resize-handle-v.sidebar-hidden {
+  width: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.resize-handle-v.sidebar-hidden::after {
+  display: none;
+}
+
 .resize-handle-h {
   position: relative;
   height: 5px;
   flex-shrink: 0;
   background: transparent;
   cursor: row-resize;
-  transition: opacity 0.2s;
 }
 
 .resize-handle-h::after {
@@ -573,20 +650,13 @@ input[type='range'] {
   background: var(--accent);
 }
 
-.resize-handle-h.disabled {
-  cursor: default;
-  opacity: 0.25;
-  pointer-events: none;
-}
-
 .sidebar-header {
   display: flex;
-  min-height: 42px;
-  flex-shrink: 0;
+  min-width: 0;
   align-items: center;
   justify-content: space-between;
-  gap: 6px;
-  padding: 6px 10px;
+  gap: 8px;
+  padding: 10px 15px;
   background: var(--bg-hover);
   font-size: 14px;
   font-weight: bold;
@@ -594,70 +664,23 @@ input[type='range'] {
   text-transform: uppercase;
 }
 
-.sidebar-section-toggle {
-  display: flex;
-  min-width: 0;
-  flex: 1;
-  align-items: center;
-  gap: 7px;
-  padding: 4px 5px;
-  border: none;
-  border-radius: 4px;
-  background: transparent;
-  color: var(--text-main);
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  text-align: left;
-  text-transform: uppercase;
-}
-
-.sidebar-section-toggle:hover {
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.sidebar-section-title {
+.sidebar-header h3 {
   min-width: 0;
   overflow: hidden;
+  font-size: inherit;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.sidebar-section-chevron {
-  display: inline-flex;
-  width: 14px;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-muted);
-  font-size: 10px;
-  transition:
-    color 0.2s,
-    transform 0.2s;
-}
-
-.sidebar-section-toggle:hover .sidebar-section-chevron {
-  color: var(--accent);
-}
-
-.sidebar-section.collapsed .sidebar-section-chevron {
-  transform: rotate(-90deg);
-}
-
-.sidebar-header-action {
-  position: relative;
+.sidebar-header-actions {
   display: flex;
   flex-shrink: 0;
   align-items: center;
+  gap: 3px;
 }
 
 .btn-add-mini {
-  display: inline-flex;
-  width: 28px;
-  height: 28px;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
+  padding: 0 5px;
   border: none;
   background: transparent;
   color: var(--text-muted);
@@ -665,7 +688,6 @@ input[type='range'] {
 }
 
 .btn-add-mini:hover {
-  background: rgba(255, 255, 255, 0.06);
   color: var(--accent);
 }
 
@@ -679,9 +701,9 @@ input[type='range'] {
 
 .item-list li {
   display: flex;
+  min-width: 0;
   align-items: center;
   justify-content: space-between;
-  gap: 6px;
   padding: 10px 15px;
   border-bottom: 1px solid var(--border);
   cursor: pointer;
@@ -701,27 +723,17 @@ input[type='range'] {
 
 .item-list li.drag-over {
   border-top: 2px solid var(--accent);
-  background: var(--bg-hover);
-}
-
-.sidebar-item-label {
-  min-width: 0;
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .item-icon {
   display: inline-block;
-  margin-right: 3px;
+  margin-right: 4px;
 }
 
 .item-actions {
   display: flex;
   flex-shrink: 0;
   align-items: center;
-  gap: 2px;
 }
 
 .item-actions button {
@@ -730,9 +742,7 @@ input[type='range'] {
   background: transparent;
   font-size: 12px;
   opacity: 0;
-  transition:
-    opacity 0.2s,
-    background 0.2s;
+  transition: opacity 0.2s;
 }
 
 .item-list li:hover .item-actions button,
@@ -740,9 +750,13 @@ input[type='range'] {
   opacity: 1;
 }
 
-/* ZONE PRINCIPALE ET ONGLETS */
+/* ==========================================================================
+   ZONE PRINCIPALE ET ONGLETS
+   ========================================================================== */
 
 .editor-area {
+  position: relative;
+  z-index: 1;
   display: flex;
   min-width: 0;
   min-height: 0;
@@ -753,6 +767,8 @@ input[type='range'] {
 }
 
 .tabs-bar {
+  position: relative;
+  z-index: 2;
   display: flex;
   flex-shrink: 0;
   padding-bottom: 2px;
@@ -762,7 +778,6 @@ input[type='range'] {
   background: var(--bg-panel);
   white-space: nowrap;
   scrollbar-width: none;
-  -ms-overflow-style: none;
 }
 
 .tabs-bar::-webkit-scrollbar {
@@ -815,9 +830,13 @@ input[type='range'] {
   color: #ef4444;
 }
 
-/* FEUILLE D'ÉCRITURE */
+/* ==========================================================================
+   FEUILLE D’ÉCRITURE
+   ========================================================================== */
 
 .editor-scroll-container {
+  position: relative;
+  z-index: 1;
   display: flex;
   min-height: 0;
   flex: 1;
@@ -859,9 +878,13 @@ input[type='range'] {
   text-indent: var(--editor-indent, 0);
 }
 
-/* RÈGLE GRADUÉE */
+/* ==========================================================================
+   RÈGLE GRADUÉE
+   ========================================================================== */
 
 .editor-ruler-wrap {
+  position: relative;
+  z-index: 2;
   display: flex;
   flex-shrink: 0;
   justify-content: center;
@@ -906,7 +929,7 @@ input[type='range'] {
 
 .editor-ruler-value-tip {
   position: absolute;
-  z-index: 1;
+  z-index: 20;
   top: 100%;
   margin-top: 4px;
   padding: 2px 6px;
@@ -957,7 +980,9 @@ input[type='range'] {
   filter: brightness(1.3);
 }
 
-/* MENTIONS WORLD BUILDING */
+/* ==========================================================================
+   MENTIONS WORLD BUILDING
+   ========================================================================== */
 
 .wb-mention {
   position: relative;
@@ -1011,7 +1036,9 @@ input[type='range'] {
   animation: fadeIn 0.2s;
 }
 
-/* FORMULAIRES WORLD BUILDING */
+/* ==========================================================================
+   FORMULAIRES WORLD BUILDING
+   ========================================================================== */
 
 .wb-container {
   width: 100%;
@@ -1203,78 +1230,6 @@ input[type='range'] {
   opacity: 0.5;
 }
 
-.custom-type-fields-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.custom-type-fields-hint {
-  margin: -4px 0 10px;
-  color: var(--text-muted);
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-.custom-type-field-row {
-  display: grid;
-  grid-template-columns: 1fr 130px 32px;
-  align-items: center;
-  gap: 8px;
-}
-
-.custom-type-field-row .custom-type-field-label {
-  width: 100% !important;
-  min-width: 0;
-  height: 42px;
-  margin-bottom: 0 !important;
-  padding: 0 10px !important;
-  box-sizing: border-box;
-}
-
-.custom-type-field-row .custom-type-field-type {
-  width: 100% !important;
-  height: 42px;
-  margin-bottom: 0 !important;
-  padding: 0 8px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  outline: none;
-  background: var(--bg-input);
-  box-sizing: border-box;
-  color: var(--text-main);
-}
-
-.custom-type-field-row .btn-remove-field {
-  width: 32px !important;
-  height: 32px;
-  padding: 0 !important;
-  border-color: transparent;
-  background: transparent;
-  color: #ef4444;
-}
-
-.custom-type-field-row .btn-remove-field:hover {
-  background: rgba(239, 68, 68, 0.12);
-}
-
-.wb-menu-item-new-type {
-  border-top: 1px solid var(--border);
-  color: var(--accent);
-}
-
-.info-modal-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: -5px 0 20px;
-}
-
-.info-modal-actions button {
-  padding: 6px 12px;
-  font-size: 13px;
-}
-
 .wb-form-group {
   margin-bottom: 20px;
 }
@@ -1311,10 +1266,83 @@ input[type='range'] {
   resize: vertical;
 }
 
-/* BARRE DE STATUT */
+.custom-type-fields-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.custom-type-fields-hint {
+  margin: -4px 0 10px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.custom-type-field-row {
+  display: grid;
+  grid-template-columns: 1fr 130px 32px;
+  align-items: center;
+  gap: 8px;
+}
+
+.custom-type-field-row .custom-type-field-label {
+  width: 100% !important;
+  min-width: 0;
+  height: 42px;
+  margin-bottom: 0 !important;
+  padding: 0 10px !important;
+}
+
+.custom-type-field-row .custom-type-field-type {
+  width: 100% !important;
+  height: 42px;
+  margin-bottom: 0 !important;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  outline: none;
+  background: var(--bg-input);
+  color: var(--text-main);
+}
+
+.custom-type-field-row .btn-remove-field {
+  width: 32px !important;
+  height: 32px;
+  padding: 0 !important;
+  border-color: transparent;
+  background: transparent;
+  color: #ef4444;
+}
+
+.custom-type-field-row .btn-remove-field:hover {
+  background: rgba(239, 68, 68, 0.12);
+}
+
+.wb-menu-item-new-type {
+  border-top: 1px solid var(--border);
+  color: var(--accent);
+}
+
+.info-modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: -5px 0 20px;
+}
+
+.info-modal-actions button {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+/* ==========================================================================
+   BARRE DE STATUT
+   ========================================================================== */
 
 .status {
   position: relative;
+  z-index: 5;
   display: flex;
   min-height: 48px;
   flex-shrink: 0;
@@ -1420,6 +1448,34 @@ input[type='range'] {
   color: #f59e0b;
 }
 
+.music-controls {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.music-btn {
+  width: 30px;
+  padding: 4px 8px;
+  border: none;
+  background: transparent;
+  text-align: center;
+}
+
+.music-info {
+  max-width: 150px;
+  margin-left: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+   SAUVEGARDES ET RECHERCHE
+   ========================================================================== */
+
 .backup-item {
   display: flex;
   align-items: center;
@@ -1497,57 +1553,56 @@ input[type='range'] {
   font-weight: 600;
 }
 
-.music-controls {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
+/* ==========================================================================
+   STATISTIQUES, SÉRIES ET CALENDRIER
+   ========================================================================== */
 
-.music-btn {
-  width: 30px;
-  padding: 4px 8px;
-  border: none;
-  background: transparent;
-  text-align: center;
-}
-
-.music-info {
-  max-width: 150px;
-  margin-left: 10px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* STATISTIQUES, SÉRIES ET CALENDRIER */
-
-.stats-streak-grid {
+.stats-summary-grid,
+.writing-streak-grid {
   display: grid;
   grid-template-columns: repeat(
     auto-fit,
-    minmax(150px, 1fr)
+    minmax(145px, 1fr)
   );
   gap: 10px;
-  margin-bottom: 22px;
 }
 
-.stats-streak-card {
-  padding: 15px;
+.stats-card,
+.writing-streak-card {
+  padding: 14px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--bg-input);
 }
 
-.stats-streak-card-value {
-  margin-top: 7px;
+.writing-streak-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.writing-streak-card::after {
+  position: absolute;
+  right: -16px;
+  bottom: -28px;
+  color: var(--accent);
+  content: '🔥';
+  font-size: 72px;
+  opacity: 0.08;
+  pointer-events: none;
+}
+
+.writing-streak-value {
+  position: relative;
+  z-index: 1;
   color: var(--text-main);
-  font-size: 22px;
+  font-size: 23px;
   font-weight: 700;
 }
 
-.stats-streak-card-label {
+.writing-streak-label {
+  position: relative;
+  z-index: 1;
+  margin-top: 5px;
   color: var(--text-muted);
   font-size: 12px;
 }
@@ -1563,7 +1618,7 @@ input[type='range'] {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 12px;
   padding: 12px;
   border-bottom: 1px solid var(--border);
 }
@@ -1571,27 +1626,25 @@ input[type='range'] {
 .writing-calendar-title {
   min-width: 0;
   flex: 1;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   text-align: center;
-  text-transform: capitalize;
 }
 
-.writing-calendar-navigation {
-  display: flex;
+.writing-calendar-nav {
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
   align-items: center;
-  gap: 6px;
-}
-
-.writing-calendar-navigation button {
-  min-width: 34px;
-  padding: 6px 8px;
+  justify-content: center;
+  padding: 0;
 }
 
 .writing-calendar-mode {
   display: flex;
   flex-wrap: wrap;
-  gap: 7px;
+  gap: 8px;
   padding: 10px 12px;
   border-bottom: 1px solid var(--border);
 }
@@ -1613,15 +1666,15 @@ input[type='range'] {
   text-transform: uppercase;
 }
 
-.writing-calendar-weekday:nth-child(7n) {
+.writing-calendar-weekday:last-child {
   border-right: none;
 }
 
 .writing-calendar-day {
   position: relative;
-  min-height: 76px;
+  min-width: 0;
+  min-height: 82px;
   padding: 7px;
-  overflow: hidden;
   border-right: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
   background: var(--bg-app);
@@ -1629,6 +1682,10 @@ input[type='range'] {
 
 .writing-calendar-day:nth-child(7n) {
   border-right: none;
+}
+
+.writing-calendar-day:nth-last-child(-n + 7) {
+  border-bottom: none;
 }
 
 .writing-calendar-day.outside-month {
@@ -1641,15 +1698,16 @@ input[type='range'] {
 
 .writing-calendar-day-number {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   display: inline-flex;
-  width: 23px;
-  height: 23px;
+  width: 24px;
+  height: 24px;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  font-size: 11px;
-  font-weight: 700;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .writing-calendar-day.today .writing-calendar-day-number {
@@ -1657,118 +1715,65 @@ input[type='range'] {
   color: #ffffff;
 }
 
-.writing-calendar-day-value {
-  position: relative;
+.writing-calendar-day-activity {
+  position: absolute;
   z-index: 1;
-  margin-top: 9px;
-  overflow: hidden;
+  inset: 0;
+  background: var(--accent);
+  opacity: var(--activity-opacity, 0);
+  pointer-events: none;
+}
+
+.writing-calendar-day-details {
+  position: relative;
+  z-index: 2;
+  margin-top: 7px;
   color: var(--text-main);
-  font-size: 11px;
-  font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.writing-calendar-day-sessions {
-  position: relative;
-  z-index: 1;
-  margin-top: 3px;
-  color: var(--text-muted);
   font-size: 10px;
+  line-height: 1.4;
 }
 
-.writing-calendar-day.intensity-1 {
-  background: color-mix(
-    in srgb,
-    var(--accent) 12%,
-    var(--bg-app)
-  );
-}
-
-.writing-calendar-day.intensity-2 {
-  background: color-mix(
-    in srgb,
-    var(--accent) 25%,
-    var(--bg-app)
-  );
-}
-
-.writing-calendar-day.intensity-3 {
-  background: color-mix(
-    in srgb,
-    var(--accent) 42%,
-    var(--bg-app)
-  );
-}
-
-.writing-calendar-day.intensity-4 {
-  background: color-mix(
-    in srgb,
-    var(--accent) 62%,
-    var(--bg-app)
-  );
-}
-
-.writing-calendar-day.intensity-5 {
-  background: color-mix(
-    in srgb,
-    var(--accent) 82%,
-    var(--bg-app)
-  );
-}
-
-.session-document-breakdown {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  margin-top: 9px;
-}
-
-.session-document-breakdown-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--bg-app);
-}
-
-.session-document-breakdown-name {
-  min-width: 0;
+.writing-calendar-day-details span {
+  display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.session-document-breakdown-value {
-  flex-shrink: 0;
-  font-weight: 700;
-  white-space: nowrap;
+.writing-calendar-legend {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 11px;
 }
 
-.session-document-breakdown-value.positive {
-  color: #10b981;
+.writing-calendar-legend-step {
+  width: 17px;
+  height: 17px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--accent);
 }
 
-.session-document-breakdown-value.negative {
-  color: #ef4444;
-}
-
-/* MODALES */
+/* ==========================================================================
+   MODALES
+   ========================================================================== */
 
 .modal {
   position: fixed;
-  z-index: 1000;
-  top: 0;
-  left: 0;
+  z-index: 5000;
+  inset: 0;
   display: none;
   width: 100%;
   height: 100%;
   align-items: center;
   justify-content: center;
-  padding: 18px;
+  padding: 20px;
   background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(2px);
 }
@@ -1778,6 +1783,7 @@ input[type='range'] {
   max-width: 100%;
   padding: 25px;
   overflow-x: hidden;
+  overflow-y: auto;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--bg-panel);
@@ -1818,17 +1824,21 @@ input[type='range'] {
   text-align: left;
 }
 
-/* MENUS DÉROULANTS */
+/* ==========================================================================
+   MENUS DÉROULANTS
+   ========================================================================== */
 
 .dropdown-menu,
 .theme-dropdown,
 .wb-menu {
   position: absolute;
-  z-index: 100;
+  z-index: 1000;
   display: none;
   min-width: 160px;
+  max-height: min(420px, 70vh);
   margin-top: 8px;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--bg-panel);
@@ -1867,6 +1877,7 @@ input[type='range'] {
   width: 100%;
   padding: 10px 16px;
   border: none;
+  border-radius: 0;
   background: transparent;
   color: var(--text-main);
   cursor: pointer;
@@ -1988,12 +1999,20 @@ input[type='range'] {
   white-space: pre-line;
 }
 
-/* PARAMÈTRES */
+/* ==========================================================================
+   PARAMÈTRES
+   ========================================================================== */
 
 .settings-section {
   margin-bottom: 18px;
   padding-bottom: 18px;
   border-bottom: 1px solid var(--border);
+}
+
+.settings-section:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
 }
 
 .settings-section-title {
@@ -2051,7 +2070,9 @@ input[type='range'] {
   margin-bottom: 0;
 }
 
-/* RACCOURCIS */
+/* ==========================================================================
+   RACCOURCIS
+   ========================================================================== */
 
 .shortcut-list {
   margin: 15px 0 5px;
@@ -2084,7 +2105,9 @@ input[type='range'] {
   white-space: nowrap;
 }
 
-/* ACCESSIBILITÉ */
+/* ==========================================================================
+   ACCESSIBILITÉ
+   ========================================================================== */
 
 button:focus-visible,
 input:focus-visible,
@@ -2102,18 +2125,9 @@ li:focus-visible,
   background: var(--bg-hover);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    scroll-behavior: auto !important;
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-}
-
-/* MINUTEUR ET SESSIONS */
+/* ==========================================================================
+   MINUTEUR ET SESSIONS
+   ========================================================================== */
 
 #btnTimer.running {
   border-color: #10b981;
@@ -2140,7 +2154,9 @@ li:focus-visible,
   }
 }
 
-/* BARRES DE DÉFILEMENT */
+/* ==========================================================================
+   BARRES DE DÉFILEMENT
+   ========================================================================== */
 
 ::-webkit-scrollbar {
   width: 10px;
@@ -2161,7 +2177,9 @@ li:focus-visible,
   background: var(--text-muted);
 }
 
-/* GLISSER-DÉPOSER */
+/* ==========================================================================
+   GLISSER-DÉPOSER
+   ========================================================================== */
 
 .item-list li[draggable='true'] {
   cursor: grab;
@@ -2185,7 +2203,9 @@ body.resizing-panel * {
   user-select: none !important;
 }
 
-/* CORRECTEUR DE GRAMMAIRE */
+/* ==========================================================================
+   CORRECTEUR DE GRAMMAIRE
+   ========================================================================== */
 
 mark.grammar-error {
   background: transparent;
@@ -2203,7 +2223,7 @@ mark.grammar-error:hover {
 
 .grammar-suggest-popup {
   position: fixed;
-  z-index: 2000;
+  z-index: 6000;
   max-width: 320px;
   padding: 10px;
   border: 1px solid var(--border);
@@ -2254,11 +2274,25 @@ mark.grammar-error:hover {
   color: var(--text-main);
 }
 
-/* ADAPTATION AUX PETITES FENÊTRES */
+/* ==========================================================================
+   ADAPTATION AUX PETITES FENÊTRES
+   ========================================================================== */
+
+@media (max-width: 1100px) {
+  .toolbar {
+    gap: 6px;
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+
+  .toolbar button {
+    padding-right: 8px;
+    padding-left: 8px;
+  }
+}
 
 @media (max-width: 900px) {
   .editor-header {
-    align-items: flex-start;
     gap: 10px;
     padding: 8px 12px;
   }
@@ -2270,6 +2304,7 @@ mark.grammar-error:hover {
 
   .toolbar {
     padding: 8px 12px;
+    overflow: visible;
   }
 
   .status {
@@ -2300,12 +2335,12 @@ mark.grammar-error:hover {
   }
 
   .writing-calendar-day {
-    min-height: 66px;
+    min-height: 68px;
     padding: 5px;
   }
 
-  .writing-calendar-day-value {
-    font-size: 10px;
+  .writing-calendar-day-details {
+    font-size: 9px;
   }
 }
 
@@ -2330,17 +2365,12 @@ mark.grammar-error:hover {
     flex: 1;
   }
 
-  .editor-header {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .header-actions {
-    justify-content: flex-start;
-  }
-
   .sidebar {
     width: min(var(--sidebar-width, 250px), 45vw);
+  }
+
+  .sidebar.collapsed {
+    width: 0;
   }
 
   .status {
@@ -2371,84 +2401,36 @@ mark.grammar-error:hover {
     grid-template-columns: minmax(0, 1fr) 105px 32px;
   }
 
-  .wb-container {
-    padding: 25px 20px 80px;
-  }
-
-  .wb-header {
-    flex-wrap: wrap;
-  }
-
-  .writing-calendar-header {
-    flex-wrap: wrap;
-  }
-
-  .writing-calendar-title {
-    order: -1;
-    width: 100%;
-    flex-basis: 100%;
-  }
-
-  .writing-calendar-navigation {
-    flex: 1;
-    justify-content: center;
-  }
-
   .writing-calendar-day {
-    min-height: 52px;
-    padding: 4px;
+    min-height: 56px;
   }
 
-  .writing-calendar-day-number {
-    width: 19px;
-    height: 19px;
-    font-size: 10px;
-  }
-
-  .writing-calendar-day-value {
-    margin-top: 4px;
-    font-size: 9px;
-  }
-
-  .writing-calendar-day-sessions {
+  .writing-calendar-day-details {
     display: none;
   }
 
   .writing-calendar-weekday {
-    padding: 7px 2px;
     font-size: 9px;
+  }
+
+  .writing-streak-grid {
+    grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 520px) {
-  .modal {
-    padding: 8px;
+  .editor-header {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
-  .modal-content {
-    padding: 18px;
+  .header-actions {
+    width: 100%;
+    justify-content: flex-start;
   }
 
-  .sidebar {
-    width: min(var(--sidebar-width, 250px), 52vw);
-  }
-
-  .sidebar-header {
-    padding-right: 6px;
-    padding-left: 6px;
-  }
-
-  .sidebar-section-toggle {
-    font-size: 11px;
-  }
-
-  .item-list li {
-    padding-right: 8px;
-    padding-left: 9px;
-  }
-
-  .item-actions button {
-    padding: 2px 3px;
+  .toolbar {
+    gap: 4px;
   }
 
   .editor-scroll-container {
@@ -2458,29 +2440,27 @@ mark.grammar-error:hover {
   #editor {
     padding:
       40px
-      max(25px, var(--editor-margin-right, 80px))
+      max(20px, var(--editor-margin-right, 80px))
       40px
-      max(25px, var(--editor-margin-left, 80px));
+      max(20px, var(--editor-margin-left, 80px));
   }
 
-  .settings-choice-grid {
-    grid-template-columns: 1fr;
+  .modal {
+    padding: 10px;
   }
 
-  .custom-type-field-row {
-    grid-template-columns: minmax(0, 1fr) 32px;
-  }
-
-  .custom-type-field-row .custom-type-field-type {
-    grid-column: 1 / -1;
-    grid-row: 2;
+  .modal-content {
+    padding: 18px;
   }
 
   .writing-calendar-day {
-    min-height: 43px;
+    min-height: 45px;
+    padding: 3px;
   }
 
-  .writing-calendar-day-value {
-    display: none;
+  .writing-calendar-day-number {
+    width: 21px;
+    height: 21px;
+    font-size: 10px;
   }
 }
