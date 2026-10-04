@@ -1,60 +1,72 @@
 // src/renderer/components/editor/StatusBar.tsx
-// Barre de statut basse : compteur de mots/caractères, statut de sauvegarde,
-// indicateur du correcteur de grammaire, timer et lecteur de musique.
 //
-// C'est l'un des rares endroits qui se re-rend à chaque frappe (via
-// useEditorStatus) : Timer et MusicPlayer sont mémoïsés pour ne pas être
-// recréés inutilement à chaque frappe dans le chapitre.
-//
-// Le compteur de sélection vérifie explicitement que les deux extrémités de
-// la sélection se trouvent dans #editor. Une sélection faite dans la barre
-// d'outils, la sidebar ou une modale ne doit jamais remplacer les statistiques
-// du chapitre.
+// Barre de statut commune aux projets roman et scénario.
 
 import React, {
   memo,
   useEffect,
-  useRef,
+  useMemo,
   useState
 } from 'react';
-import { useI18n } from '../../i18n';
-import { useEditorStatus } from './editor-status';
-import { Timer } from './Timer';
-import { MusicPlayer } from './MusicPlayer';
-import type { EditorController } from './useEditorController';
+
+import {
+  useI18n
+} from '../../i18n';
+
+import {
+  getSceneHeadingText,
+  screenplayHtmlToPlainText
+} from '../../lib/screenplay';
+
+import {
+  useEditorStatus
+} from './editor-status';
+
+import {
+  SCREENPLAY_POSITION_EVENT
+} from './ScreenplayEditor';
+
+import type {
+  ScreenplayPositionDetail
+} from './ScreenplayEditor';
+
+import type {
+  EditorController
+} from './useEditorController';
+
+import {
+  Timer
+} from './Timer';
+
+import {
+  MusicPlayer
+} from './MusicPlayer';
 
 export interface StatusBarProps {
   controller: EditorController;
-  onOpenGrammarSetup: () => void;
+
+  /*
+   * Cette propriété est déjà fournie par EditorPage.
+   * Elle reste facultative pour que StatusBar puisse aussi être utilisé sans
+   * fenêtre de configuration du correcteur.
+   */
+  onOpenGrammarSetup?: () => void;
 }
 
-interface SelectedTextStats {
-  words: number;
-  chars: number;
-}
+const MemoTimer =
+  memo(Timer);
 
-const MemoTimer = memo(Timer);
-const MemoMusicPlayer = memo(MusicPlayer);
+const MemoMusicPlayer =
+  memo(MusicPlayer);
 
-/**
- * Vérifie qu'un nœud appartient bien à la page d'écriture.
- *
- * La sélection complète doit être contenue dans #editor. Cela empêche par
- * exemple le texte sélectionné dans un bouton, un menu ou la sidebar d'être
- * compté comme une sélection du chapitre.
- */
-function isNodeInsideEditor(
-  editor: HTMLElement,
-  node: Node
-): boolean {
-  return node === editor || editor.contains(node);
-}
-
-/**
- * Calcule le nombre de mots contenus dans une sélection.
- */
-function countSelectedWords(text: string): number {
-  const normalized = text.trim();
+function countWords(
+  value: string
+): number {
+  const normalized =
+    value
+      .replace(/\u00a0/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
 
   if (!normalized) {
     return 0;
@@ -66,369 +78,534 @@ function countSelectedWords(text: string): number {
     .length;
 }
 
+function getScreenplayTotalWords(
+  controller: EditorController
+): number {
+  const data =
+    controller.data();
+
+  const screenplay =
+    data.screenplay;
+
+  if (!screenplay) {
+    return 0;
+  }
+
+  let total = 0;
+
+  screenplay.scenes.forEach(
+    (scene) => {
+      total += countWords(
+        getSceneHeadingText(
+          scene,
+          screenplay.settings
+            .conventionLanguage
+        )
+      );
+
+      scene.elements.forEach(
+        (element) => {
+          total += countWords(
+            screenplayHtmlToPlainText(
+              element.html
+            )
+          );
+        }
+      );
+    }
+  );
+
+  return total;
+}
+
+function getScreenplayElementLabel(
+  type:
+    ScreenplayPositionDetail['type'],
+  language: 'fr' | 'en'
+): string {
+  if (
+    language === 'en'
+  ) {
+    switch (type) {
+      case 'scene-heading':
+        return 'Scene heading';
+
+      case 'action':
+        return 'Action';
+
+      case 'character':
+        return 'Character';
+
+      case 'parenthetical':
+        return 'Parenthetical';
+
+      case 'dialogue':
+        return 'Dialogue';
+
+      case 'transition':
+        return 'Transition';
+
+      case 'shot':
+        return 'Shot';
+    }
+  }
+
+  switch (type) {
+    case 'scene-heading':
+      return 'En-tête';
+
+    case 'action':
+      return 'Action';
+
+    case 'character':
+      return 'Personnage';
+
+    case 'parenthetical':
+      return 'Indication';
+
+    case 'dialogue':
+      return 'Dialogue';
+
+    case 'transition':
+      return 'Transition';
+
+    case 'shot':
+      return 'Plan';
+  }
+}
+
+function getScreenplayPositionText(
+  position:
+    ScreenplayPositionDetail,
+  language: 'fr' | 'en'
+): string {
+  const sceneText =
+    language === 'en'
+      ? `Scene ${position.sceneIndex + 1}/${position.sceneCount}`
+      : `Scène ${position.sceneIndex + 1}/${position.sceneCount}`;
+
+  const typeText =
+    getScreenplayElementLabel(
+      position.type,
+      language
+    );
+
+  if (
+    position.type ===
+      'scene-heading' ||
+    position.elementIndex ===
+      null ||
+    position.elementCount <= 0
+  ) {
+    return `${sceneText} · ${typeText}`;
+  }
+
+  const elementText =
+    language === 'en'
+      ? `Element ${position.elementIndex + 1}/${position.elementCount}`
+      : `Élément ${position.elementIndex + 1}/${position.elementCount}`;
+
+  return `${sceneText} · ${elementText} · ${typeText}`;
+}
+
 export function StatusBar({
   controller,
   onOpenGrammarSetup
 }: StatusBarProps): React.ReactElement {
-  const { t } = useI18n();
-  const status = useEditorStatus(controller.status);
+  const {
+    t,
+    lang
+  } = useI18n();
 
-  const timerAnchorRef =
-    useRef<HTMLDivElement | null>(null);
+  const status =
+    useEditorStatus(
+      controller.status
+    );
+
+  const activeType =
+    controller.activeType();
+
+  const isScreenplay =
+    controller.data()
+      .projectType ===
+    'screenplay';
 
   const [
-    selectedTextStats,
-    setSelectedTextStats
-  ] = useState<SelectedTextStats | null>(
-    null
-  );
-
-  /*
-   * activeTab() permet de recréer les écouteurs lorsque l'utilisateur change
-   * de chapitre. Le contrôleur reste stable, mais le nœud #editor peut être
-   * remplacé lors d'un changement d'onglet.
-   */
-  const activeTab = controller.activeTab();
-  const activeType = controller.activeType();
+    screenplayPosition,
+    setScreenplayPosition
+  ] = useState<
+    ScreenplayPositionDetail | null
+  >(null);
 
   useEffect(() => {
-    let animationFrame: number | null =
-      null;
+    let animationFrame:
+      | number
+      | null = null;
 
-    const updateSelectedTextStats =
+    const updateSelectionStats =
       (): void => {
-        if (animationFrame !== null) {
-          cancelAnimationFrame(
+        if (
+          animationFrame !==
+          null
+        ) {
+          window.cancelAnimationFrame(
             animationFrame
           );
         }
 
         animationFrame =
-          requestAnimationFrame(() => {
-            animationFrame = null;
+          window.requestAnimationFrame(
+            () => {
+              animationFrame =
+                null;
 
-            const editor =
-              document.getElementById(
-                'editor'
-              );
-
-            const selection =
-              window.getSelection();
-
-            if (
-              activeType !== 'chapter' ||
-              !editor ||
-              !selection ||
-              selection.rangeCount === 0 ||
-              selection.isCollapsed
-            ) {
-              setSelectedTextStats(
-                null
-              );
-              return;
+              controller.updateStats();
             }
-
-            const range =
-              selection.getRangeAt(0);
-
-            /*
-             * Les deux extrémités doivent se trouver dans l'éditeur.
-             * Cela couvre également Ctrl+A lorsque le Range commence ou se
-             * termine directement sur le nœud #editor.
-             */
-            const selectionIsInsideEditor =
-              isNodeInsideEditor(
-                editor,
-                range.startContainer
-              ) &&
-              isNodeInsideEditor(
-                editor,
-                range.endContainer
-              );
-
-            if (
-              !selectionIsInsideEditor
-            ) {
-              setSelectedTextStats(
-                null
-              );
-              return;
-            }
-
-            const selectedText =
-              range.toString();
-
-            if (
-              selectedText.length === 0
-            ) {
-              setSelectedTextStats(
-                null
-              );
-              return;
-            }
-
-            const nextStats: SelectedTextStats =
-              {
-                words:
-                  countSelectedWords(
-                    selectedText
-                  ),
-
-                /*
-                 * Pour les caractères, on conserve les espaces et les sauts
-                 * de ligne réellement présents dans la sélection.
-                 */
-                chars:
-                  selectedText.length
-              };
-
-            setSelectedTextStats(
-              (previous) => {
-                if (
-                  previous &&
-                  previous.words ===
-                    nextStats.words &&
-                  previous.chars ===
-                    nextStats.chars
-                ) {
-                  return previous;
-                }
-
-                return nextStats;
-              }
-            );
-          });
+          );
       };
-
-    const editor =
-      document.getElementById(
-        'editor'
-      );
 
     document.addEventListener(
       'selectionchange',
-      updateSelectedTextStats
+      updateSelectionStats
     );
-
-    /*
-     * selectionchange couvre normalement ces situations. Les événements
-     * supplémentaires rendent cependant la mise à jour plus fiable après une
-     * modification du contenu ou un changement de sélection au clavier.
-     */
-    editor?.addEventListener(
-      'input',
-      updateSelectedTextStats
-    );
-
-    editor?.addEventListener(
-      'keyup',
-      updateSelectedTextStats
-    );
-
-    editor?.addEventListener(
-      'mouseup',
-      updateSelectedTextStats
-    );
-
-    updateSelectedTextStats();
 
     return () => {
       document.removeEventListener(
         'selectionchange',
-        updateSelectedTextStats
-      );
-
-      editor?.removeEventListener(
-        'input',
-        updateSelectedTextStats
-      );
-
-      editor?.removeEventListener(
-        'keyup',
-        updateSelectedTextStats
-      );
-
-      editor?.removeEventListener(
-        'mouseup',
-        updateSelectedTextStats
+        updateSelectionStats
       );
 
       if (
         animationFrame !== null
       ) {
-        cancelAnimationFrame(
+        window.cancelAnimationFrame(
           animationFrame
         );
       }
     };
-  }, [
-    activeTab,
-    activeType
-  ]);
+  }, [controller]);
 
-  /*
-   * Ajoute l'espacement du groupe Timer/Session directement depuis son
-   * conteneur parent. Timer.tsx n'a donc pas besoin d'être modifié uniquement
-   * pour une règle de présentation.
-   */
   useEffect(() => {
-    const timerContainer =
-      timerAnchorRef.current
-        ?.querySelector<HTMLElement>(
-          '#timerContainer'
+    const updatePosition =
+      (
+        event: Event
+      ): void => {
+        const customEvent =
+          event as CustomEvent<
+            ScreenplayPositionDetail | null
+          >;
+
+        setScreenplayPosition(
+          customEvent.detail ??
+          null
         );
+      };
 
-    if (!timerContainer) {
-      return;
-    }
-
-    const previousDisplay =
-      timerContainer.style.display;
-
-    const previousAlignItems =
-      timerContainer.style.alignItems;
-
-    const previousGap =
-      timerContainer.style.gap;
-
-    const previousPadding =
-      timerContainer.style.padding;
-
-    const previousMargin =
-      timerContainer.style.margin;
-
-    timerContainer.style.display =
-      'flex';
-
-    timerContainer.style.alignItems =
-      'center';
-
-    timerContainer.style.gap = '6px';
-
-    timerContainer.style.padding =
-      '2px 6px';
-
-    timerContainer.style.margin =
-      '0 4px';
+    window.addEventListener(
+      SCREENPLAY_POSITION_EVENT,
+      updatePosition
+    );
 
     return () => {
-      timerContainer.style.display =
-        previousDisplay;
-
-      timerContainer.style.alignItems =
-        previousAlignItems;
-
-      timerContainer.style.gap =
-        previousGap;
-
-      timerContainer.style.padding =
-        previousPadding;
-
-      timerContainer.style.margin =
-        previousMargin;
+      window.removeEventListener(
+        SCREENPLAY_POSITION_EVENT,
+        updatePosition
+      );
     };
   }, []);
 
-  const statsText =
-    status.sheetMode
-      ? t('statsSheetMode')
-      : selectedTextStats
-        ? t('statsSelected', {
+  useEffect(() => {
+    if (
+      !isScreenplay ||
+      activeType !== 'scene'
+    ) {
+      setScreenplayPosition(
+        null
+      );
+    }
+  }, [
+    activeType,
+    isScreenplay
+  ]);
+
+  /*
+   * Le calcul du total inclut les en-têtes de scène. Cela évite par exemple
+   * d’afficher "8 mots dans la scène / 4 mots dans le projet".
+   */
+  const totalWords =
+    isScreenplay
+      ? getScreenplayTotalWords(
+          controller
+        )
+      : status.totalWords;
+
+  const statisticsText =
+    useMemo((): string => {
+      if (status.sheetMode) {
+        return t(
+          'statsSheetMode'
+        );
+      }
+
+      if (
+        status.selectionActive
+      ) {
+        return t(
+          'statsSelected',
+          {
             words:
-              selectedTextStats.words,
+              status.words,
+
             chars:
-              selectedTextStats.chars,
-            total:
-              status.totalWords
-          })
-        : t('statsNormal', {
-            words: status.words,
-            chars: status.chars,
-            total:
-              status.totalWords
-          });
+              status.chars
+          }
+        );
+      }
+
+      return t(
+        'statsNormal',
+        {
+          words:
+            status.words,
+
+          chars:
+            status.chars,
+
+          total:
+            Math.max(
+              totalWords,
+              status.words
+            )
+        }
+      );
+    }, [
+      status.chars,
+      status.selectionActive,
+      status.sheetMode,
+      status.words,
+      t,
+      totalWords
+    ]);
 
   const saveStatusText =
-    status.saveState === 'pending'
-      ? t('saveStatusPending')
-      : status.saveState === 'error'
-        ? t('saveStatusError')
-        : status.savedAt
-          ? t('saveStatusSavedAt', {
-              time: status.savedAt
-            })
-          : t('saveStatusSaved');
+    useMemo((): string => {
+      switch (
+        status.saveState
+      ) {
+        case 'pending':
+          return t(
+            'saveStatusPending'
+          );
 
-  const grammarLabel =
-    !status.grammarEnabled
-      ? null
-      : status.grammarStarting
-        ? {
-            text: t(
+        case 'error':
+          return t(
+            'saveStatusError'
+          );
+
+        case 'saved':
+        default:
+          return status.savedAt
+            ? t(
+                'saveStatusSavedAt',
+                {
+                  time:
+                    status.savedAt
+                }
+              )
+            : t(
+                'saveStatusSaved'
+              );
+      }
+    }, [
+      status.saveState,
+      status.savedAt,
+      t
+    ]);
+
+  const saveStatusClassName =
+    status.saveState ===
+    'error'
+      ? 'error'
+      : status.saveState ===
+          'pending'
+        ? 'pending'
+        : 'saved';
+
+  const grammarStatus =
+    useMemo((): {
+      text: string;
+      title: string;
+      className: string;
+    } | null => {
+      if (
+        !status.grammarEnabled
+      ) {
+        return null;
+      }
+
+      if (
+        status.grammarStarting
+      ) {
+        return {
+          text:
+            t(
               'grammarStatusBarStarting'
             ),
-            title: t(
+
+          title:
+            status.grammarMessage ||
+            t(
               'grammarStatusBarStartingTitle'
             ),
-            cls: 'status-starting'
-          }
-        : status.grammarReady
-          ? {
-              text: t(
-                'grammarStatusBarReady'
-              ),
-              title: t(
-                'grammarStatusBarReadyTitle'
-              ),
-              cls: 'status-ready'
-            }
-          : {
-              text: t(
-                'grammarStatusBarError'
-              ),
-              title: t(
-                'grammarStatusBarErrorTitle'
-              ),
-              cls: 'status-error'
-            };
+
+          className:
+            'starting'
+        };
+      }
+
+      if (
+        status.grammarReady
+      ) {
+        return {
+          text:
+            t(
+              'grammarStatusBarReady'
+            ),
+
+          title:
+            status.grammarMessage ||
+            t(
+              'grammarStatusBarReadyTitle'
+            ),
+
+          className:
+            'ready'
+        };
+      }
+
+      return {
+        text:
+          t(
+            'grammarStatusBarError'
+          ),
+
+        title:
+          status.grammarMessage ||
+          t(
+            'grammarStatusBarErrorTitle'
+          ),
+
+        className:
+          'error'
+      };
+    }, [
+      status.grammarEnabled,
+      status.grammarMessage,
+      status.grammarReady,
+      status.grammarStarting,
+      t
+    ]);
+
+  const positionText =
+    screenplayPosition
+      ? getScreenplayPositionText(
+          screenplayPosition,
+          lang === 'en'
+            ? 'en'
+            : 'fr'
+        )
+      : '';
 
   return (
-    <div className="status">
+    <div
+      className="status"
+      role="status"
+      aria-live="polite"
+    >
       <div className="status-left">
-        <span id="stats">
-          {statsText}
+        <span
+          id="stats"
+          className="status-stats"
+        >
+          {statisticsText}
+        </span>
+
+        {positionText && (
+          <>
+            <span
+              className="status-bar-divider"
+              aria-hidden="true"
+            >
+              ·
+            </span>
+
+            <span
+              className="screenplay-status-position"
+              title={positionText}
+            >
+              {positionText}
+            </span>
+          </>
+        )}
+
+        <span
+          className="status-bar-divider"
+          aria-hidden="true"
+        >
+          ·
         </span>
 
         <span
           id="saveStatus"
-          className={`save-status ${status.saveState}`}
+          className={`save-status ${saveStatusClassName}`}
         >
           {saveStatusText}
         </span>
 
-        {grammarLabel && (
-          <button
-            id="grammarStatusIndicator"
-            type="button"
-            className={`grammar-status-indicator ${grammarLabel.cls}`}
-            title={
-              grammarLabel.title
-            }
-            onClick={
-              onOpenGrammarSetup
-            }
-          >
-            {grammarLabel.text}
-          </button>
+        {grammarStatus && (
+          <>
+            <span
+              className="status-bar-divider"
+              aria-hidden="true"
+            >
+              ·
+            </span>
+
+            <button
+              type="button"
+              className={`grammar-status ${grammarStatus.className}`}
+              title={
+                grammarStatus.title
+              }
+              onClick={() => {
+                onOpenGrammarSetup?.();
+              }}
+              style={{
+                border: 0,
+                padding: 0,
+                background:
+                  'transparent',
+                color:
+                  'inherit',
+                font:
+                  'inherit',
+                cursor:
+                  onOpenGrammarSetup
+                    ? 'pointer'
+                    : 'default'
+              }}
+            >
+              {grammarStatus.text}
+            </button>
+          </>
         )}
       </div>
 
-      <div
-        ref={timerAnchorRef}
-        className="status-timer-anchor"
-      >
+      <div className="status-timer-anchor">
         <MemoTimer
-          controller={controller}
+          controller={
+            controller
+          }
         />
       </div>
 

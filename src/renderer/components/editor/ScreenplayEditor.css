@@ -1,0 +1,1683 @@
+/* src/renderer/components/editor/ScreenplayEditor.css
+ *
+ * Mise en page de l’éditeur de scénario.
+ *
+ * Principes :
+ * - page adaptée au thème de l’application ;
+ * - dimensions professionnelles A4 ou US Letter ;
+ * - Courier Prime / Courier 12 pt ;
+ * - conteneurs de paragraphes toujours sur toute la largeur ;
+ * - seul le contenu est décalé selon son type ;
+ * - libellés de navigation alignés dans la marge gauche ;
+ * - aucun indicateur bleu superposé au texte ;
+ * - impression et export sur fond blanc avec texte noir.
+ */
+
+/* -------------------------------------------------------------------------
+ * CONTENEUR GÉNÉRAL
+ * ---------------------------------------------------------------------- */
+
+.screenplay-editor {
+  --screenplay-font:
+    'Courier Prime',
+    'Courier New',
+    Courier,
+    monospace;
+
+  /*
+   * A4 à environ 96 DPI.
+   */
+  --screenplay-page-width: 794px;
+  --screenplay-page-height: 1123px;
+
+  --screenplay-page-padding-top: 86px;
+  --screenplay-page-padding-right: 72px;
+  --screenplay-page-padding-bottom: 86px;
+  --screenplay-page-padding-left: 110px;
+
+  --screenplay-content-width:
+    calc(
+      var(--screenplay-page-width) -
+      var(--screenplay-page-padding-left) -
+      var(--screenplay-page-padding-right)
+    );
+
+  --screenplay-font-size: 12pt;
+  --screenplay-line-height: 1.2;
+
+  /*
+   * Couleurs du thème.
+   */
+  --screenplay-paper:
+    var(--bg-page, #ffffff);
+
+  --screenplay-paper-text:
+    var(--text-main, var(--text, #111111));
+
+  --screenplay-muted:
+    var(--text-muted, #737373);
+
+  --screenplay-border:
+    var(--border, rgb(0 0 0 / 14%));
+
+  --screenplay-workspace:
+    var(
+      --bg-app,
+      var(--bg-main, #e8e8e8)
+    );
+
+  --screenplay-accent:
+    var(--accent, #4285f4);
+
+  /*
+   * Position commune des libellés ACTION, PERSONNAGE, etc.
+   *
+   * Cette position est toujours calculée depuis la largeur complète du
+   * contenu, jamais depuis un bloc de dialogue déjà décalé.
+   */
+  --screenplay-label-left: -76px;
+  --screenplay-label-width: 66px;
+
+  position: relative;
+
+  width: 100%;
+  min-width: max-content;
+  min-height: 100%;
+
+  box-sizing: border-box;
+
+  padding:
+    34px
+    40px
+    80px;
+
+  color:
+    var(--screenplay-paper-text);
+
+  background:
+    var(--screenplay-workspace);
+
+  font-family:
+    var(--screenplay-font);
+}
+
+/* -------------------------------------------------------------------------
+ * FORMAT US LETTER
+ * ---------------------------------------------------------------------- */
+
+.screenplay-editor[data-page-format='letter'] {
+  --screenplay-page-width: 816px;
+  --screenplay-page-height: 1056px;
+
+  --screenplay-page-padding-top: 76px;
+  --screenplay-page-padding-right: 76px;
+  --screenplay-page-padding-bottom: 76px;
+  --screenplay-page-padding-left: 115px;
+}
+
+/* -------------------------------------------------------------------------
+ * DOCUMENT CONTINU
+ * ---------------------------------------------------------------------- */
+
+.screenplay-document {
+  position: relative;
+
+  width:
+    var(--screenplay-page-width);
+
+  min-height:
+    var(--screenplay-page-height);
+
+  margin:
+    0 auto;
+
+  padding:
+    var(--screenplay-page-padding-top)
+    var(--screenplay-page-padding-right)
+    var(--screenplay-page-padding-bottom)
+    var(--screenplay-page-padding-left);
+
+  box-sizing:
+    border-box;
+
+  color:
+    var(--screenplay-paper-text);
+
+  background:
+    var(--screenplay-paper);
+
+  font-family:
+    var(--screenplay-font);
+
+  font-size:
+    var(--screenplay-font-size);
+
+  font-weight:
+    400;
+
+  line-height:
+    var(--screenplay-line-height);
+
+  text-align:
+    left;
+
+  white-space:
+    normal;
+
+  border:
+    1px solid
+    var(--screenplay-border);
+
+  border-radius:
+    2px;
+
+  box-shadow:
+    0 3px 12px
+      rgb(0 0 0 / 14%),
+    0 16px 42px
+      rgb(0 0 0 / 12%);
+
+  transition:
+    color 160ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease;
+}
+
+/* -------------------------------------------------------------------------
+ * PAGES PAGINÉES
+ * ---------------------------------------------------------------------- */
+
+.screenplay-pages {
+  display: flex;
+
+  width: 100%;
+
+  flex-direction: column;
+  align-items: center;
+
+  gap: 30px;
+}
+
+.screenplay-page {
+  position: relative;
+
+  flex:
+    0 0 auto;
+
+  width:
+    var(--screenplay-page-width);
+
+  height:
+    var(--screenplay-page-height);
+
+  box-sizing:
+    border-box;
+
+  overflow:
+    hidden;
+
+  color:
+    var(--screenplay-paper-text);
+
+  background:
+    var(--screenplay-paper);
+
+  font-family:
+    var(--screenplay-font);
+
+  font-size:
+    var(--screenplay-font-size);
+
+  font-weight:
+    400;
+
+  line-height:
+    var(--screenplay-line-height);
+
+  border:
+    1px solid
+    var(--screenplay-border);
+
+  border-radius:
+    2px;
+
+  box-shadow:
+    0 3px 12px
+      rgb(0 0 0 / 14%),
+    0 16px 42px
+      rgb(0 0 0 / 12%);
+}
+
+.screenplay-page-content {
+  position: absolute;
+
+  inset:
+    var(--screenplay-page-padding-top)
+    var(--screenplay-page-padding-right)
+    var(--screenplay-page-padding-bottom)
+    var(--screenplay-page-padding-left);
+
+  overflow:
+    hidden;
+}
+
+.screenplay-page-number {
+  position: absolute;
+
+  top:
+    34px;
+
+  right:
+    var(--screenplay-page-padding-right);
+
+  min-width:
+    40px;
+
+  color:
+    var(--screenplay-paper-text);
+
+  font-family:
+    var(--screenplay-font);
+
+  font-size:
+    12pt;
+
+  line-height:
+    1;
+
+  text-align:
+    right;
+
+  user-select:
+    none;
+
+  pointer-events:
+    none;
+}
+
+.screenplay-page:first-child
+.screenplay-page-number {
+  visibility:
+    hidden;
+}
+
+/* -------------------------------------------------------------------------
+ * PAGE DE TITRE
+ * ---------------------------------------------------------------------- */
+
+.screenplay-title-page {
+  position: relative;
+
+  width:
+    var(--screenplay-page-width);
+
+  height:
+    var(--screenplay-page-height);
+
+  margin:
+    0 auto;
+
+  box-sizing:
+    border-box;
+
+  color:
+    var(--screenplay-paper-text);
+
+  background:
+    var(--screenplay-paper);
+
+  font-family:
+    var(--screenplay-font);
+
+  font-size:
+    var(--screenplay-font-size);
+
+  line-height:
+    var(--screenplay-line-height);
+
+  border:
+    1px solid
+    var(--screenplay-border);
+
+  border-radius:
+    2px;
+
+  box-shadow:
+    0 3px 12px
+      rgb(0 0 0 / 14%),
+    0 16px 42px
+      rgb(0 0 0 / 12%);
+}
+
+.screenplay-title-page-main {
+  position: absolute;
+
+  top:
+    38%;
+
+  left:
+    var(--screenplay-page-padding-left);
+
+  right:
+    var(--screenplay-page-padding-right);
+
+  text-align:
+    center;
+}
+
+.screenplay-title-page-title {
+  margin:
+    0 0 24px;
+
+  font-weight:
+    400;
+
+  text-transform:
+    uppercase;
+}
+
+.screenplay-title-page-authors {
+  margin:
+    0;
+
+  white-space:
+    pre-wrap;
+}
+
+.screenplay-title-page-source {
+  margin-top:
+    20px;
+
+  white-space:
+    pre-wrap;
+}
+
+.screenplay-title-page-contact {
+  position:
+    absolute;
+
+  left:
+    var(--screenplay-page-padding-left);
+
+  bottom:
+    var(--screenplay-page-padding-bottom);
+
+  max-width:
+    46%;
+
+  white-space:
+    pre-wrap;
+}
+
+.screenplay-title-page-version {
+  position:
+    absolute;
+
+  right:
+    var(--screenplay-page-padding-right);
+
+  bottom:
+    var(--screenplay-page-padding-bottom);
+
+  max-width:
+    42%;
+
+  text-align:
+    right;
+
+  white-space:
+    pre-wrap;
+}
+
+/* -------------------------------------------------------------------------
+ * SCÈNES
+ * ---------------------------------------------------------------------- */
+
+.screenplay-scene {
+  position: relative;
+
+  /*
+   * Important : la scène occupe exactement toute la largeur disponible.
+   */
+  width: 100%;
+
+  margin: 0;
+  padding: 0;
+
+  box-sizing:
+    border-box;
+}
+
+.screenplay-scene +
+.screenplay-scene {
+  margin-top:
+    0;
+}
+
+/*
+ * On désactive les anciens indicateurs verticaux et les numéros générés
+ * autour des scènes. Ils provoquaient la double barre bleue visible dans
+ * l’éditeur.
+ */
+.screenplay-scene::before,
+.screenplay-scene::after {
+  content:
+    none !important;
+
+  display:
+    none !important;
+}
+
+/*
+ * Les métadonnées de scène ne doivent pas occuper de place dans le scénario.
+ * Si le composant les rend encore, elles restent en dehors du texte.
+ */
+.screenplay-scene-meta {
+  position: absolute;
+
+  top: 0;
+  right: calc(100% + 22px);
+
+  display: none;
+
+  width: 170px;
+
+  color:
+    var(--screenplay-muted);
+
+  font-family:
+    var(--ui-font-family, sans-serif);
+
+  font-size:
+    11px;
+
+  line-height:
+    1.25;
+
+  text-align:
+    right;
+
+  user-select:
+    none;
+
+  pointer-events:
+    none;
+}
+
+/*
+ * Mise en évidence temporaire lors d’une navigation depuis la barre latérale.
+ * Seul l’en-tête clignote légèrement, pas toute la scène.
+ */
+.screenplay-scene.navigation-highlight
+.screenplay-scene-heading {
+  animation:
+    screenplay-heading-navigation-highlight
+    900ms ease-out;
+}
+
+@keyframes screenplay-heading-navigation-highlight {
+  0% {
+    background:
+      color-mix(
+        in srgb,
+        var(--screenplay-accent)
+        18%,
+        transparent
+      );
+
+    box-shadow:
+      0 0 0 5px
+      color-mix(
+        in srgb,
+        var(--screenplay-accent)
+        9%,
+        transparent
+      );
+  }
+
+  100% {
+    background:
+      transparent;
+
+    box-shadow:
+      none;
+  }
+}
+
+/* -------------------------------------------------------------------------
+ * EN-TÊTE DE SCÈNE
+ * ---------------------------------------------------------------------- */
+
+.screenplay-scene-heading {
+  position: relative;
+
+  width: 100%;
+  min-height: 1.2em;
+
+  margin:
+    1.2em 0;
+
+  padding:
+    0;
+
+  box-sizing:
+    border-box;
+
+  color:
+    var(--screenplay-paper-text);
+
+  background:
+    transparent;
+
+  font-family:
+    var(--screenplay-font);
+
+  font-size:
+    var(--screenplay-font-size);
+
+  font-weight:
+    400;
+
+  line-height:
+    var(--screenplay-line-height);
+
+  text-align:
+    left;
+
+  text-transform:
+    uppercase;
+
+  outline:
+    none;
+
+  overflow-wrap:
+    break-word;
+
+  break-after:
+    avoid;
+
+  page-break-after:
+    avoid;
+}
+
+.screenplay-scene:first-child
+.screenplay-scene-heading {
+  margin-top:
+    0;
+}
+
+.screenplay-editor[data-bold-scene-headings='true']
+.screenplay-scene-heading {
+  font-weight:
+    700;
+}
+
+/*
+ * Libellé SCÈNE toujours aligné dans la même colonne de marge.
+ */
+.screenplay-scene-heading::before {
+  content:
+    'SCÈNE';
+
+  position:
+    absolute;
+
+  top:
+    0.2em;
+
+  left:
+    var(--screenplay-label-left);
+
+  width:
+    var(--screenplay-label-width);
+
+  color:
+    var(--screenplay-muted);
+
+  font-family:
+    var(--ui-font-family, sans-serif);
+
+  font-size:
+    9px;
+
+  font-weight:
+    700;
+
+  line-height:
+    1;
+
+  letter-spacing:
+    0.04em;
+
+  text-align:
+    right;
+
+  text-transform:
+    uppercase;
+
+  white-space:
+    nowrap;
+
+  opacity:
+    0.7;
+
+  user-select:
+    none;
+
+  pointer-events:
+    none;
+}
+
+.screenplay-editor[data-convention-language='en']
+.screenplay-scene-heading::before {
+  content:
+    'SCENE';
+}
+
+.screenplay-scene.active
+.screenplay-scene-heading::before,
+.screenplay-scene-heading:hover::before,
+.screenplay-scene-heading:focus::before {
+  color:
+    var(--screenplay-accent);
+
+  opacity:
+    1;
+}
+
+/*
+ * Pas de grande barre bleue ni de fond occupant toute la largeur.
+ */
+.screenplay-scene-heading:focus {
+  background:
+    transparent;
+
+  box-shadow:
+    none;
+
+  outline:
+    none;
+}
+
+/* -------------------------------------------------------------------------
+ * CONTENEUR DES ÉLÉMENTS
+ * ---------------------------------------------------------------------- */
+
+.screenplay-scene-elements {
+  position:
+    relative;
+
+  width:
+    100%;
+}
+
+/*
+ * RÈGLE IMPORTANTE
+ *
+ * Tous les wrappers restent sur toute la largeur.
+ *
+ * Les anciens styles donnaient une largeur et une marge au wrapper lui-même.
+ * Le libellé PERSONNAGE ou DIALOGUE était alors calculé depuis ce wrapper
+ * décalé et se retrouvait au milieu de la page.
+ */
+.screenplay-element,
+.screenplay-element-action,
+.screenplay-element-character,
+.screenplay-element-parenthetical,
+.screenplay-element-dialogue,
+.screenplay-element-transition,
+.screenplay-element-shot {
+  position:
+    relative;
+
+  width:
+    100% !important;
+
+  max-width:
+    none !important;
+
+  margin-right:
+    0 !important;
+
+  margin-left:
+    0 !important;
+
+  padding:
+    0;
+
+  box-sizing:
+    border-box;
+
+  color:
+    var(--screenplay-paper-text);
+
+  font-family:
+    var(--screenplay-font);
+
+  font-size:
+    var(--screenplay-font-size);
+
+  font-weight:
+    400;
+
+  line-height:
+    var(--screenplay-line-height);
+}
+
+/*
+ * Désactivation de l’ancienne barre verticale des éléments actifs.
+ */
+.screenplay-element::before,
+.screenplay-element::after {
+  content:
+    none !important;
+
+  display:
+    none !important;
+}
+
+/* -------------------------------------------------------------------------
+ * LIBELLÉS DE TYPE
+ * ---------------------------------------------------------------------- */
+
+.screenplay-element-type-indicator {
+  position:
+    absolute;
+
+  top:
+    0.22em;
+
+  left:
+    var(--screenplay-label-left);
+
+  right:
+    auto;
+
+  z-index:
+    2;
+
+  display:
+    block;
+
+  width:
+    var(--screenplay-label-width);
+
+  color:
+    var(--screenplay-muted);
+
+  font-family:
+    var(--ui-font-family, sans-serif);
+
+  font-size:
+    0;
+
+  font-weight:
+    700;
+
+  line-height:
+    1;
+
+  letter-spacing:
+    0.04em;
+
+  text-align:
+    right;
+
+  text-transform:
+    uppercase;
+
+  white-space:
+    nowrap;
+
+  opacity:
+    0.65;
+
+  user-select:
+    none;
+
+  pointer-events:
+    none;
+}
+
+.screenplay-element-type-indicator::after {
+  font-size:
+    9px;
+}
+
+.screenplay-element[data-screenplay-element-type='action']
+.screenplay-element-type-indicator::after {
+  content:
+    'ACTION';
+}
+
+.screenplay-element[data-screenplay-element-type='character']
+.screenplay-element-type-indicator::after {
+  content:
+    'PERSONNAGE';
+}
+
+.screenplay-element[data-screenplay-element-type='parenthetical']
+.screenplay-element-type-indicator::after {
+  content:
+    'INDICATION';
+}
+
+.screenplay-element[data-screenplay-element-type='dialogue']
+.screenplay-element-type-indicator::after {
+  content:
+    'DIALOGUE';
+}
+
+.screenplay-element[data-screenplay-element-type='transition']
+.screenplay-element-type-indicator::after {
+  content:
+    'TRANSITION';
+}
+
+.screenplay-element[data-screenplay-element-type='shot']
+.screenplay-element-type-indicator::after {
+  content:
+    'PLAN';
+}
+
+.screenplay-editor[data-convention-language='en']
+.screenplay-element[data-screenplay-element-type='character']
+.screenplay-element-type-indicator::after {
+  content:
+    'CHARACTER';
+}
+
+.screenplay-editor[data-convention-language='en']
+.screenplay-element[data-screenplay-element-type='parenthetical']
+.screenplay-element-type-indicator::after {
+  content:
+    'PARENTHETICAL';
+}
+
+.screenplay-editor[data-convention-language='en']
+.screenplay-element[data-screenplay-element-type='shot']
+.screenplay-element-type-indicator::after {
+  content:
+    'SHOT';
+}
+
+.screenplay-element:hover
+.screenplay-element-type-indicator,
+.screenplay-element.active
+.screenplay-element-type-indicator,
+.screenplay-element:focus-within
+.screenplay-element-type-indicator {
+  color:
+    var(--screenplay-accent);
+
+  opacity:
+    1;
+}
+
+/* -------------------------------------------------------------------------
+ * CONTENU ÉDITABLE COMMUN
+ * ---------------------------------------------------------------------- */
+
+.screenplay-element-content {
+  position:
+    relative;
+
+  display:
+    block;
+
+  min-height:
+    1.2em;
+
+  margin:
+    0;
+
+  padding:
+    0;
+
+  box-sizing:
+    border-box;
+
+  color:
+    inherit;
+
+  background:
+    transparent;
+
+  font:
+    inherit;
+
+  line-height:
+    inherit;
+
+  text-align:
+    left;
+
+  white-space:
+    pre-wrap;
+
+  overflow-wrap:
+    break-word;
+
+  outline:
+    none;
+
+  caret-color:
+    var(--screenplay-paper-text);
+}
+
+/*
+ * Le paragraphe actif ne reçoit plus une grande bande bleue.
+ * La navigation reste visible grâce au libellé coloré dans la marge.
+ */
+.screenplay-element-content:focus,
+.screenplay-element.active
+.screenplay-element-content {
+  background:
+    transparent;
+
+  box-shadow:
+    none;
+
+  outline:
+    none;
+}
+
+/*
+ * Placeholder d’un contentEditable vide.
+ */
+.screenplay-element-content:empty::before {
+  content:
+    attr(data-placeholder);
+
+  color:
+    var(--screenplay-muted);
+
+  font-style:
+    normal;
+
+  opacity:
+    0.7;
+
+  pointer-events:
+    none;
+}
+
+/* -------------------------------------------------------------------------
+ * ACTION
+ * ---------------------------------------------------------------------- */
+
+.screenplay-element-action {
+  margin-top:
+    0 !important;
+
+  margin-bottom:
+    1.2em !important;
+}
+
+.screenplay-element-action
+.screenplay-element-content {
+  width:
+    100% !important;
+
+  margin-right:
+    0 !important;
+
+  margin-left:
+    0 !important;
+
+  text-align:
+    left;
+}
+
+/* -------------------------------------------------------------------------
+ * PERSONNAGE
+ * ---------------------------------------------------------------------- */
+
+.screenplay-element-character {
+  margin-top:
+    1.2em !important;
+
+  margin-bottom:
+    0 !important;
+
+  break-after:
+    avoid;
+
+  page-break-after:
+    avoid;
+}
+
+/*
+ * Seul le contenu du personnage est décalé.
+ * Le wrapper et son indicateur restent à l’origine du contenu de page.
+ */
+.screenplay-element-character
+.screenplay-element-content {
+  width:
+    42% !important;
+
+  margin-right:
+    0 !important;
+
+  margin-left:
+    38% !important;
+
+  text-align:
+    left;
+
+  text-transform:
+    uppercase;
+}
+
+.screenplay-element-character +
+.screenplay-element-parenthetical,
+.screenplay-element-character +
+.screenplay-element-dialogue {
+  break-before:
+    avoid;
+
+  page-break-before:
+    avoid;
+}
+
+/* -------------------------------------------------------------------------
+ * INDICATION DE JEU
+ * ---------------------------------------------------------------------- */
+
+.screenplay-element-parenthetical {
+  margin-top:
+    0 !important;
+
+  margin-bottom:
+    0 !important;
+
+  break-after:
+    avoid;
+
+  page-break-after:
+    avoid;
+}
+
+.screenplay-element-parenthetical
+.screenplay-element-content {
+  width:
+    48% !important;
+
+  margin-right:
+    0 !important;
+
+  margin-left:
+    28% !important;
+
+  text-align:
+    left;
+}
+
+/* -------------------------------------------------------------------------
+ * DIALOGUE
+ * ---------------------------------------------------------------------- */
+
+.screenplay-element-dialogue {
+  margin-top:
+    0 !important;
+
+  margin-bottom:
+    1.2em !important;
+}
+
+.screenplay-element-dialogue
+.screenplay-element-content {
+  width:
+    58% !important;
+
+  margin-right:
+    0 !important;
+
+  margin-left:
+    20% !important;
+
+  text-align:
+    left;
+}
+
+/* -------------------------------------------------------------------------
+ * TRANSITION
+ * ---------------------------------------------------------------------- */
+
+.screenplay-element-transition {
+  margin-top:
+    1.2em !important;
+
+  margin-bottom:
+    1.2em !important;
+
+  break-after:
+    avoid;
+
+  page-break-after:
+    avoid;
+}
+
+.screenplay-element-transition
+.screenplay-element-content {
+  width:
+    54% !important;
+
+  margin-right:
+    0 !important;
+
+  margin-left:
+    auto !important;
+
+  text-align:
+    right;
+
+  text-transform:
+    uppercase;
+}
+
+/* -------------------------------------------------------------------------
+ * PLAN / INDICATION TECHNIQUE
+ * ---------------------------------------------------------------------- */
+
+.screenplay-element-shot {
+  margin-top:
+    1.2em !important;
+
+  margin-bottom:
+    1.2em !important;
+
+  break-after:
+    avoid;
+
+  page-break-after:
+    avoid;
+}
+
+.screenplay-element-shot
+.screenplay-element-content {
+  width:
+    100% !important;
+
+  margin-right:
+    0 !important;
+
+  margin-left:
+    0 !important;
+
+  text-align:
+    left;
+
+  text-transform:
+    uppercase;
+}
+
+/* -------------------------------------------------------------------------
+ * CONTINUATIONS
+ * ---------------------------------------------------------------------- */
+
+.screenplay-dialogue-continuation-bottom {
+  width:
+    58%;
+
+  margin:
+    0
+    0
+    0
+    20%;
+
+  color:
+    var(--screenplay-paper-text);
+
+  font-family:
+    var(--screenplay-font);
+
+  font-size:
+    var(--screenplay-font-size);
+
+  line-height:
+    var(--screenplay-line-height);
+
+  text-align:
+    right;
+
+  user-select:
+    none;
+
+  pointer-events:
+    none;
+}
+
+.screenplay-dialogue-continuation-character {
+  width:
+    42%;
+
+  margin:
+    0
+    0
+    0
+    38%;
+
+  color:
+    var(--screenplay-paper-text);
+
+  font-family:
+    var(--screenplay-font);
+
+  font-size:
+    var(--screenplay-font-size);
+
+  line-height:
+    var(--screenplay-line-height);
+
+  text-align:
+    left;
+
+  text-transform:
+    uppercase;
+
+  user-select:
+    none;
+
+  pointer-events:
+    none;
+}
+
+/* -------------------------------------------------------------------------
+ * MESURE HORS ÉCRAN POUR LA PAGINATION
+ * ---------------------------------------------------------------------- */
+
+.screenplay-pagination-measure {
+  position:
+    fixed;
+
+  top:
+    0;
+
+  left:
+    -100000px;
+
+  z-index:
+    -1;
+
+  width:
+    var(--screenplay-page-width);
+
+  height:
+    auto;
+
+  box-sizing:
+    border-box;
+
+  visibility:
+    hidden;
+
+  overflow:
+    visible;
+
+  color:
+    var(--screenplay-paper-text);
+
+  background:
+    var(--screenplay-paper);
+
+  font-family:
+    var(--screenplay-font);
+
+  font-size:
+    var(--screenplay-font-size);
+
+  font-weight:
+    400;
+
+  line-height:
+    var(--screenplay-line-height);
+
+  pointer-events:
+    none;
+}
+
+.screenplay-pagination-measure-content {
+  width:
+    var(--screenplay-content-width);
+
+  box-sizing:
+    border-box;
+}
+
+/* -------------------------------------------------------------------------
+ * SÉLECTION ET ACCESSIBILITÉ
+ * ---------------------------------------------------------------------- */
+
+.screenplay-element-content::selection,
+.screenplay-scene-heading::selection {
+  color:
+    var(--screenplay-paper-text);
+
+  background:
+    color-mix(
+      in srgb,
+      var(--screenplay-accent)
+      42%,
+      transparent
+    );
+}
+
+.screenplay-element-content:focus-visible,
+.screenplay-scene-heading:focus-visible {
+  outline:
+    none;
+}
+
+/* -------------------------------------------------------------------------
+ * POSITION DANS LA BARRE DE STATUT
+ * ---------------------------------------------------------------------- */
+
+.screenplay-status-position {
+  display:
+    inline-block;
+
+  max-width:
+    min(46vw, 520px);
+
+  overflow:
+    hidden;
+
+  color:
+    var(--text-muted, currentColor);
+
+  text-overflow:
+    ellipsis;
+
+  white-space:
+    nowrap;
+}
+
+.status-bar-divider {
+  color:
+    var(--text-muted, currentColor);
+
+  opacity:
+    0.7;
+}
+
+/* -------------------------------------------------------------------------
+ * ÉTAT VIDE
+ * ---------------------------------------------------------------------- */
+
+.screenplay-empty-state {
+  display:
+    flex;
+
+  min-height:
+    100%;
+
+  flex-direction:
+    column;
+
+  align-items:
+    center;
+
+  justify-content:
+    center;
+
+  gap:
+    10px;
+
+  padding:
+    40px;
+
+  box-sizing:
+    border-box;
+
+  color:
+    var(--text-muted, #737373);
+
+  text-align:
+    center;
+}
+
+.screenplay-empty-state-icon {
+  font-size:
+    46px;
+}
+
+.screenplay-empty-state h3 {
+  margin:
+    0;
+
+  color:
+    var(--text-main, currentColor);
+}
+
+.screenplay-empty-state p {
+  max-width:
+    420px;
+
+  margin:
+    0;
+
+  line-height:
+    1.55;
+}
+
+/* -------------------------------------------------------------------------
+ * MODE LECTURE SEULE
+ * ---------------------------------------------------------------------- */
+
+.screenplay-editor.read-only
+.screenplay-element-content,
+.screenplay-editor.read-only
+.screenplay-scene-heading {
+  cursor:
+    default;
+}
+
+.screenplay-editor.read-only
+.screenplay-element-content:focus,
+.screenplay-editor.read-only
+.screenplay-scene-heading:focus {
+  background:
+    transparent;
+
+  box-shadow:
+    none;
+
+  outline:
+    none;
+}
+
+/* -------------------------------------------------------------------------
+ * IMPRESSION ET PDF
+ * ---------------------------------------------------------------------- */
+
+@media print {
+  .screenplay-editor {
+    --screenplay-paper:
+      #ffffff;
+
+    --screenplay-paper-text:
+      #111111;
+
+    --screenplay-border:
+      transparent;
+
+    min-width:
+      0;
+
+    padding:
+      0;
+
+    color:
+      #111111;
+
+    background:
+      #ffffff;
+
+    zoom:
+      1 !important;
+  }
+
+  .screenplay-document {
+    width:
+      auto;
+
+    min-height:
+      0;
+
+    margin:
+      0;
+
+    padding:
+      0;
+
+    color:
+      #111111;
+
+    background:
+      #ffffff;
+
+    border:
+      0;
+
+    border-radius:
+      0;
+
+    box-shadow:
+      none;
+  }
+
+  .screenplay-pages {
+    display:
+      block;
+
+    gap:
+      0;
+  }
+
+  .screenplay-page,
+  .screenplay-title-page {
+    margin:
+      0;
+
+    color:
+      #111111;
+
+    background:
+      #ffffff;
+
+    border:
+      0;
+
+    border-radius:
+      0;
+
+    box-shadow:
+      none;
+
+    break-after:
+      page;
+
+    page-break-after:
+      always;
+  }
+
+  .screenplay-page:last-child {
+    break-after:
+      auto;
+
+    page-break-after:
+      auto;
+  }
+
+  /*
+   * Tous les outils de navigation sont exclus de l’impression.
+   */
+  .screenplay-scene-meta,
+  .screenplay-scene-heading::before,
+  .screenplay-element-type-indicator {
+    display:
+      none !important;
+  }
+
+  .screenplay-scene.navigation-highlight
+  .screenplay-scene-heading {
+    animation:
+      none;
+  }
+
+  .screenplay-element-content:focus,
+  .screenplay-scene-heading:focus,
+  .screenplay-element.active
+  .screenplay-element-content {
+    color:
+      #111111;
+
+    background:
+      transparent;
+
+    box-shadow:
+      none;
+
+    outline:
+      none;
+  }
+
+  .screenplay-element-content:empty::before {
+    content:
+      '';
+  }
+}
+
+/* -------------------------------------------------------------------------
+ * PETITS ÉCRANS
+ * ---------------------------------------------------------------------- */
+
+@media screen and (max-width: 1050px) {
+  .screenplay-editor {
+    padding-right:
+      22px;
+
+    padding-left:
+      22px;
+  }
+
+  /*
+   * Les dimensions de la page sont conservées. Le parent doit utiliser le
+   * défilement horizontal au lieu de comprimer le scénario.
+   */
+  .screenplay-document,
+  .screenplay-page,
+  .screenplay-title-page {
+    margin-right:
+      auto;
+
+    margin-left:
+      auto;
+  }
+}
+
+/* -------------------------------------------------------------------------
+ * RÉDUCTION DES ANIMATIONS
+ * ---------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .screenplay-document {
+    transition:
+      none;
+  }
+
+  .screenplay-scene.navigation-highlight
+  .screenplay-scene-heading {
+    animation:
+      none;
+
+    background:
+      color-mix(
+        in srgb,
+        var(--screenplay-accent)
+        8%,
+        transparent
+      );
+  }
+}

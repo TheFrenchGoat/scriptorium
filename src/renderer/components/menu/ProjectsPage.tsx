@@ -1,17 +1,15 @@
 // src/renderer/components/menu/ProjectsPage.tsx
-// Écran d'accueil : liste des projets, création, importation, renommage,
-// suppression et accès rapide aux objectifs.
 //
-// Les sessions d'écriture et les objectifs font partie du projet. Lors d'un
-// renommage, les sessions existantes ainsi que l'ancien historique statistique
-// sont associés au nouveau nom du projet.
+// Écran d'accueil :
+// - liste des projets ;
+// - création d'un roman ou d'un scénario ;
+// - importation ;
+// - renommage ;
+// - exportation ;
+// - suppression.
 //
-// Le bouton d'importation accepte :
-// - les projets Scriptorium (.scriptorium et anciens fichiers .json) ;
-// - les documents LibreOffice Writer (.odt).
-//
-// Pour un document ODT, le processus principal crée automatiquement un projet
-// et découpe son contenu en chapitres.
+// Les anciens projets qui ne possèdent pas encore `projectType` sont
+// automatiquement considérés comme des romans.
 
 import React, {
   useCallback,
@@ -24,10 +22,18 @@ import { useDialogs } from '../common/Dialogs';
 import { Modal } from '../common/Modal';
 import { ProjectCard } from './ProjectCard';
 import { describeError } from '../../lib/errors';
+import {
+  createScreenplayProject,
+  getDefaultSceneHeading
+} from '../../lib/screenplay';
 import type {
   LanguageCode,
   ProjectData,
+  ProjectType,
   ProjectsMap,
+  ScreenplayConventionLanguage,
+  ScreenplayInteriorExterior,
+  ScreenplayPageFormat,
   WritingStats
 } from '../../../shared/types';
 
@@ -37,18 +43,84 @@ export interface ProjectsPageProps {
   ) => void | Promise<void>;
 }
 
+interface NewProjectDraft {
+  projectType: ProjectType | null;
+  name: string;
+
+  /**
+   * Paramètres propres au scénario.
+   */
+  conventionLanguage: ScreenplayConventionLanguage;
+  pageFormat: ScreenplayPageFormat;
+  author: string;
+  workingTitle: string;
+  interiorExterior: ScreenplayInteriorExterior;
+  customInteriorExterior: string;
+  location: string;
+  time: string;
+}
+
+/**
+ * Retourne un nouveau brouillon de création de projet.
+ */
+function createNewProjectDraft(
+  defaultName: string
+): NewProjectDraft {
+  return {
+    projectType: null,
+    name: defaultName,
+    conventionLanguage: 'fr',
+    pageFormat: 'a4',
+    author: '',
+    workingTitle: '',
+    interiorExterior: 'INT.',
+    customInteriorExterior: '',
+    location: '',
+    time: ''
+  };
+}
+
 /**
  * Normalise un projet importé ou provenant d'une ancienne version.
- *
- * Les propriétés liées aux sessions et aux objectifs sont optionnelles dans
- * le type partagé afin de rester compatibles avec les anciens fichiers.
- * Dans l'état local de cette page, on les initialise systématiquement.
  */
 function normalizeProjectData(
   data: ProjectData
 ): ProjectData {
+  const projectType: ProjectType =
+    data?.projectType === 'screenplay'
+      ? 'screenplay'
+      : 'novel';
+
+  if (projectType === 'screenplay') {
+    const fallback =
+      createScreenplayProject({
+        title: ''
+      });
+
+    return {
+      ...data,
+      projectType: 'screenplay',
+      chapters: data?.chapters || {},
+      world: data?.world || {},
+      customWbTypes:
+        data?.customWbTypes || {},
+      writingSessions: Array.isArray(
+        data?.writingSessions
+      )
+        ? data.writingSessions
+        : [],
+      goals: Array.isArray(data?.goals)
+        ? data.goals
+        : [],
+      screenplay:
+        data?.screenplay ||
+        fallback.screenplay
+    };
+  }
+
   return {
     ...data,
+    projectType: 'novel',
     chapters: data?.chapters || {},
     world: data?.world || {},
     customWbTypes:
@@ -66,9 +138,6 @@ function normalizeProjectData(
 
 /**
  * Déplace l'ancien historique quotidien vers le nouveau nom du projet.
- *
- * Les sessions détaillées sont stockées directement dans ProjectData, mais
- * l'ancien compteur quotidien reste dans WritingStats pour compatibilité.
  */
 async function renameWritingStatsProject(
   oldName: string,
@@ -85,6 +154,7 @@ async function renameWritingStatsProject(
       'Impossible de charger les statistiques pendant le renommage :',
       error
     );
+
     return;
   }
 
@@ -131,6 +201,7 @@ async function deleteWritingStatsProject(
       'Impossible de charger les statistiques pendant la suppression :',
       error
     );
+
     return;
   }
 
@@ -182,9 +253,11 @@ export function ProjectsPage({
   ] = useState(false);
 
   const [
-    newProjectName,
-    setNewProjectName
-  ] = useState<string | null>(null);
+    newProjectDraft,
+    setNewProjectDraft
+  ] = useState<NewProjectDraft | null>(
+    null
+  );
 
   const [
     renaming,
@@ -268,6 +341,7 @@ export function ProjectsPage({
       next: ProjectsMap
     ): Promise<void> => {
       setProjects({ ...next });
+
       await window.api.saveProjects(
         next
       );
@@ -281,24 +355,80 @@ export function ProjectsPage({
 
   const openNewProjectModal =
     (): void => {
-      setNewProjectName(
-        `${t('defaultProjectName')} ${
-          Object.keys(projects).length +
-          1
-        }`
-      );
+      const projectNumber =
+        Object.keys(projects).length + 1;
 
-      setTimeout(() => {
-        newProjectInputRef.current?.focus();
-        newProjectInputRef.current?.select();
-      }, 0);
+      setNewProjectDraft(
+        createNewProjectDraft(
+          `${t('defaultProjectName')} ${projectNumber}`
+        )
+      );
+    };
+
+  const chooseProjectType = (
+    projectType: ProjectType
+  ): void => {
+    setNewProjectDraft(
+      (previous) => {
+        if (!previous) {
+          return previous;
+        }
+
+        const projectNumber =
+          Object.keys(projects).length +
+          1;
+
+        const defaultName =
+          projectType === 'screenplay'
+            ? lang === 'fr'
+              ? `Scénario ${projectNumber}`
+              : `Screenplay ${projectNumber}`
+            : `${t(
+                'defaultProjectName'
+              )} ${projectNumber}`;
+
+        return {
+          ...previous,
+          projectType,
+          name: defaultName,
+          conventionLanguage:
+            lang === 'en'
+              ? 'en'
+              : 'fr'
+        };
+      }
+    );
+
+    window.setTimeout(() => {
+      newProjectInputRef.current?.focus();
+      newProjectInputRef.current?.select();
+    }, 0);
+  };
+
+  const returnToProjectTypeChoice =
+    (): void => {
+      setNewProjectDraft(
+        (previous) =>
+          previous
+            ? {
+                ...previous,
+                projectType: null
+              }
+            : previous
+      );
     };
 
   const confirmNewProject =
     async (): Promise<void> => {
-      const name = (
-        newProjectName ?? ''
-      ).trim();
+      if (
+        !newProjectDraft ||
+        !newProjectDraft.projectType
+      ) {
+        return;
+      }
+
+      const name =
+        newProjectDraft.name.trim();
 
       if (!name) {
         showInfo(t('nameRequired'));
@@ -310,15 +440,62 @@ export function ProjectsPage({
         return;
       }
 
-      const newProject: ProjectData = {
-        chapters: {
-          'Chapitre 1': ''
-        },
-        world: {},
-        customWbTypes: {},
-        writingSessions: [],
-        goals: []
-      };
+      let newProject: ProjectData;
+
+if (
+  newProjectDraft.projectType ===
+  'screenplay'
+) {
+  const interiorExterior =
+    newProjectDraft.interiorExterior;
+
+  const customInteriorExterior =
+    interiorExterior === 'OTHER'
+      ? newProjectDraft
+          .customInteriorExterior
+          .trim()
+      : '';
+
+  newProject =
+    createScreenplayProject({
+      title: name,
+      author:
+        newProjectDraft.author.trim(),
+      conventionLanguage:
+        newProjectDraft
+          .conventionLanguage,
+      pageFormat:
+        newProjectDraft.pageFormat,
+      firstScene: {
+        workingTitle:
+          newProjectDraft
+            .workingTitle
+            .trim(),
+        interiorExterior,
+        customInteriorExterior,
+        location:
+          newProjectDraft
+            .location
+            .trim(),
+        time:
+          newProjectDraft
+            .time
+            .trim()
+      }
+    });
+}
+ else {
+        newProject = {
+          projectType: 'novel',
+          chapters: {
+            'Chapitre 1': ''
+          },
+          world: {},
+          customWbTypes: {},
+          writingSessions: [],
+          goals: []
+        };
+      }
 
       const next: ProjectsMap = {
         ...projects,
@@ -327,7 +504,7 @@ export function ProjectsPage({
 
       await persist(next);
 
-      setNewProjectName(null);
+      setNewProjectDraft(null);
 
       await onOpenProject(name);
     };
@@ -344,7 +521,7 @@ export function ProjectsPage({
       value: name
     });
 
-    setTimeout(() => {
+    window.setTimeout(() => {
       renameInputRef.current?.focus();
       renameInputRef.current?.select();
     }, 0);
@@ -374,10 +551,6 @@ export function ProjectsPage({
         return;
       }
 
-      /*
-       * On reconstruit l'objet en conservant l'ordre des clés.
-       * Sans cela, le projet renommé serait déplacé à la fin de la liste.
-       */
       const next: ProjectsMap = {};
 
       Object.keys(projects).forEach(
@@ -394,13 +567,26 @@ export function ProjectsPage({
               projects[oldName]
             );
 
-          /*
-           * Une session mémorise aussi le nom du projet afin que son historique
-           * reste compréhensible. Lors d'un renommage volontaire, on actualise
-           * cette copie pour éviter d'afficher l'ancien nom.
-           */
+          const screenplay =
+            oldProject.screenplay
+              ? {
+                  ...oldProject.screenplay,
+                  titlePage: {
+                    ...oldProject.screenplay
+                      .titlePage,
+                    title:
+                      oldProject.screenplay
+                        .titlePage.title ||
+                      newName
+                  }
+                }
+              : undefined;
+
           next[newName] = {
             ...oldProject,
+            ...(screenplay
+              ? { screenplay }
+              : {}),
             writingSessions:
               oldProject.writingSessions?.map(
                 (session) => ({
@@ -414,10 +600,6 @@ export function ProjectsPage({
 
       await persist(next);
 
-      /*
-       * Déplace également les onglets et l'onglet actif éventuellement
-       * persistés sous l'ancien nom.
-       */
       const uiState =
         await window.api.getUiState();
 
@@ -432,9 +614,6 @@ export function ProjectsPage({
         );
       }
 
-      /*
-       * Compatibilité avec l'ancien historique quotidien de mots.
-       */
       await renameWritingStatsProject(
         oldName,
         newName
@@ -491,10 +670,6 @@ export function ProjectsPage({
       );
     }
 
-    /*
-     * Les statistiques historiques d'un projet supprimé ne doivent pas
-     * laisser une entrée orpheline dans le store.
-     */
     await deleteWritingStatsProject(
       name
     );
@@ -516,7 +691,10 @@ export function ProjectsPage({
   ): Promise<void> => {
     const result =
       await window.api.showSaveDialog({
-        title: 'Exporter le projet',
+        title:
+          lang === 'fr'
+            ? 'Exporter le projet'
+            : 'Export project',
         defaultPath: `${name}.scriptorium`,
         filters: [
           {
@@ -614,16 +792,6 @@ export function ProjectsPage({
         result.filePaths[0];
 
       try {
-        /*
-         * Le processus principal détermine le type du fichier avec son
-         * extension :
-         *
-         * - .scriptorium/.json : importation classique ;
-         * - .odt : lecture du document LibreOffice et découpage automatique
-         *   en chapitres.
-         *
-         * Dans les deux cas, le renderer reçoit le même objet ImportedProject.
-         */
         const imported =
           await window.api.importProject(
             selectedFile
@@ -637,9 +805,6 @@ export function ProjectsPage({
             t('defaultProjectName');
         }
 
-        /*
-         * Évite d'écraser un projet existant portant le même nom.
-         */
         if (projects[name]) {
           const baseName = name;
           let index = 2;
@@ -660,13 +825,6 @@ export function ProjectsPage({
             imported.projectData
           );
 
-        /*
-         * Si le projet importé contient des sessions, leur nom de projet est
-         * ajusté lorsque le nom a dû être modifié pour éviter un doublon.
-         *
-         * Un document ODT ne contient normalement aucune session, mais la
-         * normalisation garantit la même structure pour tous les imports.
-         */
         const normalizedImportedProject: ProjectData =
           {
             ...importedProject,
@@ -707,6 +865,21 @@ export function ProjectsPage({
 
   const projectNames =
     Object.keys(projects);
+
+  const newProjectTitle =
+    newProjectDraft?.projectType ===
+    'screenplay'
+      ? lang === 'fr'
+        ? 'Nouveau scénario'
+        : 'New screenplay'
+      : newProjectDraft?.projectType ===
+          'novel'
+        ? lang === 'fr'
+          ? 'Nouveau roman'
+          : 'New novel'
+        : lang === 'fr'
+          ? 'Choisir le type de projet'
+          : 'Choose the project type';
 
   return (
     <>
@@ -907,56 +1080,800 @@ export function ProjectsPage({
 
       <Modal
         open={
-          newProjectName !== null
+          newProjectDraft !== null
         }
-        title={t(
-          'newProjectModalTitle'
-        )}
+        title={newProjectTitle}
+        width={
+          newProjectDraft?.projectType ===
+          'novel'
+            ? 500
+            : 680
+        }
         onCancel={() => {
-          setNewProjectName(null);
+          setNewProjectDraft(null);
         }}
         onPrimary={() => {
-          void confirmNewProject();
+          if (
+            newProjectDraft?.projectType
+          ) {
+            void confirmNewProject();
+          }
         }}
         footer={
-          <>
+          newProjectDraft?.projectType ? (
+            <>
+              <button
+                type="button"
+                onClick={
+                  returnToProjectTypeChoice
+                }
+              >
+                {lang === 'fr'
+                  ? 'Retour'
+                  : 'Back'}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setNewProjectDraft(
+                    null
+                  );
+                }}
+              >
+                {t('cancel')}
+              </button>
+
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={() => {
+                  void confirmNewProject();
+                }}
+              >
+                {t('create')}
+              </button>
+            </>
+          ) : (
             <button
               type="button"
               onClick={() => {
-                setNewProjectName(
-                  null
-                );
+                setNewProjectDraft(null);
               }}
             >
               {t('cancel')}
+            </button>
+          )
+        }
+      >
+        {newProjectDraft &&
+        !newProjectDraft.projectType ? (
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns:
+                'repeat(2, minmax(0, 1fr))',
+              gap: 16
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => {
+                chooseProjectType(
+                  'novel'
+                );
+              }}
+              style={{
+                display: 'flex',
+                minHeight: 190,
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 12,
+                padding: 24,
+                border:
+                  '1px solid var(--border)',
+                borderRadius: 12,
+                background:
+                  'var(--bg-panel)',
+                color: 'var(--text)',
+                cursor: 'pointer'
+              }}
+            >
+              <span
+                aria-hidden="true"
+                style={{
+                  fontSize: 44
+                }}
+              >
+                📖
+              </span>
+
+              <strong
+                style={{
+                  fontSize: 18
+                }}
+              >
+                {lang === 'fr'
+                  ? 'Roman'
+                  : 'Novel'}
+              </strong>
+
+              <span
+                style={{
+                  color:
+                    'var(--text-muted)',
+                  textAlign: 'center',
+                  lineHeight: 1.5
+                }}
+              >
+                {lang === 'fr'
+                  ? 'Écriture organisée en chapitres avec mise en page libre.'
+                  : 'Writing organized into chapters with free formatting.'}
+              </span>
             </button>
 
             <button
               type="button"
               onClick={() => {
-                void confirmNewProject();
+                chooseProjectType(
+                  'screenplay'
+                );
+              }}
+              style={{
+                display: 'flex',
+                minHeight: 190,
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 12,
+                padding: 24,
+                border:
+                  '1px solid var(--border)',
+                borderRadius: 12,
+                background:
+                  'var(--bg-panel)',
+                color: 'var(--text)',
+                cursor: 'pointer'
               }}
             >
-              {t('create')}
+              <span
+                aria-hidden="true"
+                style={{
+                  fontSize: 44
+                }}
+              >
+                🎬
+              </span>
+
+              <strong
+                style={{
+                  fontSize: 18
+                }}
+              >
+                {lang === 'fr'
+                  ? 'Scénario'
+                  : 'Screenplay'}
+              </strong>
+
+              <span
+                style={{
+                  color:
+                    'var(--text-muted)',
+                  textAlign: 'center',
+                  lineHeight: 1.5
+                }}
+              >
+                {lang === 'fr'
+                  ? 'Écriture structurée en scènes avec les conventions du scénario.'
+                  : 'Scene-based writing using screenplay conventions.'}
+              </span>
             </button>
-          </>
-        }
-      >
-        <input
-          ref={newProjectInputRef}
-          type="text"
-          placeholder={t(
-            'projectNamePlaceholder'
-          )}
-          value={
-            newProjectName ?? ''
-          }
-          onChange={(event) => {
-            setNewProjectName(
-              event.target.value
-            );
-          }}
-        />
+          </div>
+        ) : null}
+
+        {newProjectDraft?.projectType ===
+        'novel' ? (
+          <label
+            style={{
+              display: 'grid',
+              gap: 8
+            }}
+          >
+            <span>
+              {lang === 'fr'
+                ? 'Nom du roman'
+                : 'Novel name'}
+            </span>
+
+            <input
+              ref={
+                newProjectInputRef
+              }
+              type="text"
+              placeholder={t(
+                'projectNamePlaceholder'
+              )}
+              value={
+                newProjectDraft.name
+              }
+              onChange={(event) => {
+                const value =
+                  event.target.value;
+
+                setNewProjectDraft(
+                  (previous) =>
+                    previous
+                      ? {
+                          ...previous,
+                          name: value
+                        }
+                      : previous
+                );
+              }}
+            />
+          </label>
+        ) : null}
+
+        {newProjectDraft?.projectType ===
+        'screenplay' ? (
+          <div
+            style={{
+              display: 'grid',
+              gap: 18
+            }}
+          >
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns:
+                  'repeat(2, minmax(0, 1fr))',
+                gap: 14
+              }}
+            >
+              <label
+                style={{
+                  display: 'grid',
+                  gap: 6
+                }}
+              >
+                <span>
+                  {lang === 'fr'
+                    ? 'Nom du projet'
+                    : 'Project name'}
+                </span>
+
+                <input
+                  ref={
+                    newProjectInputRef
+                  }
+                  type="text"
+                  value={
+                    newProjectDraft.name
+                  }
+                  onChange={(event) => {
+                    const value =
+                      event.target.value;
+
+                    setNewProjectDraft(
+                      (previous) =>
+                        previous
+                          ? {
+                              ...previous,
+                              name: value
+                            }
+                          : previous
+                    );
+                  }}
+                />
+              </label>
+
+              <label
+                style={{
+                  display: 'grid',
+                  gap: 6
+                }}
+              >
+                <span>
+                  {lang === 'fr'
+                    ? 'Auteur ou auteurs'
+                    : 'Author or authors'}
+                </span>
+
+                <input
+                  type="text"
+                  value={
+                    newProjectDraft.author
+                  }
+                  onChange={(event) => {
+                    const value =
+                      event.target.value;
+
+                    setNewProjectDraft(
+                      (previous) =>
+                        previous
+                          ? {
+                              ...previous,
+                              author: value
+                            }
+                          : previous
+                    );
+                  }}
+                />
+              </label>
+
+              <label
+                style={{
+                  display: 'grid',
+                  gap: 6
+                }}
+              >
+                <span>
+                  {lang === 'fr'
+                    ? 'Convention'
+                    : 'Convention'}
+                </span>
+
+                <select
+                  value={
+                    newProjectDraft
+                      .conventionLanguage
+                  }
+                  onChange={(event) => {
+                    const value =
+                      event.target
+                        .value as ScreenplayConventionLanguage;
+
+                    setNewProjectDraft(
+                      (previous) =>
+                        previous
+                          ? {
+                              ...previous,
+                              conventionLanguage:
+                                value
+                            }
+                          : previous
+                    );
+                  }}
+                >
+                  <option value="fr">
+                    Française
+                  </option>
+
+                  <option value="en">
+                    English
+                  </option>
+                </select>
+              </label>
+
+              <label
+                style={{
+                  display: 'grid',
+                  gap: 6
+                }}
+              >
+                <span>
+                  {lang === 'fr'
+                    ? 'Format de page'
+                    : 'Page format'}
+                </span>
+
+                <select
+                  value={
+                    newProjectDraft
+                      .pageFormat
+                  }
+                  onChange={(event) => {
+                    const value =
+                      event.target
+                        .value as ScreenplayPageFormat;
+
+                    setNewProjectDraft(
+                      (previous) =>
+                        previous
+                          ? {
+                              ...previous,
+                              pageFormat:
+                                value
+                            }
+                          : previous
+                    );
+                  }}
+                >
+                  <option value="a4">
+                    A4
+                  </option>
+
+                  <option value="letter">
+                    US Letter
+                  </option>
+                </select>
+              </label>
+            </div>
+
+            <div
+              style={{
+                paddingTop: 14,
+                borderTop:
+                  '1px solid var(--border)'
+              }}
+            >
+              <strong>
+                {lang === 'fr'
+                  ? 'Première scène'
+                  : 'First scene'}
+              </strong>
+
+              <p
+                style={{
+                  margin:
+                    '6px 0 14px',
+                  color:
+                    'var(--text-muted)',
+                  fontSize: 13
+                }}
+              >
+                {lang === 'fr'
+                  ? 'Ces informations pourront être modifiées ultérieurement.'
+                  : 'This information can be changed later.'}
+              </p>
+
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns:
+                    'repeat(2, minmax(0, 1fr))',
+                  gap: 14
+                }}
+              >
+                <label
+                  style={{
+                    display: 'grid',
+                    gap: 6,
+                    gridColumn:
+                      '1 / -1'
+                  }}
+                >
+                  <span>
+                    {lang === 'fr'
+                      ? 'Titre de travail facultatif'
+                      : 'Optional working title'}
+                  </span>
+
+                  <input
+                    type="text"
+                    placeholder={
+                      lang === 'fr'
+                        ? 'Ex. La rencontre'
+                        : 'E.g. The meeting'
+                    }
+                    value={
+                      newProjectDraft
+                        .workingTitle
+                    }
+                    onChange={(
+                      event
+                    ) => {
+                      const value =
+                        event.target
+                          .value;
+
+                      setNewProjectDraft(
+                        (previous) =>
+                          previous
+                            ? {
+                                ...previous,
+                                workingTitle:
+                                  value
+                              }
+                            : previous
+                      );
+                    }}
+                  />
+                </label>
+
+                <label
+                  style={{
+                    display: 'grid',
+                    gap: 6
+                  }}
+                >
+                  <span>
+                    {lang === 'fr'
+                      ? 'Intérieur / extérieur'
+                      : 'Interior / exterior'}
+                  </span>
+
+                  <select
+                    value={
+                      newProjectDraft
+                        .interiorExterior
+                    }
+                    onChange={(
+                      event
+                    ) => {
+                      const value =
+                        event.target
+                          .value as ScreenplayInteriorExterior;
+
+                      setNewProjectDraft(
+                        (previous) =>
+                          previous
+                            ? {
+                                ...previous,
+                                interiorExterior:
+                                  value
+                              }
+                            : previous
+                      );
+                    }}
+                  >
+                    <option value="INT.">
+                      INT.
+                    </option>
+
+                    <option value="EXT.">
+                      EXT.
+                    </option>
+
+                    <option value="INT./EXT.">
+                      INT./EXT.
+                    </option>
+
+                    <option value="EXT./INT.">
+                      EXT./INT.
+                    </option>
+
+                    <option value="OTHER">
+                      {lang === 'fr'
+                        ? 'Autre…'
+                        : 'Other…'}
+                    </option>
+                  </select>
+                </label>
+
+                {newProjectDraft
+                  .interiorExterior ===
+                'OTHER' ? (
+                  <label
+                    style={{
+                      display: 'grid',
+                      gap: 6
+                    }}
+                  >
+                    <span>
+                      {lang === 'fr'
+                        ? 'Mention personnalisée'
+                        : 'Custom prefix'}
+                    </span>
+
+                    <input
+                      type="text"
+                      placeholder="I/E."
+                      value={
+                        newProjectDraft
+                          .customInteriorExterior
+                      }
+                      onChange={(
+                        event
+                      ) => {
+                        const value =
+                          event.target
+                            .value;
+
+                        setNewProjectDraft(
+                          (previous) =>
+                            previous
+                              ? {
+                                  ...previous,
+                                  customInteriorExterior:
+                                    value
+                                }
+                              : previous
+                        );
+                      }}
+                    />
+                  </label>
+                ) : (
+                  <label
+                    style={{
+                      display: 'grid',
+                      gap: 6
+                    }}
+                  >
+                    <span>
+                      {lang === 'fr'
+                        ? 'Lieu'
+                        : 'Location'}
+                    </span>
+
+                    <input
+                      type="text"
+                      placeholder={
+                        lang === 'fr'
+                          ? 'APPARTEMENT'
+                          : 'APARTMENT'
+                      }
+                      value={
+                        newProjectDraft
+                          .location
+                      }
+                      onChange={(
+                        event
+                      ) => {
+                        const value =
+                          event.target
+                            .value;
+
+                        setNewProjectDraft(
+                          (previous) =>
+                            previous
+                              ? {
+                                  ...previous,
+                                  location:
+                                    value
+                                }
+                              : previous
+                        );
+                      }}
+                    />
+                  </label>
+                )}
+
+                {newProjectDraft
+                  .interiorExterior ===
+                'OTHER' ? (
+                  <label
+                    style={{
+                      display: 'grid',
+                      gap: 6
+                    }}
+                  >
+                    <span>
+                      {lang === 'fr'
+                        ? 'Lieu'
+                        : 'Location'}
+                    </span>
+
+                    <input
+                      type="text"
+                      placeholder={
+                        lang === 'fr'
+                          ? 'APPARTEMENT'
+                          : 'APARTMENT'
+                      }
+                      value={
+                        newProjectDraft
+                          .location
+                      }
+                      onChange={(
+                        event
+                      ) => {
+                        const value =
+                          event.target
+                            .value;
+
+                        setNewProjectDraft(
+                          (previous) =>
+                            previous
+                              ? {
+                                  ...previous,
+                                  location:
+                                    value
+                                }
+                              : previous
+                        );
+                      }}
+                    />
+                  </label>
+                ) : null}
+
+                <label
+                  style={{
+                    display: 'grid',
+                    gap: 6,
+                    gridColumn:
+                      newProjectDraft
+                        .interiorExterior ===
+                      'OTHER'
+                        ? undefined
+                        : '1 / -1'
+                  }}
+                >
+                  <span>
+                    {lang === 'fr'
+                      ? 'Moment'
+                      : 'Time'}
+                  </span>
+
+                  <input
+                    type="text"
+                    placeholder={
+                      newProjectDraft
+                        .conventionLanguage ===
+                      'fr'
+                        ? 'JOUR'
+                        : 'DAY'
+                    }
+                    value={
+                      newProjectDraft.time
+                    }
+                    onChange={(event) => {
+                      const value =
+                        event.target.value;
+
+                      setNewProjectDraft(
+                        (previous) =>
+                          previous
+                            ? {
+                                ...previous,
+                                time: value
+                              }
+                            : previous
+                      );
+                    }}
+                  />
+                </label>
+              </div>
+
+              <div
+                style={{
+                  marginTop: 16,
+                  padding: 12,
+                  border:
+                    '1px solid var(--border)',
+                  borderRadius: 8,
+                  background:
+                    'var(--bg-input)'
+                }}
+              >
+                <span
+                  style={{
+                    display: 'block',
+                    marginBottom: 6,
+                    color:
+                      'var(--text-muted)',
+                    fontSize: 12
+                  }}
+                >
+                  {lang === 'fr'
+                    ? "Aperçu de l'en-tête"
+                    : 'Scene heading preview'}
+                </span>
+
+                <strong
+                  style={{
+                    fontFamily:
+                      "'Courier Prime', 'Courier New', monospace",
+                    fontSize: 14
+                  }}
+                >
+{getDefaultSceneHeading(
+  {
+    interiorExterior:
+      newProjectDraft
+        .interiorExterior,
+    customInteriorExterior:
+      newProjectDraft
+        .interiorExterior ===
+      'OTHER'
+        ? newProjectDraft
+            .customInteriorExterior
+        : '',
+    location:
+      newProjectDraft.location,
+    time:
+      newProjectDraft.time
+  },
+  newProjectDraft
+    .conventionLanguage
+)}
+
+                </strong>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </Modal>
 
       <Modal

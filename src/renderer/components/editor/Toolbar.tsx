@@ -1,32 +1,46 @@
-// Barre d’outils de mise en forme de l’éditeur.
+// src/renderer/components/editor/Toolbar.tsx
 //
-// La sélection de texte est mémorisée avant qu’un bouton ou un menu prenne le
-// focus. Cela permet notamment à Ctrl+A, puis au changement de police, de
-// taille ou de couleur, de fonctionner correctement.
+// Barre d’outils commune aux romans et aux scénarios.
 //
-// La couleur est appliquée directement avec une valeur CSS hexadécimale afin
-// que la couleur choisie corresponde exactement à celle du texte. Les
-// mentions World Building (.wb-mention) sont volontairement exclues : leur
-// couleur reste gérée par le système World Building.
+// En mode roman :
+// - police ;
+// - taille ;
+// - gras, italique, souligné ;
+// - couleur ;
+// - caractères spéciaux ;
+// - alignement.
 //
-// Pour éviter les ralentissements pendant le déplacement dans le sélecteur
-// natif de couleur, aucune modification du document n’est effectuée pendant
-// les événements "input". La couleur n’est appliquée qu’une seule fois, lors
-// de l’événement natif "change", lorsque le choix est validé.
+// En mode scénario :
+// - type du paragraphe actif ;
+// - gras, italique, souligné ;
+// - couleur ;
+// - caractères spéciaux.
+//
+// Les réglages de police, de taille et d’alignement sont volontairement
+// masqués en mode scénario afin de préserver sa mise en page normalisée.
 
 import React, {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState
 } from 'react';
 import { useI18n } from '../../i18n';
+import {
+  getAvailableScreenplayElementTypes,
+  getScreenplayElementLabel
+} from '../../lib/screenplay';
 import {
   Dropdown,
   DropdownItem
 } from '../common/Dropdown';
 import { useEditorStatus } from './editor-status';
 import type { EditorController } from './useEditorController';
+import type {
+  ScreenplayElementType,
+  ScreenplayParagraphType
+} from '../../../shared/types';
 
 export interface ToolbarProps {
   controller: EditorController;
@@ -53,6 +67,12 @@ interface SelectedTextPart {
   textNode: Text;
   startOffset: number;
   endOffset: number;
+}
+
+interface ActiveScreenplayElement {
+  id: string;
+  type: ScreenplayElementType;
+  editable: HTMLElement | null;
 }
 
 const FONTS: FontChoice[] = [
@@ -136,13 +156,27 @@ const SPECIAL_CHARACTERS = [
   '”'
 ];
 
+const SCREENPLAY_ELEMENT_TYPES: readonly ScreenplayElementType[] = [
+  'action',
+  'character',
+  'parenthetical',
+  'dialogue',
+  'transition',
+  'shot'
+];
+
 const DEFAULT_FONT = 'Roboto';
 const DEFAULT_FONT_SIZE = 16;
 const MIN_FONT_SIZE = 8;
 const MAX_FONT_SIZE = 96;
 
-function getEditor(): HTMLElement | null {
-  const editor = document.getElementById('editor');
+// ---------------------------------------------------------------------------
+// RECHERCHE DES ÉLÉMENTS D’ÉDITION
+// ---------------------------------------------------------------------------
+
+function getNovelEditor(): HTMLElement | null {
+  const editor =
+    document.getElementById('editor');
 
   return editor instanceof HTMLElement
     ? editor
@@ -163,15 +197,244 @@ function getElementFromNode(
   return node.parentElement;
 }
 
-function rangeBelongsToEditor(
-  range: Range,
-  editor: HTMLElement
-): boolean {
-  return (
-    editor.contains(range.startContainer) &&
-    editor.contains(range.endContainer)
+function isScreenplayElementType(
+  value: string | undefined
+): value is ScreenplayElementType {
+  return SCREENPLAY_ELEMENT_TYPES.includes(
+    value as ScreenplayElementType
   );
 }
+
+/**
+ * Retourne le contentEditable auquel appartient une sélection.
+ */
+function getWritingRootForRange(
+  range: Range
+): HTMLElement | null {
+  const novelEditor =
+    getNovelEditor();
+
+  if (
+    novelEditor &&
+    novelEditor.contains(
+      range.startContainer
+    ) &&
+    novelEditor.contains(
+      range.endContainer
+    )
+  ) {
+    return novelEditor;
+  }
+
+  const startElement =
+    getElementFromNode(
+      range.startContainer
+    );
+
+  const endElement =
+    getElementFromNode(
+      range.endContainer
+    );
+
+  if (!startElement || !endElement) {
+    return null;
+  }
+
+  const screenplayRoot =
+    startElement.closest<HTMLElement>(
+
+
+[
+'.screenplay-element-content',
+        '.screenplay-scene-heading'
+      ].join(', ')
+    );
+
+  if (!screenplayRoot) {
+    return null;
+  }
+
+  const endBelongsToRoot =
+    endElement === screenplayRoot ||
+    screenplayRoot.contains(
+      endElement
+    );
+
+  return endBelongsToRoot
+    ? screenplayRoot
+    : null;
+}
+
+function getCurrentWritingRoot():
+  | HTMLElement
+  | null {
+  const selection =
+    window.getSelection();
+
+  if (
+    selection &&
+    selection.rangeCount > 0
+  ) {
+    const root =
+      getWritingRootForRange(
+        selection.getRangeAt(0)
+      );
+
+    if (root) {
+      return root;
+    }
+  }
+
+  const activeElement =
+    document.activeElement;
+
+  if (
+    activeElement instanceof HTMLElement
+  ) {
+    if (activeElement.id === 'editor') {
+      return activeElement;
+    }
+
+    const screenplayEditable =
+      activeElement.closest<HTMLElement>(
+        [
+          '.screenplay-element-content',
+          '.screenplay-scene-heading'
+        ].join(', ')
+      );
+
+    if (screenplayEditable) {
+      return screenplayEditable;
+    }
+  }
+
+  return null;
+}
+
+function rangeBelongsToRoot(
+  range: Range,
+  root: HTMLElement
+): boolean {
+  return (
+    root.contains(
+      range.startContainer
+    ) &&
+    root.contains(
+      range.endContainer
+    )
+  );
+}
+
+/**
+ * Recherche l’élément de scénario associé à la sélection ou au focus.
+ */
+function getActiveScreenplayElement():
+  | ActiveScreenplayElement
+  | null {
+  const selection =
+    window.getSelection();
+
+  let sourceElement: HTMLElement | null =
+    null;
+
+  if (
+    selection &&
+    selection.rangeCount > 0
+  ) {
+    sourceElement =
+      getElementFromNode(
+        selection.anchorNode
+      );
+  }
+
+  if (
+    !sourceElement &&
+    document.activeElement instanceof
+      HTMLElement
+  ) {
+    sourceElement =
+      document.activeElement;
+  }
+
+  const wrapper =
+    sourceElement?.closest<HTMLElement>(
+      '[data-screenplay-element-id]'
+    );
+
+  if (!wrapper) {
+    return null;
+  }
+
+  const id =
+    wrapper.dataset
+      .screenplayElementId;
+
+  if (!id) {
+    return null;
+  }
+
+  let type =
+    wrapper.dataset
+      .screenplayElementType;
+
+  /*
+   * Certains composants posent le type sur le contentEditable plutôt que
+   * sur son conteneur. On vérifie donc également l’enfant éditable.
+   */
+  const editable =
+    wrapper.matches(
+      '.screenplay-element-content'
+    )
+      ? wrapper
+      : wrapper.querySelector<HTMLElement>(
+          '.screenplay-element-content'
+        );
+
+  if (
+    !isScreenplayElementType(type)
+  ) {
+    type =
+      editable?.dataset
+        .screenplayElementType;
+  }
+
+  if (
+    !isScreenplayElementType(type)
+  ) {
+    return null;
+  }
+
+  return {
+    id,
+    type,
+    editable
+  };
+}
+
+function isSceneHeadingFocused(): boolean {
+  const selection =
+    window.getSelection();
+
+  const sourceElement =
+    selection?.anchorNode
+      ? getElementFromNode(
+          selection.anchorNode
+        )
+      : document.activeElement instanceof
+            HTMLElement
+        ? document.activeElement
+        : null;
+
+  return Boolean(
+    sourceElement?.closest(
+      '.screenplay-scene-heading'
+    )
+  );
+}
+
+// ---------------------------------------------------------------------------
+// MESURE DE LA MISE EN FORME
+// ---------------------------------------------------------------------------
 
 function normalizeFontFamily(
   value: string
@@ -187,22 +450,27 @@ function getReadableFontName(
   fontFamily: string
 ): string {
   const normalized =
-    normalizeFontFamily(fontFamily);
+    normalizeFontFamily(
+      fontFamily
+    );
 
-  const exactChoice = FONTS.find(
-    (font) =>
-      normalizeFontFamily(font.css) ===
-      normalized
-  );
+  const exactChoice =
+    FONTS.find(
+      (font) =>
+        normalizeFontFamily(
+          font.css
+        ) === normalized
+    );
 
   if (exactChoice) {
     return exactChoice.label;
   }
 
-  const firstFont = fontFamily
-    .split(',')[0]
-    ?.replace(/["']/g, '')
-    .trim();
+  const firstFont =
+    fontFamily
+      .split(',')[0]
+      ?.replace(/["']/g, '')
+      .trim();
 
   return firstFont || DEFAULT_FONT;
 }
@@ -210,7 +478,8 @@ function getReadableFontName(
 function parseFontSize(
   value: string
 ): number | null {
-  const parsed = Number.parseFloat(value);
+  const parsed =
+    Number.parseFloat(value);
 
   if (!Number.isFinite(parsed)) {
     return null;
@@ -224,94 +493,119 @@ function clampFontSize(
 ): number {
   return Math.min(
     MAX_FONT_SIZE,
-    Math.max(MIN_FONT_SIZE, value)
+    Math.max(
+      MIN_FONT_SIZE,
+      value
+    )
   );
 }
 
 function isWorldBuildingNode(
   node: Node
 ): boolean {
-  const element = getElementFromNode(node);
+  const element =
+    getElementFromNode(node);
 
   return Boolean(
-    element?.closest('.wb-mention')
+    element?.closest(
+      '.wb-mention'
+    )
   );
 }
 
 function getSelectedTextParts(
   range: Range,
-  editor: HTMLElement
+  root: HTMLElement
 ): SelectedTextPart[] {
-  const parts: SelectedTextPart[] = [];
+  const parts: SelectedTextPart[] =
+    [];
 
   const walker =
     document.createTreeWalker(
-      editor,
+      root,
       NodeFilter.SHOW_TEXT
     );
 
-  let currentNode = walker.nextNode();
+  let currentNode =
+    walker.nextNode();
 
   while (currentNode) {
-    const textNode = currentNode as Text;
+    const textNode =
+      currentNode as Text;
+
     const textLength =
-      textNode.textContent?.length ?? 0;
+      textNode.textContent
+        ?.length ?? 0;
 
     if (textLength > 0) {
       let intersects = false;
 
       try {
         intersects =
-          range.intersectsNode(textNode);
+          range.intersectsNode(
+            textNode
+          );
       } catch {
         intersects = false;
       }
 
       if (intersects) {
         const startOffset =
-          textNode === range.startContainer
+          textNode ===
+          range.startContainer
             ? range.startOffset
             : 0;
 
         const endOffset =
-          textNode === range.endContainer
+          textNode ===
+          range.endContainer
             ? range.endOffset
             : textLength;
 
-        const safeStart = Math.max(
-          0,
-          Math.min(startOffset, textLength)
-        );
+        const safeStart =
+          Math.max(
+            0,
+            Math.min(
+              startOffset,
+              textLength
+            )
+          );
 
-        const safeEnd = Math.max(
-          safeStart,
-          Math.min(endOffset, textLength)
-        );
+        const safeEnd =
+          Math.max(
+            safeStart,
+            Math.min(
+              endOffset,
+              textLength
+            )
+          );
 
-        if (safeEnd > safeStart) {
+        if (
+          safeEnd > safeStart
+        ) {
           parts.push({
             textNode,
-            startOffset: safeStart,
-            endOffset: safeEnd
+            startOffset:
+              safeStart,
+            endOffset:
+              safeEnd
           });
         }
       }
     }
 
-    currentNode = walker.nextNode();
+    currentNode =
+      walker.nextNode();
   }
 
   return parts;
 }
 
 /**
- * Applique un style CSS aux portions de texte sélectionnées.
- *
- * Les portions sont traitées de la fin vers le début afin que les mutations
- * du DOM ne rendent pas invalides les offsets des nœuds suivants.
+ * Applique un style CSS directement aux portions de texte sélectionnées.
  */
 function applyInlineStyleToSelection(
-  editor: HTMLElement,
+  root: HTMLElement,
   styles: Partial<CSSStyleDeclaration>,
   options?: {
     skipWorldBuilding?: boolean;
@@ -332,20 +626,23 @@ function applyInlineStyleToSelection(
 
   if (
     sourceRange.collapsed ||
-    !rangeBelongsToEditor(
+    !rangeBelongsToRoot(
       sourceRange,
-      editor
+      root
     )
   ) {
     return false;
   }
 
-  let parts = getSelectedTextParts(
-    sourceRange,
-    editor
-  );
+  let parts =
+    getSelectedTextParts(
+      sourceRange,
+      root
+    );
 
-  if (options?.skipWorldBuilding) {
+  if (
+    options?.skipWorldBuilding
+  ) {
     parts = parts.filter(
       (part) =>
         !isWorldBuildingNode(
@@ -358,17 +655,20 @@ function applyInlineStyleToSelection(
     return false;
   }
 
-  const insertedSpans: HTMLSpanElement[] =
-    [];
+  const insertedSpans:
+    HTMLSpanElement[] = [];
 
   for (
-    let index = parts.length - 1;
+    let index =
+      parts.length - 1;
     index >= 0;
     index -= 1
   ) {
     const part = parts[index];
 
-    if (!part.textNode.isConnected) {
+    if (
+      !part.textNode.isConnected
+    ) {
       continue;
     }
 
@@ -393,20 +693,35 @@ function applyInlineStyleToSelection(
       partRange.extractContents();
 
     const span =
-      document.createElement('span');
+      document.createElement(
+        'span'
+      );
 
-    Object.assign(span.style, styles);
-    span.appendChild(selectedContent);
+    Object.assign(
+      span.style,
+      styles
+    );
+
+    span.appendChild(
+      selectedContent
+    );
 
     partRange.insertNode(span);
-    insertedSpans.unshift(span);
+
+    insertedSpans.unshift(
+      span
+    );
   }
 
-  if (insertedSpans.length === 0) {
+  if (
+    insertedSpans.length === 0
+  ) {
     return false;
   }
 
-  const firstSpan = insertedSpans[0];
+  const firstSpan =
+    insertedSpans[0];
+
   const lastSpan =
     insertedSpans[
       insertedSpans.length - 1
@@ -415,17 +730,24 @@ function applyInlineStyleToSelection(
   const restoredRange =
     document.createRange();
 
-  restoredRange.setStartBefore(firstSpan);
-  restoredRange.setEndAfter(lastSpan);
+  restoredRange.setStartBefore(
+    firstSpan
+  );
+
+  restoredRange.setEndAfter(
+    lastSpan
+  );
 
   selection.removeAllRanges();
-  selection.addRange(restoredRange);
+  selection.addRange(
+    restoredRange
+  );
 
   return true;
 }
 
 function getSelectionFormatting(
-  editor: HTMLElement
+  root: HTMLElement
 ): SelectionFormatting | null {
   const selection =
     window.getSelection();
@@ -441,16 +763,19 @@ function getSelectionFormatting(
     selection.getRangeAt(0);
 
   if (
-    !rangeBelongsToEditor(
+    !rangeBelongsToRoot(
       range,
-      editor
+      root
     )
   ) {
     return null;
   }
 
-  const fontFamilies = new Set<string>();
-  const fontSizes = new Set<number>();
+  const fontFamilies =
+    new Set<string>();
+
+  const fontSizes =
+    new Set<number>();
 
   let firstComputedStyle:
     | CSSStyleDeclaration
@@ -460,63 +785,75 @@ function getSelectionFormatting(
     const parts =
       getSelectedTextParts(
         range,
-        editor
+        root
       );
 
-    parts.forEach((part) => {
-      const element =
-        getElementFromNode(
-          part.textNode
+    parts.forEach(
+      (part) => {
+        const element =
+          getElementFromNode(
+            part.textNode
+          );
+
+        if (!element) {
+          return;
+        }
+
+        const computedStyle =
+          window.getComputedStyle(
+            element
+          );
+
+        if (
+          !firstComputedStyle
+        ) {
+          firstComputedStyle =
+            computedStyle;
+        }
+
+        fontFamilies.add(
+          getReadableFontName(
+            computedStyle
+              .fontFamily
+          )
         );
 
-      if (!element) {
-        return;
+        const size =
+          parseFontSize(
+            computedStyle
+              .fontSize
+          );
+
+        if (size !== null) {
+          fontSizes.add(size);
+        }
       }
-
-      const computedStyle =
-        window.getComputedStyle(
-          element
-        );
-
-      if (!firstComputedStyle) {
-        firstComputedStyle =
-          computedStyle;
-      }
-
-      fontFamilies.add(
-        getReadableFontName(
-          computedStyle.fontFamily
-        )
-      );
-
-      const size = parseFontSize(
-        computedStyle.fontSize
-      );
-
-      if (size !== null) {
-        fontSizes.add(size);
-      }
-    });
+    );
   }
 
   if (!firstComputedStyle) {
     const element =
       getElementFromNode(
         selection.anchorNode
-      ) ?? editor;
+      ) ?? root;
 
     firstComputedStyle =
-      window.getComputedStyle(element);
+      window.getComputedStyle(
+        element
+      );
 
     fontFamilies.add(
       getReadableFontName(
-        firstComputedStyle.fontFamily
+        firstComputedStyle
+          .fontFamily
       )
     );
 
-    const size = parseFontSize(
-      firstComputedStyle.fontSize
-    );
+    const size =
+      parseFontSize(
+        firstComputedStyle
+          .fontSize
+      );
 
     if (size !== null) {
       fontSizes.add(size);
@@ -524,7 +861,9 @@ function getSelectionFormatting(
   }
 
   const fontValues =
-    Array.from(fontFamilies);
+    Array.from(
+      fontFamilies
+    );
 
   const sizeValues =
     Array.from(fontSizes);
@@ -532,39 +871,61 @@ function getSelectionFormatting(
   const decoration =
     firstComputedStyle
       .textDecorationLine ||
-    firstComputedStyle.textDecoration ||
+    firstComputedStyle
+      .textDecoration ||
     '';
 
   const numericWeight =
     Number.parseInt(
-      firstComputedStyle.fontWeight,
+      firstComputedStyle
+        .fontWeight,
       10
     );
 
   return {
     fontFamily:
-      fontValues[0] ?? DEFAULT_FONT,
+      fontValues[0] ??
+      DEFAULT_FONT,
+
     fontSize:
       sizeValues[0] ??
       DEFAULT_FONT_SIZE,
+
     fontMixed:
       fontValues.length > 1,
+
     sizeMixed:
       sizeValues.length > 1,
+
     bold:
-      firstComputedStyle.fontWeight ===
+      firstComputedStyle
+        .fontWeight ===
         'bold' ||
-      (!Number.isNaN(numericWeight) &&
-        numericWeight >= 600),
+      (
+        !Number.isNaN(
+          numericWeight
+        ) &&
+        numericWeight >= 600
+      ),
+
     italic:
-      firstComputedStyle.fontStyle ===
+      firstComputedStyle
+        .fontStyle ===
       'italic',
+
     underline:
-      decoration.includes('underline')
+      decoration.includes(
+        'underline'
+      )
   };
 }
 
-function AlignLeftIcon(): React.ReactElement {
+// ---------------------------------------------------------------------------
+// ICÔNES
+// ---------------------------------------------------------------------------
+
+function AlignLeftIcon():
+  React.ReactElement {
   return (
     <svg
       aria-hidden="true"
@@ -583,7 +944,8 @@ function AlignLeftIcon(): React.ReactElement {
   );
 }
 
-function AlignCenterIcon(): React.ReactElement {
+function AlignCenterIcon():
+  React.ReactElement {
   return (
     <svg
       aria-hidden="true"
@@ -602,7 +964,8 @@ function AlignCenterIcon(): React.ReactElement {
   );
 }
 
-function AlignRightIcon(): React.ReactElement {
+function AlignRightIcon():
+  React.ReactElement {
   return (
     <svg
       aria-hidden="true"
@@ -621,7 +984,8 @@ function AlignRightIcon(): React.ReactElement {
   );
 }
 
-function AlignJustifyIcon(): React.ReactElement {
+function AlignJustifyIcon():
+  React.ReactElement {
   return (
     <svg
       aria-hidden="true"
@@ -640,52 +1004,142 @@ function AlignJustifyIcon(): React.ReactElement {
   );
 }
 
+// ---------------------------------------------------------------------------
+// COMPOSANT
+// ---------------------------------------------------------------------------
+
 export function Toolbar({
   controller,
   onOpenGlobalSearch,
   onOpenReplace
 }: ToolbarProps): React.ReactElement {
-  const { t } = useI18n();
+  const {
+    t,
+    lang
+  } = useI18n();
+
   const status =
-    useEditorStatus(controller.status);
+    useEditorStatus(
+      controller.status
+    );
+
+  const data =
+    controller.data();
+
+  const screenplay =
+    data.screenplay;
+
+  const isScreenplayMode =
+    controller.isScreenplayProject() &&
+    controller.activeType() ===
+      'scene' &&
+    Boolean(screenplay);
+
+  const screenplayLanguage =
+    screenplay?.settings
+      .conventionLanguage ??
+    (
+      lang === 'en'
+        ? 'en'
+        : 'fr'
+    );
+
+  const availableScreenplayTypes =
+    useMemo(
+      () =>
+        screenplay
+          ? getAvailableScreenplayElementTypes(
+              screenplay.settings
+            )
+          : [],
+      [screenplay]
+    );
 
   const savedRangeRef =
-    useRef<Range | null>(null);
-
-  /*
-   * Référence directe vers le sélecteur de couleur.
-   *
-   * Elle permet d’écouter le véritable événement DOM "change". Contrairement
-   * au onChange synthétique de React, cet événement n’est déclenché qu’après
-   * validation du choix dans la palette native de Chromium.
-   */
-  const colorInputRef =
-    useRef<HTMLInputElement | null>(null);
-
-  const [formatting, setFormatting] =
-    useState<SelectionFormatting>({
-      fontFamily: DEFAULT_FONT,
-      fontSize: DEFAULT_FONT_SIZE,
-      fontMixed: false,
-      sizeMixed: false,
-      bold: false,
-      italic: false,
-      underline: false
-    });
-
-  const [sizeDraft, setSizeDraft] =
-    useState(
-      String(DEFAULT_FONT_SIZE)
+    useRef<Range | null>(
+      null
     );
+
+  const activeScreenplayElementIdRef =
+    useRef<string | null>(
+      null
+    );
+
+  const colorInputRef =
+    useRef<HTMLInputElement | null>(
+      null
+    );
+
+  const [
+    activeScreenplayParagraphType,
+    setActiveScreenplayParagraphType
+  ] = useState<
+    ScreenplayParagraphType
+  >('action');
+
+  const [
+    formatting,
+    setFormatting
+  ] = useState<SelectionFormatting>({
+    fontFamily: DEFAULT_FONT,
+    fontSize: DEFAULT_FONT_SIZE,
+    fontMixed: false,
+    sizeMixed: false,
+    bold: false,
+    italic: false,
+    underline: false
+  });
+
+  const [
+    sizeDraft,
+    setSizeDraft
+  ] = useState(
+    String(DEFAULT_FONT_SIZE)
+  );
+
+  const refreshScreenplayElement =
+    useCallback((): void => {
+      if (!isScreenplayMode) {
+        activeScreenplayElementIdRef.current =
+          null;
+
+        return;
+      }
+
+      if (
+        isSceneHeadingFocused()
+      ) {
+        activeScreenplayElementIdRef.current =
+          null;
+
+        setActiveScreenplayParagraphType(
+          'scene-heading'
+        );
+
+        return;
+      }
+
+      const active =
+        getActiveScreenplayElement();
+
+      if (!active) {
+        return;
+      }
+
+      activeScreenplayElementIdRef.current =
+        active.id;
+
+      setActiveScreenplayParagraphType(
+        active.type
+      );
+    }, [isScreenplayMode]);
 
   const rememberCurrentSelection =
     useCallback((): void => {
-      const editor = getEditor();
       const selection =
         window.getSelection();
 
       if (
-        !editor ||
         !selection ||
         selection.rangeCount === 0
       ) {
@@ -695,35 +1149,44 @@ export function Toolbar({
       const range =
         selection.getRangeAt(0);
 
-      if (
-        !rangeBelongsToEditor(
-          range,
-          editor
-        )
-      ) {
+      const root =
+        getWritingRootForRange(
+          range
+        );
+
+      if (!root) {
         return;
       }
 
       savedRangeRef.current =
         range.cloneRange();
-    }, []);
+
+      refreshScreenplayElement();
+    }, [
+      refreshScreenplayElement
+    ]);
 
   const restoreSavedSelection =
     useCallback((): boolean => {
-      const editor = getEditor();
       const range =
         savedRangeRef.current;
 
       if (
-        !editor ||
         !range ||
-        !range.startContainer.isConnected ||
-        !range.endContainer.isConnected ||
-        !rangeBelongsToEditor(
-          range,
-          editor
-        )
+        !range.startContainer
+          .isConnected ||
+        !range.endContainer
+          .isConnected
       ) {
+        return false;
+      }
+
+      const root =
+        getWritingRootForRange(
+          range
+        );
+
+      if (!root) {
         return false;
       }
 
@@ -734,7 +1197,7 @@ export function Toolbar({
         return false;
       }
 
-      editor.focus({
+      root.focus({
         preventScroll: true
       });
 
@@ -746,14 +1209,17 @@ export function Toolbar({
 
   const refreshFormatting =
     useCallback((): void => {
-      const editor = getEditor();
+      const root =
+        getCurrentWritingRoot();
 
-      if (!editor) {
+      if (!root) {
         return;
       }
 
       const next =
-        getSelectionFormatting(editor);
+        getSelectionFormatting(
+          root
+        );
 
       if (!next) {
         return;
@@ -761,23 +1227,35 @@ export function Toolbar({
 
       setFormatting(next);
 
-      setSizeDraft(
-        next.sizeMixed ||
+      if (!isScreenplayMode) {
+        setSizeDraft(
+          next.sizeMixed ||
           next.fontSize === null
-          ? ''
-          : String(next.fontSize)
-      );
-    }, []);
+            ? ''
+            : String(
+                next.fontSize
+              )
+        );
+      }
+    }, [isScreenplayMode]);
 
   useEffect(() => {
-    const update = (): void => {
-      rememberCurrentSelection();
-      refreshFormatting();
-    };
+    const update =
+      (): void => {
+        rememberCurrentSelection();
+        refreshFormatting();
+        refreshScreenplayElement();
+      };
 
     document.addEventListener(
       'selectionchange',
       update
+    );
+
+    document.addEventListener(
+      'focusin',
+      update,
+      true
     );
 
     document.addEventListener(
@@ -799,6 +1277,12 @@ export function Toolbar({
       );
 
       document.removeEventListener(
+        'focusin',
+        update,
+        true
+      );
+
+      document.removeEventListener(
         'keyup',
         update,
         true
@@ -812,54 +1296,130 @@ export function Toolbar({
     };
   }, [
     refreshFormatting,
+    refreshScreenplayElement,
     rememberCurrentSelection
   ]);
 
+  /**
+   * Signale au contentEditable de scénario qu’une modification directe du DOM
+   * vient d’être réalisée.
+   */
+  const notifyScreenplayInput =
+    useCallback(
+      (
+        root: HTMLElement | null
+      ): void => {
+        if (
+          !isScreenplayMode ||
+          !root
+        ) {
+          return;
+        }
+
+        root.dispatchEvent(
+          new Event(
+            'input',
+            {
+              bubbles: true
+            }
+          )
+        );
+
+        controller.updateStats();
+      },
+      [
+        controller,
+        isScreenplayMode
+]
+
+    );
+
   const finalizeCustomFormatting =
-    useCallback((): void => {
-      controller.handleInput();
-      rememberCurrentSelection();
-      refreshFormatting();
+    useCallback(
+      (
+        root?: HTMLElement | null
+      ): void => {
+        if (isScreenplayMode) {
+          notifyScreenplayInput(
+            root ??
+              getCurrentWritingRoot()
+          );
+        } else {
+          controller.handleInput();
+        }
 
-      document.dispatchEvent(
-        new Event('selectionchange')
-      );
-    }, [
-      controller,
-      refreshFormatting,
-      rememberCurrentSelection
-    ]);
-
-  const runCommand = useCallback(
-    (
-      command: string,
-      value?: string
-    ): void => {
-      restoreSavedSelection();
-      controller.format(
-        command,
-        value
-      );
-
-      window.setTimeout(() => {
         rememberCurrentSelection();
         refreshFormatting();
-      }, 0);
-    },
-    [
-      controller,
-      refreshFormatting,
-      rememberCurrentSelection,
-      restoreSavedSelection
-    ]
-  );
+
+        document.dispatchEvent(
+          new Event(
+            'selectionchange'
+          )
+        );
+      },
+      [
+        controller,
+        isScreenplayMode,
+        notifyScreenplayInput,
+        refreshFormatting,
+        rememberCurrentSelection
+      ]
+    );
+
+  const runCommand =
+    useCallback(
+      (
+        command: string,
+        value?: string
+      ): void => {
+        restoreSavedSelection();
+
+        const root =
+          getCurrentWritingRoot();
+
+        controller.format(
+          command,
+          value
+        );
+
+        if (isScreenplayMode) {
+          notifyScreenplayInput(
+            root
+          );
+        }
+
+        window.setTimeout(
+          () => {
+            rememberCurrentSelection();
+            refreshFormatting();
+          },
+          0
+        );
+      },
+      [
+        controller,
+        isScreenplayMode,
+        notifyScreenplayInput,
+        refreshFormatting,
+        rememberCurrentSelection,
+        restoreSavedSelection
+      ]
+    );
+
+  // -----------------------------------------------------------------------
+  // POLICE ET TAILLE — ROMAN UNIQUEMENT
+  // -----------------------------------------------------------------------
 
   const applyFontFamily =
     useCallback(
-      (font: FontChoice): void => {
+      (
+        font: FontChoice
+      ): void => {
         restoreSavedSelection();
 
-        const editor = getEditor();
+        const editor =
+          getNovelEditor();
+
         const selection =
           window.getSelection();
 
@@ -875,7 +1435,7 @@ export function Toolbar({
           selection.getRangeAt(0);
 
         if (
-          !rangeBelongsToEditor(
+          !rangeBelongsToRoot(
             range,
             editor
           )
@@ -888,10 +1448,13 @@ export function Toolbar({
             font.css
           );
 
-          window.setTimeout(() => {
-            rememberCurrentSelection();
-            refreshFormatting();
-          }, 0);
+          window.setTimeout(
+            () => {
+              rememberCurrentSelection();
+              refreshFormatting();
+            },
+            0
+          );
 
           return;
         }
@@ -900,12 +1463,15 @@ export function Toolbar({
           applyInlineStyleToSelection(
             editor,
             {
-              fontFamily: font.css
+              fontFamily:
+                font.css
             }
           );
 
         if (changed) {
-          finalizeCustomFormatting();
+          finalizeCustomFormatting(
+            editor
+          );
         }
       },
       [
@@ -919,7 +1485,9 @@ export function Toolbar({
 
   const applyFontSize =
     useCallback(
-      (requestedSize: number): void => {
+      (
+        requestedSize: number
+      ): void => {
         if (
           !Number.isFinite(
             requestedSize
@@ -930,13 +1498,20 @@ export function Toolbar({
 
         const size =
           clampFontSize(
-            Math.round(requestedSize)
+            Math.round(
+              requestedSize
+            )
           );
 
-        setSizeDraft(String(size));
+        setSizeDraft(
+          String(size)
+        );
+
         restoreSavedSelection();
 
-        const editor = getEditor();
+        const editor =
+          getNovelEditor();
+
         const selection =
           window.getSelection();
 
@@ -952,7 +1527,7 @@ export function Toolbar({
           selection.getRangeAt(0);
 
         if (
-          !rangeBelongsToEditor(
+          !rangeBelongsToRoot(
             range,
             editor
           )
@@ -965,10 +1540,13 @@ export function Toolbar({
             size
           );
 
-          window.setTimeout(() => {
-            rememberCurrentSelection();
-            refreshFormatting();
-          }, 0);
+          window.setTimeout(
+            () => {
+              rememberCurrentSelection();
+              refreshFormatting();
+            },
+            0
+          );
 
           return;
         }
@@ -977,12 +1555,15 @@ export function Toolbar({
           applyInlineStyleToSelection(
             editor,
             {
-              fontSize: `${size}px`
+              fontSize:
+                `${size}px`
             }
           );
 
         if (changed) {
-          finalizeCustomFormatting();
+          finalizeCustomFormatting(
+            editor
+          );
         }
       },
       [
@@ -1022,7 +1603,9 @@ export function Toolbar({
           10
         );
 
-      if (!Number.isFinite(parsed)) {
+      if (
+        !Number.isFinite(parsed)
+      ) {
         setSizeDraft(
           formatting.sizeMixed
             ? ''
@@ -1038,23 +1621,158 @@ export function Toolbar({
       applyFontSize(parsed);
     };
 
-  /**
-   * Applique la couleur uniquement au texte ordinaire.
-   *
-   * Les nœuds situés dans un élément .wb-mention sont exclus pour conserver
-   * la couleur définie par la fiche World Building.
-   */
-  const applyTextColor =
+  // -----------------------------------------------------------------------
+  // TYPE DE PARAGRAPHE — SCÉNARIO UNIQUEMENT
+  // -----------------------------------------------------------------------
+
+  const changeScreenplayElementType =
     useCallback(
-      (color: string): void => {
+      (
+        type: ScreenplayElementType
+      ): void => {
+        if (
+          !screenplay ||
+          !isScreenplayMode
+        ) {
+          return;
+        }
+
         restoreSavedSelection();
 
-        const editor = getEditor();
+        const currentElement =
+          getActiveScreenplayElement();
+
+        const elementId =
+          currentElement?.id ??
+          activeScreenplayElementIdRef
+            .current;
+
+        if (!elementId) {
+          return;
+        }
+
+        let changed = false;
+
+        const nextScreenplay = {
+          ...screenplay,
+
+          scenes:
+            screenplay.scenes.map(
+              (scene) => {
+                const containsElement =
+                  scene.elements.some(
+                    (element) =>
+                      element.id ===
+                      elementId
+                  );
+
+                if (!containsElement) {
+                  return scene;
+                }
+
+                changed = true;
+
+                return {
+                  ...scene,
+
+                  elements:
+                    scene.elements.map(
+                      (element) =>
+                        element.id ===
+                        elementId
+                          ? {
+                              ...element,
+                              type
+                            }
+                          : element
+                    )
+                };
+              }
+            )
+        };
+
+        if (!changed) {
+          return;
+        }
+
+        controller.updateScreenplay(
+          nextScreenplay
+        );
+
+        setActiveScreenplayParagraphType(
+          type
+        );
+
+        activeScreenplayElementIdRef.current =
+          elementId;
+
+        window.requestAnimationFrame(
+          () => {
+            const escapedId =
+              typeof CSS !==
+                'undefined' &&
+              typeof CSS.escape ===
+                'function'
+                ? CSS.escape(
+                    elementId
+                  )
+                : elementId.replace(
+                    /"/g,
+                    '\\"'
+                  );
+
+            const wrapper =
+              document.querySelector<HTMLElement>(
+                `[data-screenplay-element-id="${escapedId}"]`
+              );
+
+            const editable =
+              wrapper?.matches(
+                '.screenplay-element-content'
+              )
+                ? wrapper
+                : wrapper?.querySelector<HTMLElement>(
+                    '.screenplay-element-content'
+                  );
+
+            editable?.focus({
+              preventScroll: true
+            });
+
+            rememberCurrentSelection();
+            refreshFormatting();
+          }
+        );
+      },
+      [
+        controller,
+        isScreenplayMode,
+        refreshFormatting,
+        rememberCurrentSelection,
+        restoreSavedSelection,
+        screenplay
+      ]
+    );
+
+  // -----------------------------------------------------------------------
+  // COULEUR
+  // -----------------------------------------------------------------------
+
+  const applyTextColor =
+    useCallback(
+      (
+        color: string
+      ): void => {
+        restoreSavedSelection();
+
+        const root =
+          getCurrentWritingRoot();
+
         const selection =
           window.getSelection();
 
         if (
-          !editor ||
+          !root ||
           !selection ||
           selection.rangeCount === 0
         ) {
@@ -1065,9 +1783,9 @@ export function Toolbar({
           selection.getRangeAt(0);
 
         if (
-          !rangeBelongsToEditor(
+          !rangeBelongsToRoot(
             range,
-            editor
+            root
           )
         ) {
           return;
@@ -1075,6 +1793,7 @@ export function Toolbar({
 
         if (range.collapsed) {
           if (
+            !isScreenplayMode &&
             isWorldBuildingNode(
               range.startContainer
             )
@@ -1087,47 +1806,52 @@ export function Toolbar({
             color
           );
 
-          window.setTimeout(() => {
-            rememberCurrentSelection();
-            refreshFormatting();
-          }, 0);
+          if (isScreenplayMode) {
+            notifyScreenplayInput(
+              root
+            );
+          }
+
+          window.setTimeout(
+            () => {
+              rememberCurrentSelection();
+              refreshFormatting();
+            },
+            0
+          );
 
           return;
         }
 
         const changed =
           applyInlineStyleToSelection(
-            editor,
+            root,
             {
               color
             },
             {
-              skipWorldBuilding: true
+              skipWorldBuilding:
+                !isScreenplayMode
             }
           );
 
         if (changed) {
-          finalizeCustomFormatting();
+          finalizeCustomFormatting(
+            root
+          );
         }
       },
       [
         controller,
         finalizeCustomFormatting,
+        isScreenplayMode,
+        notifyScreenplayInput,
         refreshFormatting,
         rememberCurrentSelection,
         restoreSavedSelection
       ]
     );
 
-  /*
-   * React traite onChange de certains champs comme un événement "input".
-   * Pour <input type="color">, cela peut déclencher le traitement à chaque
-   * déplacement dans la palette et reconstruire de nombreux spans dans le
-   * chapitre.
-   *
-   * L’écoute directe de l’événement DOM "change" garantit que l’application
-   * de la couleur ne se produit qu’une seule fois, après validation.
-   */
   useEffect(() => {
     const colorInput =
       colorInputRef.current;
@@ -1143,12 +1867,17 @@ export function Toolbar({
         event.currentTarget;
 
       if (
-        !(target instanceof HTMLInputElement)
+        !(
+          target instanceof
+          HTMLInputElement
+        )
       ) {
         return;
       }
 
-      applyTextColor(target.value);
+      applyTextColor(
+        target.value
+      );
     };
 
     colorInput.addEventListener(
@@ -1164,16 +1893,28 @@ export function Toolbar({
     };
   }, [applyTextColor]);
 
+  // -----------------------------------------------------------------------
+  // CARACTÈRES SPÉCIAUX
+  // -----------------------------------------------------------------------
+
   const insertSpecialCharacter =
     useCallback(
-      (character: string): void => {
+      (
+        character: string
+      ): void => {
         restoreSavedSelection();
-        controller.insertText(character);
 
-        window.setTimeout(() => {
-          rememberCurrentSelection();
-          refreshFormatting();
-        }, 0);
+        controller.insertText(
+          character
+        );
+
+        window.setTimeout(
+          () => {
+            rememberCurrentSelection();
+            refreshFormatting();
+          },
+          0
+        );
       },
       [
         controller,
@@ -1189,16 +1930,32 @@ export function Toolbar({
       : formatting.fontFamily ||
         DEFAULT_FONT;
 
+  const screenplayTypeLabel =
+    getScreenplayElementLabel(
+      activeScreenplayParagraphType,
+      screenplayLanguage
+    );
+
   return (
     <div
-      className="toolbar"
-      onMouseDownCapture={(event) => {
+      className={`toolbar${
+        isScreenplayMode
+          ? ' screenplay-toolbar'
+          : ''
+      }`}
+      onMouseDownCapture={(
+        event
+      ) => {
         const target =
           event.target as HTMLElement;
 
         if (
           target.closest(
-            'button, .dropdown-item, input'
+            [
+              'button',
+              '.dropdown-item',
+              'input'
+            ].join(', ')
           )
         ) {
           rememberCurrentSelection();
@@ -1208,7 +1965,10 @@ export function Toolbar({
       <button
         type="button"
         title={t('undoTitle')}
-        disabled={!status.canUndo}
+        disabled={
+          !isScreenplayMode &&
+          !status.canUndo
+        }
         onMouseDown={(event) => {
           event.preventDefault();
         }}
@@ -1222,7 +1982,10 @@ export function Toolbar({
       <button
         type="button"
         title={t('redoTitle')}
-        disabled={!status.canRedo}
+        disabled={
+          !isScreenplayMode &&
+          !status.canRedo
+        }
         onMouseDown={(event) => {
           event.preventDefault();
         }}
@@ -1237,6 +2000,78 @@ export function Toolbar({
         className="toolbar-separator"
         aria-hidden="true"
       />
+
+      {isScreenplayMode && (
+        <>
+          <Dropdown
+            label={
+              <span
+                title={
+                  screenplayTypeLabel
+                }
+                style={{
+                  display: 'block',
+                  width: 150,
+                  maxWidth: 150,
+                  overflow: 'hidden',
+                  textOverflow:
+                    'ellipsis',
+                  whiteSpace:
+                    'nowrap',
+                  textAlign: 'left'
+                }}
+              >
+                {screenplayTypeLabel}
+              </span>
+            }
+            buttonClassName="dropdown-btn screenplay-type-button"
+            buttonTitle={
+              lang === 'fr'
+                ? 'Type de paragraphe'
+                : 'Paragraph type'
+            }
+            containerStyle={{
+              width: 182,
+              minWidth: 182,
+              maxWidth: 182,
+              flex: '0 0 182px'
+            }}
+            menuStyle={{
+              minWidth: 220
+            }}
+          >
+            {(close) => (
+              <>
+                {availableScreenplayTypes.map(
+                  (type) => (
+                    <DropdownItem
+                      key={type}
+                      preserveSelection
+                      onSelect={() => {
+                        changeScreenplayElementType(
+                          type
+                        );
+
+                        close();
+                      }}
+                    >
+                      {getScreenplayElementLabel(
+                        type,
+                        screenplayLanguage
+                      )}
+                    </DropdownItem>
+                  )
+                )}
+              </>
+            )}
+          </Dropdown>
+
+          <span
+            className="toolbar-separator"
+            aria-hidden="true"
+          />
+        </>
+      )}
 
       <button
         type="button"
@@ -1281,12 +2116,16 @@ export function Toolbar({
             ? 'active'
             : undefined
         }
-        title={t('underlineTitle')}
+        title={t(
+          'underlineTitle'
+        )}
         onMouseDown={(event) => {
           event.preventDefault();
         }}
         onClick={() => {
-          runCommand('underline');
+          runCommand(
+            'underline'
+          );
         }}
       >
         <u>U</u>
@@ -1297,176 +2136,212 @@ export function Toolbar({
         aria-hidden="true"
       />
 
-      <Dropdown
-        label={
-          <span
-            title={fontButtonLabel}
-            style={{
-              display: 'block',
-              width: 110,
-              maxWidth: 110,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              textAlign: 'left'
-            }}
-          >
-            {fontButtonLabel}
-          </span>
-        }
-        buttonClassName="dropdown-btn toolbar-font-button"
-        buttonTitle={
-          formatting.fontMixed
-            ? 'Mixte'
-            : fontButtonLabel
-        }
-        containerStyle={{
-          width: 142,
-          minWidth: 142,
-          maxWidth: 142,
-          flex: '0 0 142px'
-        }}
-        menuStyle={{
-          minWidth: 190
-        }}
-      >
-        {(close) => (
-          <>
-            {FONTS.map((font) => (
-              <DropdownItem
-                key={font.css}
-                preserveSelection
+      {!isScreenplayMode && (
+        <>
+          <Dropdown
+            label={
+              <span
+                title={
+                  fontButtonLabel
+                }
                 style={{
-                  fontFamily:
-                    font.css
-                }}
-                onSelect={() => {
-                  applyFontFamily(font);
-                  close();
+                  display: 'block',
+                  width: 110,
+                  maxWidth: 110,
+                  overflow: 'hidden',
+                  textOverflow:
+                    'ellipsis',
+                  whiteSpace:
+                    'nowrap',
+                  textAlign: 'left'
                 }}
               >
-                {font.label}
-              </DropdownItem>
-            ))}
-          </>
-        )}
-      </Dropdown>
-
-      <div
-        className="toolbar-font-size-control"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          flex: '0 0 auto'
-        }}
-      >
-        <button
-          type="button"
-          aria-label="Réduire la taille"
-          title="Réduire la taille"
-          onMouseDown={(event) => {
-            event.preventDefault();
-          }}
-          onClick={() => {
-            changeFontSize(-1);
-          }}
-          style={{
-            borderTopRightRadius: 0,
-            borderBottomRightRadius: 0
-          }}
-        >
-          −
-        </button>
-
-        <input
-          type="text"
-          inputMode="numeric"
-          aria-label={t(
-            'sizeDropdown'
-          )}
-          title={
-            formatting.sizeMixed
-              ? 'Mixte'
-              : `${formatting.fontSize ?? DEFAULT_FONT_SIZE} px`
-          }
-          placeholder={
-            formatting.sizeMixed
-              ? 'Mixte'
-              : undefined
-          }
-          value={sizeDraft}
-          onChange={(event) => {
-            const value =
-              event.target.value;
-
-            if (
-              value === '' ||
-              /^\d{0,2}$/.test(value)
-            ) {
-              setSizeDraft(value);
+                {fontButtonLabel}
+              </span>
             }
-          }}
-          onFocus={() => {
-            rememberCurrentSelection();
-          }}
-          onKeyDown={(event) => {
-            if (
-              event.key === 'Enter'
-            ) {
-              event.preventDefault();
-              commitSizeDraft();
-              event.currentTarget.blur();
+            buttonClassName="dropdown-btn toolbar-font-button"
+            buttonTitle={
+              formatting.fontMixed
+                ? 'Mixte'
+                : fontButtonLabel
             }
+            containerStyle={{
+              width: 142,
+              minWidth: 142,
+              maxWidth: 142,
+              flex: '0 0 142px'
+            }}
+            menuStyle={{
+              minWidth: 190
+            }}
+          >
+            {(close) => (
+              <>
+                {FONTS.map(
+                  (font) => (
+                    <DropdownItem
+                      key={font.css}
+                      preserveSelection
+                      style={{
+                        fontFamily:
+                          font.css
+                      }}
+                      onSelect={() => {
+                        applyFontFamily(
+                          font
+                        );
 
-            if (
-              event.key === 'Escape'
-            ) {
-              event.preventDefault();
+                        close();
+                      }}
+                    >
+                      {font.label}
+                    </DropdownItem>
+                  )
+                )}
+              </>
+            )}
+          </Dropdown>
 
-              setSizeDraft(
+          <div
+            className="toolbar-font-size-control"
+            style={{
+              display: 'flex',
+              alignItems:
+                'center',
+              flex: '0 0 auto'
+            }}
+          >
+            <button
+              type="button"
+              aria-label="Réduire la taille"
+              title="Réduire la taille"
+              onMouseDown={(
+                event
+              ) => {
+                event.preventDefault();
+              }}
+              onClick={() => {
+                changeFontSize(-1);
+              }}
+              style={{
+                borderTopRightRadius:
+                  0,
+                borderBottomRightRadius:
+                  0
+              }}
+            >
+              −
+            </button>
+
+            <input
+              type="text"
+              inputMode="numeric"
+              aria-label={t(
+                'sizeDropdown'
+              )}
+              title={
                 formatting.sizeMixed
-                  ? ''
-                  : String(
+                  ? 'Mixte'
+                  : `${
                       formatting.fontSize ??
-                        DEFAULT_FONT_SIZE
-                    )
-              );
+                      DEFAULT_FONT_SIZE
+                    } px`
+              }
+              placeholder={
+                formatting.sizeMixed
+                  ? 'Mixte'
+                  : undefined
+              }
+              value={sizeDraft}
+              onChange={(event) => {
+                const value =
+                  event.target.value;
 
-              event.currentTarget.blur();
-            }
-          }}
-          onBlur={() => {
-            commitSizeDraft();
-          }}
-          style={{
-            width: 46,
-            minWidth: 46,
-            height: 30,
-            boxSizing: 'border-box',
-            padding: '0 4px',
-            textAlign: 'center',
-            borderRadius: 0
-          }}
-        />
+                if (
+                  value === '' ||
+                  /^\d{0,2}$/.test(
+                    value
+                  )
+                ) {
+                  setSizeDraft(
+                    value
+                  );
+                }
+              }}
+              onFocus={() => {
+                rememberCurrentSelection();
+              }}
+              onKeyDown={(
+                event
+              ) => {
+                if (
+                  event.key ===
+                  'Enter'
+                ) {
+                  event.preventDefault();
+                  commitSizeDraft();
+                  event.currentTarget.blur();
+                }
 
-        <button
-          type="button"
-          aria-label="Augmenter la taille"
-          title="Augmenter la taille"
-          onMouseDown={(event) => {
-            event.preventDefault();
-          }}
-          onClick={() => {
-            changeFontSize(1);
-          }}
-          style={{
-            borderTopLeftRadius: 0,
-            borderBottomLeftRadius: 0
-          }}
-        >
-          +
-        </button>
-      </div>
+                if (
+                  event.key ===
+                  'Escape'
+                ) {
+                  event.preventDefault();
+
+                  setSizeDraft(
+                    formatting.sizeMixed
+                      ? ''
+                      : String(
+                          formatting.fontSize ??
+                            DEFAULT_FONT_SIZE
+                        )
+                  );
+
+                  event.currentTarget.blur();
+                }
+              }}
+              onBlur={() => {
+                commitSizeDraft();
+              }}
+              style={{
+                width: 46,
+                minWidth: 46,
+                height: 30,
+                boxSizing:
+                  'border-box',
+                padding:
+                  '0 4px',
+                textAlign:
+                  'center',
+                borderRadius: 0
+              }}
+            />
+
+            <button
+              type="button"
+              aria-label="Augmenter la taille"
+              title="Augmenter la taille"
+              onMouseDown={(
+                event
+              ) => {
+                event.preventDefault();
+              }}
+              onClick={() => {
+                changeFontSize(1);
+              }}
+              style={{
+                borderTopLeftRadius:
+                  0,
+                borderBottomLeftRadius:
+                  0
+              }}
+            >
+              +
+            </button>
+          </div>
+        </>
+      )}
 
       <div
         className="toolbar-color-control"
@@ -1499,14 +2374,17 @@ export function Toolbar({
             height: 30,
             padding: 2,
             border: 'none',
-            background: 'transparent',
+            background:
+              'transparent',
             cursor: 'pointer'
           }}
         />
       </div>
 
       <Dropdown
-        label={t('specialCharsBtn')}
+        label={t(
+          'specialCharsBtn'
+        )}
         buttonTitle={t(
           'specialCharsBtnTitle'
         )}
@@ -1525,7 +2403,10 @@ export function Toolbar({
             }}
           >
             {SPECIAL_CHARACTERS.map(
-              (character, index) => (
+              (
+                character,
+                index
+              ) => (
                 <DropdownItem
                   key={`${character}-${index}`}
                   preserveSelection
@@ -1545,6 +2426,7 @@ export function Toolbar({
                     insertSpecialCharacter(
                       character
                     );
+
                     close();
                   }}
                 >
@@ -1556,78 +2438,90 @@ export function Toolbar({
         )}
       </Dropdown>
 
-      <span
-        className="toolbar-separator"
-        aria-hidden="true"
-      />
+      {!isScreenplayMode && (
+        <>
+          <span
+            className="toolbar-separator"
+            aria-hidden="true"
+          />
 
-      <button
-        type="button"
-        title={t(
-          'alignLeftTitle'
-        )}
-        onMouseDown={(event) => {
-          event.preventDefault();
-        }}
-        onClick={() => {
-          runCommand(
-            'justifyLeft'
-          );
-        }}
-      >
-        <AlignLeftIcon />
-      </button>
+          <button
+            type="button"
+            title={t(
+              'alignLeftTitle'
+            )}
+            onMouseDown={(
+              event
+            ) => {
+              event.preventDefault();
+            }}
+            onClick={() => {
+              runCommand(
+                'justifyLeft'
+              );
+            }}
+          >
+            <AlignLeftIcon />
+          </button>
 
-      <button
-        type="button"
-        title={t(
-          'alignCenterTitle'
-        )}
-        onMouseDown={(event) => {
-          event.preventDefault();
-        }}
-        onClick={() => {
-          runCommand(
-            'justifyCenter'
-          );
-        }}
-      >
-        <AlignCenterIcon />
-      </button>
+          <button
+            type="button"
+            title={t(
+              'alignCenterTitle'
+            )}
+            onMouseDown={(
+              event
+            ) => {
+              event.preventDefault();
+            }}
+            onClick={() => {
+              runCommand(
+                'justifyCenter'
+              );
+            }}
+          >
+            <AlignCenterIcon />
+          </button>
 
-      <button
-        type="button"
-        title={t(
-          'alignRightTitle'
-        )}
-        onMouseDown={(event) => {
-          event.preventDefault();
-        }}
-        onClick={() => {
-          runCommand(
-            'justifyRight'
-          );
-        }}
-      >
-        <AlignRightIcon />
-      </button>
+          <button
+            type="button"
+            title={t(
+              'alignRightTitle'
+            )}
+            onMouseDown={(
+              event
+            ) => {
+              event.preventDefault();
+            }}
+            onClick={() => {
+              runCommand(
+                'justifyRight'
+              );
+            }}
+          >
+            <AlignRightIcon />
+          </button>
 
-      <button
-        type="button"
-        title={t(
-          'alignJustifyTitle'
-        )}
-        onMouseDown={(event) => {
-          event.preventDefault();
-        }}
-        onClick={() => {
-          runCommand(
-            'justifyFull'
-          );
-        }}
-      >
-        <AlignJustifyIcon />
-      </button>
+          <button
+            type="button"
+            title={t(
+              'alignJustifyTitle'
+            )}
+            onMouseDown={(
+              event
+            ) => {
+              event.preventDefault();
+            }}
+            onClick={() => {
+              runCommand(
+                'justifyFull'
+              );
+            }}
+          >
+            <AlignJustifyIcon />
+          </button>
+        </>
+      )}
 
       <span
         className="toolbar-separator"
@@ -1643,7 +2537,9 @@ export function Toolbar({
           onOpenGlobalSearch
         }
       >
-        {t('globalSearchBtn')}
+        {t(
+          'globalSearchBtn'
+        )}
       </button>
 
       <button
@@ -1651,7 +2547,9 @@ export function Toolbar({
         title={t(
           'replaceBtnTitle'
         )}
-        onClick={onOpenReplace}
+        onClick={
+          onOpenReplace
+        }
       >
         {t('replaceBtn')}
       </button>
