@@ -42,6 +42,25 @@ function createWindow(): void {
     }
   }) as MainWindow;
 
+  // --- DIAGNOSTIC TEMPORAIRE ---
+  win.webContents.on('did-fail-load', (_e, code, desc, url) => {
+    console.error('[did-fail-load]', code, desc, url);
+  });
+  win.webContents.on('render-process-gone', (_e, details) => {
+    console.error('[render-process-gone]', details);
+  });
+  win.webContents.on('will-navigate', (_e, url) => {
+    console.log('[will-navigate]', url);
+  });
+  win.webContents.on('console-message', (...args: any[]) => {
+    // compatible avec l'ancienne et la nouvelle signature d'Electron
+    const [e, level, message, line, source] = args;
+    console.log(`[renderer] ${e?.message ?? message} (${e?.sourceId ?? source}:${e?.lineNumber ?? line})`);
+  });
+  if (process.env.SCRIPTORIUM_DEBUG) {
+    win.webContents.openDevTools({ mode: 'detach' });
+  }
+
   if (DEV_SERVER_URL) {
     void win.loadURL(DEV_SERVER_URL);
   } else {
