@@ -2,13 +2,17 @@
 //
 // Règle horizontale de la page d’écriture.
 //
-// La règle se cale directement sur les dimensions visuelles de #editor.
+// La règle se cale directement sur les dimensions de #editor.
 // Elle reste donc alignée avec la page lorsque :
 // - la page est centrée dans la zone d’écriture ;
 // - la fenêtre est redimensionnée ;
 // - la barre latérale change de largeur ;
 // - la page est zoomée ;
 // - la zone d’écriture défile horizontalement.
+//
+// La largeur de la bande grise est calculée comme celle des graduations :
+// largeur logique de la page multipliée par le zoom. Les deux restent donc
+// toujours identiques, quel que soit le niveau de zoom.
 //
 // Les valeurs enregistrées dans les préférences (electron-store, clé
 // "editorPrefs") restent exprimées dans les coordonnées logiques de la page,
@@ -59,7 +63,10 @@ interface RulerMetrics {
   baseWidth: number;
   /** Facteur de zoom réellement appliqué à la page. */
   zoom: number;
-  /** Largeur visuelle de la page après application du zoom. */
+  /**
+   * Largeur visuelle de la page après application du zoom.
+   * Toujours égale à baseWidth × zoom, comme les graduations.
+   */
   visualWidth: number;
   /**
    * Position horizontale de la page par rapport à la zone de la règle.
@@ -249,8 +256,11 @@ export function Ruler({ controller }: RulerProps): React.ReactElement | null {
 
   /**
    * Mesure la page réelle et place la règle exactement au même endroit.
-   * getBoundingClientRect() inclut le zoom CSS ainsi que la position réelle
-   * après centrage ou défilement horizontal.
+   *
+   * La largeur visuelle est calculée (largeur logique × zoom) au lieu d’être
+   * lue dans getBoundingClientRect() : selon la version de Chromium, cette
+   * mesure ne tient pas toujours compte du zoom CSS, ce qui empêchait la
+   * bande grise de grandir avec la page.
    */
   const measureEditor = useCallback((): void => {
     if (animationFrameRef.current !== null) {
@@ -274,13 +284,14 @@ export function Ruler({ controller }: RulerProps): React.ReactElement | null {
       const measuredBaseWidth =
         editor.offsetWidth > 0 ? editor.offsetWidth : editorRect.width / zoom;
 
-      const measuredVisualWidth =
-        editorRect.width > 0 ? editorRect.width : measuredBaseWidth * zoom;
+      // Même calcul que pour les graduations : elles restent ainsi toujours
+      // contenues exactement dans la bande grise.
+      const computedVisualWidth = measuredBaseWidth * zoom;
 
       const nextMetrics: RulerMetrics = {
         baseWidth: measuredBaseWidth,
         zoom,
-        visualWidth: measuredVisualWidth,
+        visualWidth: computedVisualWidth,
         visualLeft: editorRect.left - rulerSectionRect.left
       };
 
@@ -705,6 +716,9 @@ export function Ruler({ controller }: RulerProps): React.ReactElement | null {
     });
   }, [metrics.baseWidth, metrics.zoom]);
 
+  // Largeur de la bande grise : exactement la même base que les graduations.
+  const rulerWidth = metrics.baseWidth * metrics.zoom;
+
   const leftMarginPosition = values.marginLeft * metrics.zoom;
 
   const rightMarginPosition =
@@ -747,7 +761,7 @@ export function Ruler({ controller }: RulerProps): React.ReactElement | null {
         <div
           className="editor-ruler"
           style={{
-            width: `${metrics.visualWidth}px`,
+            width: `${rulerWidth}px`,
             left: `${metrics.visualLeft}px`
           }}
         >

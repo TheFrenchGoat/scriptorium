@@ -3,8 +3,8 @@
  * Règle minimaliste de la page d’écriture.
  *
  * La largeur et la position horizontale de .editor-ruler sont calculées dans
- * Ruler.tsx à partir du rectangle visuel réel de #editor. La règle ne possède
- * donc plus son propre défilement horizontal indépendant.
+ * Ruler.tsx à partir des dimensions de #editor (largeur logique × zoom). La
+ * règle ne possède donc plus son propre défilement horizontal indépendant.
  */
 
 .editor-ruler-section {
@@ -44,6 +44,17 @@
     0 1px 2px rgba(0, 0, 0, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.03);
   cursor: default;
+}
+
+/*
+ * La largeur de la bande est calculée dans Ruler.tsx et suit le zoom.
+ * Une autre feuille de style lui imposait la largeur maximale de la page
+ * (max-width: 800px), ce qui l’empêchait de grandir vers la droite.
+ * Toute limite de largeur venant d’ailleurs est donc neutralisée ici.
+ */
+.editor-ruler-section .editor-ruler-viewport .editor-ruler {
+  max-width: none !important;
+  margin: 0 !important;
 }
 
 /*
