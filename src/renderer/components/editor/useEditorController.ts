@@ -20,10 +20,17 @@ import {
 import {
   applyGrammarMatches,
   clearGrammarMarks,
-  getPlainTextWithMap
+  getPlainTextWithMap,
+  grammarIgnoreKey,
+  removeGrammarGroup,
+  replaceGrammarGroup
 } from '../../lib/grammar-check';
-import { debounce, placeCaretAtEnd, replaceInHtmlString } from '../../lib/dom';
+import { debounce, replaceInHtmlString } from '../../lib/dom';
 import { withPreservedSelection } from '../../lib/selection';
+import {
+  captureHistoryCaretState,
+  placeCaretAfterHistoryJump
+} from '../../lib/history-caret';
 import {
   getCachedTotalStats,
   invalidateProjectWordCache
@@ -65,6 +72,15 @@ const HISTORY_DEBOUNCE_MS = 700;
 const CHAPTER_SAVE_DEBOUNCE_MS = 2500;
 const SCREENPLAY_SAVE_DEBOUNCE_MS = 1500;
 const BACKUP_INTERVAL_MS = 5 * 60 * 1000;
+
+/**
+ * Langue de vérification grammaticale.
+ *
+ * Volontairement indépendante de la langue de l'interface : un roman français
+ * reste vérifié en français même si l'interface est en anglais. Un réglage
+ * dédié pourra remplacer cette constante plus tard.
+ */
+const GRAMMAR_LANGUAGE = 'fr';
 
 export const EDITOR_ZOOM_MIN = 0.5;
 export const EDITOR_ZOOM_MAX = 2.5;
@@ -114,6 +130,12 @@ interface MutableState {
 interface PendingChapterSave {
   html: string;
   timer: ReturnType<typeof setTimeout>;
+}
+
+/** Instantané d'historique programmé mais pas encore enregistré. */
+interface PendingHistoryCommit {
+  name: string;
+  html: string;
 }
 
 export interface EditorController {
@@ -615,6 +637,15 @@ export function useEditorController({
 
   const historyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  /** Instantané en attente d'enregistrement dans l'historique. */
+  const pendingHistoryRef = useRef<PendingHistoryCommit | null>(null);
+
+  /**
+   * Fautes ignorées pendant la session (clé : règle + texte fautif). Sans
+   * cette mémoire, une faute ignorée réapparaissait à la frappe suivante.
+   */
+  const ignoredGrammarRef = useRef<Set<string>>(new Set());
+
   const screenplaySaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null
   );
@@ -1030,10 +1061,11 @@ export function useEditorController({
   /**
    * Vérification grammaticale.
    *
-   * Corrections par rapport à l'ancienne version :
-   * - la sélection n'est plus mémorisée AVANT l'attente réseau puis restaurée
-   *   APRÈS (ce qui ramenait le curseur à une position périmée et détruisait
-   *   la sélection) ; elle est préservée autour de chaque mutation du DOM ;
+   * - le texte est lu SANS retirer les soulignements existants (les <mark>
+   *   ne changent pas le texte) : plus de clignotement pendant la requête ;
+   * - la langue de vérification est le français, quelle que soit la langue
+   *   de l'interface ;
+   * - les fautes ignorées pendant la session sont filtrées ;
    * - si le texte a changé pendant la requête, les résultats (devenus
    *   faux) sont ignorés et une nouvelle vérification est programmée ;
    * - une demande reçue pendant une vérification en cours n'est plus perdue.
@@ -1066,18 +1098,16 @@ export function useEditorController({
     let needsRerun = false;
 
     try {
-      const text = withPreservedSelection(editor, () => {
-        clearGrammarMarks(editor);
-        return getPlainTextWithMap(editor).text;
-      });
+      const text = getPlainTextWithMap(editor).text;
 
       if (text.trim().length === 0) {
+        withPreservedSelection(editor, () => {
+          clearGrammarMarks(editor);
+        });
         return;
       }
 
-      const language = getLanguage() === 'en' ? 'en-US' : 'fr';
-
-      const matches = await window.api.checkGrammar(text, language);
+      const matches = await window.api.checkGrammar(text, GRAMMAR_LANGUAGE);
 
       const stillSameEditor =
         s.activeType === 'chapter' &&
@@ -1098,9 +1128,28 @@ export function useEditorController({
         return;
       }
 
+      const ignored = ignoredGrammarRef.current;
+
+      const visibleMatches =
+        ignored.size === 0
+          ? matches
+          : matches.filter(
+              (match) =>
+                !ignored.has(
+                  grammarIgnoreKey(
+                    match.ruleId,
+                    text.slice(match.offset, match.offset + match.length)
+                  )
+                )
+            );
+
       withPreservedSelection(editor, () => {
         clearGrammarMarks(editor);
-        applyGrammarMatches(editor, matches, getPlainTextWithMap(editor).nodes);
+        applyGrammarMatches(
+          editor,
+          visibleMatches,
+          getPlainTextWithMap(editor).nodes
+        );
       });
     } catch (error) {
       const message = describeError(error);
@@ -1249,17 +1298,61 @@ export function useEditorController({
     [highlight, history, mentionIndex, s, scheduleChapterSave, updateUndoRedo]
   );
 
+  /**
+   * Enregistre immédiatement l'instantané d'historique en attente, s'il y en
+   * a un. Pour le chapitre affiché, on prend le contenu le plus récent de
+   * l'éditeur (frappe des dernières millisecondes comprise).
+   */
+  const flushPendingHistoryCommit = useCallback((): void => {
+    if (historyTimerRef.current) {
+      clearTimeout(historyTimerRef.current);
+      historyTimerRef.current = null;
+    }
+
+    const pending = pendingHistoryRef.current;
+    pendingHistoryRef.current = null;
+
+    if (!pending) {
+      return;
+    }
+
+    const editor = s.editorEl;
+
+    const isDisplayed =
+      Boolean(editor) &&
+      s.activeType === 'chapter' &&
+      s.activeTab === pending.name;
+
+    history.commit(
+      pending.name,
+      isDisplayed && editor ? editor.innerHTML : pending.html
+    );
+  }, [history, s]);
+
   const scheduleHistoryCommit = useCallback(
     (name: string | null, html: string): void => {
       if (!name) {
         return;
       }
 
+      // Un instantané en attente pour un AUTRE chapitre (changement d'onglet
+      // pendant le délai) est enregistré tout de suite au lieu d'être perdu.
+      const previous = pendingHistoryRef.current;
+
+      if (previous && previous.name !== name) {
+        history.commit(previous.name, previous.html);
+      }
+
       if (historyTimerRef.current) {
         clearTimeout(historyTimerRef.current);
       }
 
+      pendingHistoryRef.current = { name, html };
+
       historyTimerRef.current = setTimeout(() => {
+        historyTimerRef.current = null;
+        pendingHistoryRef.current = null;
+
         history.commit(name, html);
         updateUndoRedo();
       }, HISTORY_DEBOUNCE_MS);
@@ -1496,7 +1589,10 @@ export function useEditorController({
     return () => {
       if (historyTimerRef.current) {
         clearTimeout(historyTimerRef.current);
+        historyTimerRef.current = null;
       }
+
+      pendingHistoryRef.current = null;
 
       if (screenplaySaveTimerRef.current) {
         clearTimeout(screenplaySaveTimerRef.current);
@@ -1838,99 +1934,11 @@ export function useEditorController({
       },
 
       undo() {
-        if (s.activeType === 'scene') {
-          document.execCommand('undo');
-          return;
-        }
-
-        if (s.activeType !== 'chapter' || !s.activeTab) {
-          return;
-        }
-
-        const editor = s.editorEl;
-
-        if (!editor) {
-          return;
-        }
-
-        if (historyTimerRef.current) {
-          clearTimeout(historyTimerRef.current);
-        }
-
-        const chapterName = s.activeTab;
-        const previous = history.undo(chapterName, editor.innerHTML);
-
-        if (previous === null) {
-          return;
-        }
-
-        editor.innerHTML = previous;
-        s.projectData.chapters[chapterName] = previous;
-
-        highlight();
-
-        const finalHtml = editor.innerHTML;
-
-        s.projectData.chapters[chapterName] = finalHtml;
-
-        history.resyncOnly(chapterName, finalHtml);
-        mentionIndex.updateForChapter(chapterName, finalHtml);
-
-        placeCaretAtEnd(editor);
-
-        updateStats();
-        updateUndoRedo();
-
-        setSaveStatus('pending');
-        scheduleChapterSave(chapterName, finalHtml);
+        jumpInHistory('undo');
       },
 
       redo() {
-        if (s.activeType === 'scene') {
-          document.execCommand('redo');
-          return;
-        }
-
-        if (s.activeType !== 'chapter' || !s.activeTab) {
-          return;
-        }
-
-        const editor = s.editorEl;
-
-        if (!editor) {
-          return;
-        }
-
-        if (historyTimerRef.current) {
-          clearTimeout(historyTimerRef.current);
-        }
-
-        const chapterName = s.activeTab;
-        const next = history.redo(chapterName, editor.innerHTML);
-
-        if (next === null) {
-          return;
-        }
-
-        editor.innerHTML = next;
-        s.projectData.chapters[chapterName] = next;
-
-        highlight();
-
-        const finalHtml = editor.innerHTML;
-
-        s.projectData.chapters[chapterName] = finalHtml;
-
-        history.resyncOnly(chapterName, finalHtml);
-        mentionIndex.updateForChapter(chapterName, finalHtml);
-
-        placeCaretAtEnd(editor);
-
-        updateStats();
-        updateUndoRedo();
-
-        setSaveStatus('pending');
-        scheduleChapterSave(chapterName, finalHtml);
+        jumpInHistory('redo');
       },
 
       setZoom(next) {
@@ -2181,6 +2189,15 @@ export function useEditorController({
         if (type === 'chapter') {
           cancelPendingChapterSave(name);
 
+          if (pendingHistoryRef.current?.name === name) {
+            if (historyTimerRef.current) {
+              clearTimeout(historyTimerRef.current);
+              historyTimerRef.current = null;
+            }
+
+            pendingHistoryRef.current = null;
+          }
+
           delete s.projectData.chapters[name];
 
           history.remove(name);
@@ -2236,6 +2253,7 @@ export function useEditorController({
           }
 
           cancelPendingChapterSave(oldName);
+          flushPendingHistoryCommit();
 
           const nextChapters: Record<string, string> = {};
 
@@ -2572,9 +2590,9 @@ export function useEditorController({
           return;
         }
 
-        if (historyTimerRef.current) {
-          clearTimeout(historyTimerRef.current);
-        }
+        // La frappe en attente devient une étape d'historique à part entière
+        // (elle était auparavant perdue).
+        flushPendingHistoryCommit();
 
         if (!wholeProject) {
           if (s.activeType !== 'chapter' || !s.activeTab) {
@@ -2747,47 +2765,72 @@ export function useEditorController({
         s.lastGrammarErrorShown = null;
       },
 
+      /**
+       * Applique une suggestion à TOUS les morceaux de la faute, en ne
+       * remplaçant que la partie qui change (la mise en forme est conservée),
+       * puis place le curseur juste après la correction.
+       */
       applyGrammarSuggestion(mark, replacement) {
-        const parent = mark.parentNode;
-
-        if (!parent) {
+        if (!mark.isConnected) {
           return;
         }
-
-        parent.insertBefore(document.createTextNode(replacement), mark);
-        parent.removeChild(mark);
-        parent.normalize();
 
         const editor = s.editorEl;
 
-        if (editor && s.activeTab && s.activeType === 'chapter') {
-          const chapterName = s.activeTab;
-          const html = editor.innerHTML;
+        const caretRange = replaceGrammarGroup(editor, mark, replacement);
 
-          s.projectData.chapters[chapterName] = html;
-
-          setSaveStatus('pending');
-
-          updateStats();
-
-          scheduleHistoryCommit(chapterName, html);
-          scheduleChapterSave(chapterName, html);
-        }
-      },
-
-      ignoreGrammarMark(mark) {
-        const parent = mark.parentNode;
-
-        if (!parent) {
+        if (!editor || !s.activeTab || s.activeType !== 'chapter') {
           return;
         }
 
-        while (mark.firstChild) {
-          parent.insertBefore(mark.firstChild, mark);
+        if (caretRange && editor.contains(caretRange.startContainer)) {
+          editor.focus();
+
+          const selection = window.getSelection();
+
+          if (selection) {
+            selection.removeAllRanges();
+            selection.addRange(caretRange);
+          }
         }
 
-        parent.removeChild(mark);
-        parent.normalize();
+        const chapterName = s.activeTab;
+        const html = editor.innerHTML;
+
+        s.projectData.chapters[chapterName] = html;
+        s.projects[projectName] = s.projectData;
+        s.hasUnsavedChangesSinceLastBackup = true;
+
+        setSaveStatus('pending');
+
+        updateStats();
+
+        scheduleHistoryCommit(chapterName, html);
+        scheduleChapterSave(chapterName, html);
+
+        debouncedHighlight();
+        debouncedGrammarCheck();
+      },
+
+      /**
+       * Ignore une faute : retire tous ses morceaux et la mémorise pour la
+       * session, afin qu'elle ne réapparaisse pas à la frappe suivante.
+       */
+      ignoreGrammarMark(mark) {
+        if (!mark.isConnected) {
+          return;
+        }
+
+        const editor = s.editorEl;
+        const ruleId = mark.dataset.ruleId || '';
+
+        const text = editor
+          ? withPreservedSelection(editor, () =>
+              removeGrammarGroup(editor, mark)
+            )
+          : removeGrammarGroup(null, mark);
+
+        ignoredGrammarRef.current.add(grammarIgnoreKey(ruleId, text));
       },
 
       async exportAs(kind) {
@@ -3066,6 +3109,75 @@ export function useEditorController({
         return true;
       }
     };
+
+    /**
+     * Annuler / rétablir.
+     *
+     * - Mode scène : historique natif du navigateur.
+     * - Mode chapitre : historique Scriptorium (instantanés HTML). Le curseur
+     *   est replacé à l'endroit de la modification (comme dans Word) au lieu
+     *   d'être envoyé à la fin du chapitre.
+     */
+    function jumpInHistory(direction: 'undo' | 'redo'): void {
+      if (s.activeType === 'scene') {
+        document.execCommand(direction);
+        return;
+      }
+
+      if (s.activeType !== 'chapter' || !s.activeTab) {
+        return;
+      }
+
+      const editor = s.editorEl;
+
+      if (!editor) {
+        return;
+      }
+
+      const chapterName = s.activeTab;
+
+      // 1. La frappe des dernières millisecondes devient une étape : Ctrl+Z
+      //    ne saute plus d'étape et Ctrl+Y ne l'efface plus.
+      flushPendingHistoryCommit();
+
+      // 2. Texte et sélection AVANT le saut, pour replacer le curseur.
+      const caretState = captureHistoryCaretState(editor);
+
+      const target =
+        direction === 'undo'
+          ? history.undo(chapterName, editor.innerHTML)
+          : history.redo(chapterName, editor.innerHTML);
+
+      if (target === null) {
+        updateUndoRedo();
+        return;
+      }
+
+      editor.innerHTML = target;
+      s.projectData.chapters[chapterName] = target;
+
+      highlight();
+
+      const finalHtml = editor.innerHTML;
+
+      s.projectData.chapters[chapterName] = finalHtml;
+      s.projects[projectName] = s.projectData;
+      s.hasUnsavedChangesSinceLastBackup = true;
+
+      history.resyncOnly(chapterName, finalHtml);
+      mentionIndex.updateForChapter(chapterName, finalHtml);
+
+      // 3. Curseur à l'endroit de la modification + défilement si besoin.
+      placeCaretAfterHistoryJump(editor, caretState);
+
+      updateStats();
+      updateUndoRedo();
+
+      setSaveStatus('pending');
+      scheduleChapterSave(chapterName, finalHtml);
+
+      debouncedGrammarCheck();
+    }
 
     function applyStyleToSelection(styles: Partial<CSSStyleDeclaration>): void {
       if (s.activeType !== 'chapter') {

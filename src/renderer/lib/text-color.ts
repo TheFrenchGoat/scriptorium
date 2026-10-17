@@ -106,8 +106,10 @@ export function colorToRgbKey(value: string | null | undefined): string | null {
       .join(',');
   }
 
+  // Formes acceptées : rgb(r, g, b), rgba(r, g, b, a), rgb(r g b / a).
+  // Les parenthèses sont écrites [(] et [)] pour résister au copier-coller.
   const rgb =
-    /^rgba?$\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)\s*(?:[,/]\s*([\d.]+%?)\s*)?$$/.exec(
+    /^rgba?[(]\s*([0-9.]+)[\s,]+([0-9.]+)[\s,]+([0-9.]+)\s*(?:[,/]\s*([0-9.]+%?)\s*)?[)]$/.exec(
       color
     );
 

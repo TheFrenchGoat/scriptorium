@@ -1,6 +1,6 @@
 // src/renderer/components/editor/EditorPage.tsx
 //
-// Assemblage principal de la page d’édition.
+// Assemblage principal de la page d'édition.
 //
 // Cette page prend en charge :
 // - les projets roman avec ChapterEditor ;
@@ -8,7 +8,8 @@
 // - les fiches World Building communes aux deux modes ;
 // - les raccourcis clavier ;
 // - le zoom de la feuille ;
-// - le redimensionnement de la barre latérale.
+// - le redimensionnement de la barre latérale ;
+// - le menu de propositions du correcteur grammatical.
 
 import React, {
   useCallback,
@@ -33,6 +34,7 @@ import { StatusBar } from './StatusBar';
 import { ChapterEditor } from './ChapterEditor';
 import { ScreenplayEditor } from './ScreenplayEditor';
 import { WbSheet } from './WbSheet';
+import { GrammarPopup } from './GrammarPopup';
 
 import {
   useEditorController,
@@ -129,7 +131,7 @@ type ModalKey =
   | null;
 
 /**
- * Indique si le focus se trouve dans une zone d’écriture.
+ * Indique si le focus se trouve dans une zone d'écriture.
  */
 function getEditorFocusState(): {
   chapter: boolean;
@@ -142,20 +144,17 @@ function getEditorFocusState(): {
   const chapter =
     activeElement?.id === 'editor';
 
+  const screenplaySelector = [
+    '.screenplay-element-content',
+    '.screenplay-scene-heading'
+  ].join(', ');
+
   const screenplay = Boolean(
     activeElement?.matches(
-
-
-[
-'.screenplay-element-content',
-        '.screenplay-scene-heading'
-      ].join(', ')
+      screenplaySelector
     ) ||
       activeElement?.closest(
-        [
-          '.screenplay-element-content',
-          '.screenplay-scene-heading'
-        ].join(', ')
+        screenplaySelector
       )
   );
 
@@ -336,9 +335,8 @@ export function EditorPage({
         controller,
         onRenamed,
         renameProjectValue
-
-
-    ]);
+      ]
+    );
 
   // -----------------------------------------------------------------------
   // REDIMENSIONNEMENT DE LA BARRE LATÉRALE
@@ -692,7 +690,7 @@ export function EditorPage({
       }
 
       /*
-       * Annuler / rétablir dans les zones d’écriture uniquement.
+       * Annuler / rétablir dans les zones d'écriture uniquement.
        */
       if (
         ctrlOrCmd &&
@@ -814,7 +812,7 @@ export function EditorPage({
        * Mise en forme en ligne.
        *
        * Elle reste disponible pour le scénario, mais la structure et
-       * l’alignement des paragraphes sont toujours déterminés par leur type.
+       * l'alignement des paragraphes sont toujours déterminés par leur type.
        */
       if (
         focusState.anyEditor &&
@@ -858,7 +856,7 @@ export function EditorPage({
       /*
        * Les alignements libres sont réservés au roman.
        *
-       * Dans un scénario, l’alignement dépend du type explicite du
+       * Dans un scénario, l'alignement dépend du type explicite du
        * paragraphe : action, personnage, dialogue, transition, etc.
        */
       if (focusState.chapter) {
@@ -916,9 +914,9 @@ export function EditorPage({
       }
 
       /*
-       * Ctrl+Tab change d’onglet.
+       * Ctrl+Tab change d'onglet.
        *
-       * Tab seul reste disponible dans l’éditeur scénario pour changer le
+       * Tab seul reste disponible dans l'éditeur scénario pour changer le
        * type du paragraphe.
        */
       if (
@@ -1434,6 +1432,10 @@ export function EditorPage({
         }
         controller={controller}
         onClose={closeModal}
+      />
+
+      <GrammarPopup
+        controller={controller}
       />
 
       <CustomWbTypeModal

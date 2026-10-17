@@ -107,6 +107,12 @@ export function SettingsModal({
   const grammarPrefs = controller.grammarPrefs();
   const [version, setVersion] = useState('');
 
+  // Correction exigeante (level=picky de LanguageTool) : activée par défaut.
+  // Lue directement dans les réglages enregistrés (elle a pu être modifiée
+  // depuis l'accueil) ; le processus principal la relit à chaque
+  // vérification, l'éditeur n'a donc rien d'autre à faire.
+  const [picky, setPicky] = useState(true);
+
   useEffect(() => {
     if (!open) return;
 
@@ -120,6 +126,16 @@ export function SettingsModal({
         );
         setVersion('');
       });
+
+    void window.api
+      .getGrammarPrefs()
+      .then((value) => setPicky(value.picky !== false))
+      .catch((error) => {
+        console.error(
+          'Impossible de lire les réglages du correcteur :',
+          error
+        );
+      });
   }, [open]);
 
   const patchPrefs = (patch: Partial<typeof prefs>): void => {
@@ -127,6 +143,11 @@ export function SettingsModal({
       ...prefs,
       ...patch
     });
+  };
+
+  const togglePicky = (value: boolean): void => {
+    setPicky(value);
+    void window.api.saveGrammarPrefs({ picky: value });
   };
 
   const concentrationScale = normalizeSessionRatingScale(
@@ -331,13 +352,37 @@ export function SettingsModal({
             type="checkbox"
             checked={grammarPrefs.enabled}
             onChange={(event) => {
-              void controller.setGrammarEnabled(
-                event.target.checked
-              );
+              const enabled = event.target.checked;
+
+              void (async () => {
+                await controller.setGrammarEnabled(enabled);
+
+                // Précaution : si le contrôleur enregistre ses préférences
+                // gardées en mémoire, il pourrait remettre une ancienne
+                // valeur de « Correction exigeante ». On réaffirme donc le
+                // choix affiché dans cette fenêtre.
+                await window.api.saveGrammarPrefs({ picky });
+              })();
             }}
           />
 
           <span>{t('grammarToggleLabel')}</span>
+        </label>
+
+        <label className="settings-checkbox-row">
+          <input
+            type="checkbox"
+            checked={picky}
+            onChange={(event) => {
+              togglePicky(event.target.checked);
+            }}
+          />
+
+          <span>
+            {lang === 'fr'
+              ? 'Correction exigeante (style, typographie, répétitions)'
+              : 'Picky mode (style, typography, repetitions)'}
+          </span>
         </label>
 
         <button

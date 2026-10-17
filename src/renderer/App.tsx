@@ -120,7 +120,11 @@ export function App(): React.ReactElement | null {
     <I18nProvider initialLang={boot.lang}>
       <DialogsProvider>
         {view === 'menu' || !openedProject ? (
-          <ProjectsPage onOpenProject={openProject} />
+          <ProjectsPage
+            onOpenProject={openProject}
+            theme={theme}
+            onChangeTheme={changeTheme}
+          />
         ) : (
           <EditorPage
             projectName={openedProject}

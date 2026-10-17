@@ -6,7 +6,9 @@
 // - importation ;
 // - renommage ;
 // - exportation ;
-// - suppression.
+// - suppression ;
+// - paramètres généraux (thème, langue, police de l'interface, correcteur,
+//   mises à jour) via la fenêtre HomeSettingsModal.
 //
 // Les anciens projets qui ne possèdent pas encore `projectType` sont
 // automatiquement considérés comme des romans.
@@ -21,19 +23,20 @@ import { useI18n } from '../../i18n';
 import { useDialogs } from '../common/Dialogs';
 import { Modal } from '../common/Modal';
 import { ProjectCard } from './ProjectCard';
+import { HomeSettingsModal } from './HomeSettingsModal';
 import { describeError } from '../../lib/errors';
 import {
   createScreenplayProject,
   getDefaultSceneHeading
 } from '../../lib/screenplay';
 import type {
-  LanguageCode,
   ProjectData,
   ProjectType,
   ProjectsMap,
   ScreenplayConventionLanguage,
   ScreenplayInteriorExterior,
   ScreenplayPageFormat,
+  ThemeName,
   WritingStats
 } from '../../../shared/types';
 
@@ -41,6 +44,10 @@ export interface ProjectsPageProps {
   onOpenProject: (
     name: string
   ) => void | Promise<void>;
+  theme: ThemeName;
+  onChangeTheme: (
+    theme: ThemeName
+  ) => void;
 }
 
 interface NewProjectDraft {
@@ -229,12 +236,13 @@ async function deleteWritingStatsProject(
 }
 
 export function ProjectsPage({
-  onOpenProject
+  onOpenProject,
+  theme,
+  onChangeTheme
 }: ProjectsPageProps): React.ReactElement {
   const {
     t,
-    lang,
-    changeLanguage
+    lang
   } = useI18n();
 
   const {
@@ -248,8 +256,8 @@ export function ProjectsPage({
   ] = useState<ProjectsMap>({});
 
   const [
-    langMenuOpen,
-    setLangMenuOpen
+    settingsOpen,
+    setSettingsOpen
   ] = useState(false);
 
   const [
@@ -313,28 +321,6 @@ export function ProjectsPage({
       }
     })();
   }, [showInfo, t]);
-
-  useEffect(() => {
-    if (!langMenuOpen) {
-      return;
-    }
-
-    const close = (): void => {
-      setLangMenuOpen(false);
-    };
-
-    document.addEventListener(
-      'click',
-      close
-    );
-
-    return () => {
-      document.removeEventListener(
-        'click',
-        close
-      );
-    };
-  }, [langMenuOpen]);
 
   const persist = useCallback(
     async (
@@ -442,49 +428,48 @@ export function ProjectsPage({
 
       let newProject: ProjectData;
 
-if (
-  newProjectDraft.projectType ===
-  'screenplay'
-) {
-  const interiorExterior =
-    newProjectDraft.interiorExterior;
+      if (
+        newProjectDraft.projectType ===
+        'screenplay'
+      ) {
+        const interiorExterior =
+          newProjectDraft.interiorExterior;
 
-  const customInteriorExterior =
-    interiorExterior === 'OTHER'
-      ? newProjectDraft
-          .customInteriorExterior
-          .trim()
-      : '';
+        const customInteriorExterior =
+          interiorExterior === 'OTHER'
+            ? newProjectDraft
+                .customInteriorExterior
+                .trim()
+            : '';
 
-  newProject =
-    createScreenplayProject({
-      title: name,
-      author:
-        newProjectDraft.author.trim(),
-      conventionLanguage:
-        newProjectDraft
-          .conventionLanguage,
-      pageFormat:
-        newProjectDraft.pageFormat,
-      firstScene: {
-        workingTitle:
-          newProjectDraft
-            .workingTitle
-            .trim(),
-        interiorExterior,
-        customInteriorExterior,
-        location:
-          newProjectDraft
-            .location
-            .trim(),
-        time:
-          newProjectDraft
-            .time
-            .trim()
-      }
-    });
-}
- else {
+        newProject =
+          createScreenplayProject({
+            title: name,
+            author:
+              newProjectDraft.author.trim(),
+            conventionLanguage:
+              newProjectDraft
+                .conventionLanguage,
+            pageFormat:
+              newProjectDraft.pageFormat,
+            firstScene: {
+              workingTitle:
+                newProjectDraft
+                  .workingTitle
+                  .trim(),
+              interiorExterior,
+              customInteriorExterior,
+              location:
+                newProjectDraft
+                  .location
+                  .trim(),
+              time:
+                newProjectDraft
+                  .time
+                  .trim()
+            }
+          });
+      } else {
         newProject = {
           projectType: 'novel',
           chapters: {
@@ -903,87 +888,22 @@ if (
           </div>
 
           <div className="menu-header-actions">
-            <div
-              className="theme-menu-container"
-              style={{
-                position: 'relative'
+            <button
+              id="btnHomeSettings"
+              type="button"
+              title={
+                lang === 'fr'
+                  ? 'Thème, langue, police, correcteur et mises à jour'
+                  : 'Theme, language, font, proofreading and updates'
+              }
+              onClick={() => {
+                setSettingsOpen(true);
               }}
             >
-              <button
-                id="btnLangToggle"
-                type="button"
-                onClick={(event) => {
-                  event.stopPropagation();
-
-                  setLangMenuOpen(
-                    (value) => !value
-                  );
-                }}
-              >
-                {t('langToggle')}
-              </button>
-
-              <div
-                className={`theme-dropdown${
-                  langMenuOpen
-                    ? ' show'
-                    : ''
-                }`}
-              >
-                {(
-                  [
-                    'fr',
-                    'en'
-                  ] as LanguageCode[]
-                ).map((code) => (
-                  <div
-                    key={code}
-                    className="theme-item"
-                    role="menuitem"
-                    tabIndex={0}
-                    onClick={() => {
-                      changeLanguage(code);
-                      setLangMenuOpen(
-                        false
-                      );
-                    }}
-                    onKeyDown={(
-                      event
-                    ) => {
-                      if (
-                        event.key ===
-                          'Enter' ||
-                        event.key === ' '
-                      ) {
-                        event.preventDefault();
-
-                        changeLanguage(
-                          code
-                        );
-
-                        setLangMenuOpen(
-                          false
-                        );
-                      }
-                    }}
-                    style={
-                      code === lang
-                        ? {
-                            color:
-                              'var(--accent)'
-                          }
-                        : undefined
-                    }
-                  >
-                    {t(
-                      code === 'fr'
-                        ? 'langFr'
-                        : 'langEn'
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
+              {lang === 'fr'
+                ? '⚙️ Paramètres'
+                : '⚙️ Settings'}
+            </button>
 
             <button
               id="btnImportProject"
@@ -1077,6 +997,15 @@ if (
           )}
         </div>
       </div>
+
+      <HomeSettingsModal
+        open={settingsOpen}
+        theme={theme}
+        onChangeTheme={onChangeTheme}
+        onClose={() => {
+          setSettingsOpen(false);
+        }}
+      />
 
       <Modal
         open={
@@ -1848,27 +1777,26 @@ if (
                     fontSize: 14
                   }}
                 >
-{getDefaultSceneHeading(
-  {
-    interiorExterior:
-      newProjectDraft
-        .interiorExterior,
-    customInteriorExterior:
-      newProjectDraft
-        .interiorExterior ===
-      'OTHER'
-        ? newProjectDraft
-            .customInteriorExterior
-        : '',
-    location:
-      newProjectDraft.location,
-    time:
-      newProjectDraft.time
-  },
-  newProjectDraft
-    .conventionLanguage
-)}
-
+                  {getDefaultSceneHeading(
+                    {
+                      interiorExterior:
+                        newProjectDraft
+                          .interiorExterior,
+                      customInteriorExterior:
+                        newProjectDraft
+                          .interiorExterior ===
+                        'OTHER'
+                          ? newProjectDraft
+                              .customInteriorExterior
+                          : '',
+                      location:
+                        newProjectDraft.location,
+                      time:
+                        newProjectDraft.time
+                    },
+                    newProjectDraft
+                      .conventionLanguage
+                  )}
                 </strong>
               </div>
             </div>

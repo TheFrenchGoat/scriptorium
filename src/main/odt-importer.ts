@@ -65,6 +65,26 @@ const CHAPTER_NUMBER_PATTERN =
   String.raw`(?:\d+|[ivxlcdm]+|premier|première|premiere|one)`;
 
 /**
+ * Caractères ayant un sens particulier dans une expression régulière.
+ * Écrits sous forme de chaîne pour éviter toute séquence fragile au
+ * copier-coller.
+ */
+const REGEX_SPECIAL_CHARS = '.*+?^${}()|[]\\';
+
+/**
+ * Protège un texte pour l'insérer tel quel dans une expression régulière.
+ */
+function escapeRegExp(value: string): string {
+  return Array.from(value)
+    .map((char) =>
+      REGEX_SPECIAL_CHARS.includes(char)
+        ? '\\' + char
+        : char
+    )
+    .join('');
+}
+
+/**
  * Décode les entités XML les plus courantes.
  */
 function decodeXmlEntities(value: string): string {
@@ -159,10 +179,7 @@ function getXmlAttribute(
   source: string,
   attributeName: string
 ): string | undefined {
-  const escapedName = attributeName.replace(
-    /[.*+?^${}()|[\]\\]/g,
-    '\\$&'
-  );
+  const escapedName = escapeRegExp(attributeName);
 
   const doubleQuoted = source.match(
     new RegExp(
@@ -191,6 +208,8 @@ function getXmlAttribute(
 
 /**
  * Transforme une couleur ODT valide en couleur CSS.
+ * Formes acceptées : #rgb, #rrggbb (avec ou sans transparence),
+ * rgb(…) et rgba(…).
  */
 function normalizeColor(
   value: string | undefined
@@ -205,7 +224,7 @@ function normalizeColor(
     return normalized;
   }
 
-  if (/^rgba?$[0-9, .]+$$/i.test(normalized)) {
+  if (/^rgba?[(][0-9, .]+[)]$/i.test(normalized)) {
     return normalized;
   }
 

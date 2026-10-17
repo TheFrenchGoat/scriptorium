@@ -44,6 +44,10 @@ export interface StoreSchema {
    *
    * `languageToolPath` pointe vers le dossier choisi par l'utilisateur ou
    * installé automatiquement.
+   *
+   * `picky` active la correction exigeante (remarques de style). Une valeur
+   * absente, comme dans les préférences enregistrées par les versions
+   * précédentes, est considérée comme `true`.
    */
   grammarPrefs: GrammarPrefs;
 
@@ -102,7 +106,12 @@ export const store = new Store<StoreSchema>({
     grammarPrefs: {
       enabled: false,
       languageToolPath: null,
-      port: 8081
+      port: 8081,
+
+      /**
+       * Correction exigeante activée par défaut.
+       */
+      picky: true
     },
 
     nativeSpellcheckEnabled: true

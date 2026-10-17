@@ -584,6 +584,17 @@ export interface GrammarPrefs {
   enabled: boolean;
   languageToolPath: string | null;
   port: number;
+
+  /**
+   * Correction exigeante (niveau « picky » de LanguageTool).
+   *
+   * Signale aussi les remarques de style : répétitions, tournures lourdes,
+   * typographie, etc.
+   *
+   * Activée par défaut : une valeur absente (anciennes préférences) est
+   * considérée comme `true`. Seule la valeur `false` la désactive.
+   */
+  picky?: boolean;
 }
 
 export interface JavaInfo {
@@ -938,9 +949,11 @@ export interface ScriptoriumApi {
   // Mise à jour automatique
   // ------------------------------------------------------------------------
 
-  checkForUpdates: () => Promise<void>;          // (déjà présent, peut être écrit un peu différemment)
-  getPendingUpdate: () => Promise<{ version: string } | null>;
+  checkForUpdates(): Promise<void>;
 
+  getPendingUpdate(): Promise<{
+    version: string;
+  } | null>;
 
   getAppVersion(): Promise<string>;
 

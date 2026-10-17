@@ -31,121 +31,88 @@ import type {
 // CONFIGURATION HTML
 // ---------------------------------------------------------------------------
 
+/*
+ * Couleurs acceptées :
+ * - hexadécimal : #abc, #aabbcc, #aabbccdd ;
+ * - rgb / rgba, avec virgules ou en syntaxe moderne :
+ *   rgb(229, 57, 53), rgba(0, 0, 0, 0.5), rgb(229 57 53 / 50%).
+ *
+ * Les parenthèses sont écrites [(] et [)] (équivalent exact de leur forme
+ * échappée) pour éviter qu'elles soient abîmées lors d'un copier-coller.
+ */
 const COLOR_PATTERNS = [
   /^#[0-9a-fA-F]{3,8}$/,
-  /^rgba?$\s*[0-9.,%\s]+\s*$$/
+  /^rgba?[(]\s*[0-9.,%\s/]+\s*[)]$/
 ];
 
-const FONT_FAMILY_PATTERN =
-  /^[a-zA-Z0-9À-ÿ\s,'"-]+$/;
+const FONT_FAMILY_PATTERN = /^[a-zA-Z0-9À-ÿ\s,'"-]+$/;
 
-const FONT_SIZE_PATTERN =
-  /^[0-9]+(?:\.[0-9]+)?(?:px|pt)$/;
+const FONT_SIZE_PATTERN = /^[0-9]+(?:\.[0-9]+)?(?:px|pt)$/;
 
-export const CHAPTER_HTML_SANITIZE_OPTIONS:
-  sanitizeHtml.IOptions = {
-    allowedTags: [
-      'div',
-      'p',
-      'span',
-      'b',
-      'strong',
-      'i',
-      'em',
-      'u',
-      'font',
-      'br',
-      'mark'
+const TEXT_DECORATION_PATTERN =
+  /^(none|underline|line-through)(\s+(underline|line-through))*$/;
+
+export const CHAPTER_HTML_SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
+  allowedTags: ['div', 'p', 'span', 'b', 'strong', 'i', 'em', 'u', 'font', 'br', 'mark'],
+
+  allowedAttributes: {
+    div: ['class', 'style', 'data-screenplay-element', 'data-screenplay-type'],
+
+    p: ['class', 'style', 'data-screenplay-element', 'data-screenplay-type'],
+
+    span: [
+      'class',
+      'data-wb-key',
+      'data-type-label',
+      'data-screenplay-element',
+      'data-screenplay-type',
+      // Couleur choisie volontairement par l'auteur (voir lib/text-color.ts).
+      'data-user-color',
+      'style',
+      'spellcheck'
     ],
 
-    allowedAttributes: {
-      div: [
-        'class',
-        'style',
-        'data-screenplay-element',
-        'data-screenplay-type'
-      ],
+    mark: ['class', 'spellcheck'],
 
-      p: [
-        'class',
-        'style',
-        'data-screenplay-element',
-        'data-screenplay-type'
-      ],
+    font: ['face', 'size', 'color', 'data-user-color']
+  },
 
-      span: [
-        'class',
-        'data-wb-key',
-        'data-type-label',
-        'data-screenplay-element',
-        'data-screenplay-type',
-        'style',
-        'spellcheck'
-      ],
+  allowedStyles: {
+    '*': {
+      color: COLOR_PATTERNS,
 
-      mark: [
-        'class',
-        'spellcheck'
-      ],
+      /*
+       * Une police ne peut contenir que des caractères ordinaires utilisés
+       * dans un nom de police CSS.
+       *
+       * On refuse notamment :
+       * - url(...) ;
+       * - les points-virgules ;
+       * - les accolades ;
+       * - toute construction CSS qui ne serait pas produite par l’éditeur.
+       */
+      'font-family': [FONT_FAMILY_PATTERN],
 
-      font: [
-        'face',
-        'size',
-        'color'
-      ]
-    },
+      'font-size': [FONT_SIZE_PATTERN],
 
-    allowedStyles: {
-      '*': {
-        color: COLOR_PATTERNS,
+      'font-weight': [/^(normal|bold|[1-9]00)$/],
 
-        /*
-         * Une police ne peut contenir que des caractères ordinaires utilisés
-         * dans un nom de police CSS.
-         *
-         * On refuse notamment :
-         * - url(...) ;
-         * - les points-virgules ;
-         * - les accolades ;
-         * - toute construction CSS qui ne serait pas produite par l’éditeur.
-         */
-        'font-family': [
-          FONT_FAMILY_PATTERN
-        ],
+      'font-style': [/^(normal|italic|oblique)$/],
 
-        'font-size': [
-          FONT_SIZE_PATTERN
-        ],
+      'text-decoration': [TEXT_DECORATION_PATTERN],
 
-        'font-weight': [
-          /^(normal|bold|[1-9]00)$/
-        ],
+      'text-decoration-line': [TEXT_DECORATION_PATTERN],
 
-        'font-style': [
-          /^(normal|italic|oblique)$/
-        ],
+      'text-align': [/^(left|right|center|justify|start|end)$/],
 
-        'text-decoration': [
-          /^(none|underline|line-through)(\s+(underline|line-through))*$/
-        ],
+      'border-color': COLOR_PATTERNS,
 
-        'text-decoration-line': [
-          /^(none|underline|line-through)(\s+(underline|line-through))*$/
-        ],
+      'background-color': COLOR_PATTERNS
+    }
+  },
 
-        'text-align': [
-          /^(left|right|center|justify|start|end)$/
-        ],
-
-        'border-color': COLOR_PATTERNS,
-
-        'background-color':
-          COLOR_PATTERNS
-      }
-    },
-
-    disallowedTagsMode: 'discard'
-  };
+  disallowedTagsMode: 'discard'
+};
 
 /**
  * Options plus strictes pour un élément de scénario.
@@ -153,61 +120,33 @@ export const CHAPTER_HTML_SANITIZE_OPTIONS:
  * La disposition d’un scénario doit provenir du type explicite de l’élément,
  * et non de marges ou de retraits arbitraires stockés dans le HTML.
  */
-export const SCREENPLAY_HTML_SANITIZE_OPTIONS:
-  sanitizeHtml.IOptions = {
-    allowedTags: [
-      'span',
-      'b',
-      'strong',
-      'i',
-      'em',
-      'u',
-      'br',
-      'mark'
-    ],
+export const SCREENPLAY_HTML_SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
+  allowedTags: ['span', 'b', 'strong', 'i', 'em', 'u', 'br', 'mark'],
 
-    allowedAttributes: {
-      span: [
-        'class',
-        'data-wb-key',
-        'data-type-label',
-        'style',
-        'spellcheck'
-      ],
+  allowedAttributes: {
+    span: ['class', 'data-wb-key', 'data-type-label', 'data-user-color', 'style', 'spellcheck'],
 
-      mark: [
-        'class',
-        'spellcheck'
-      ]
-    },
+    mark: ['class', 'spellcheck']
+  },
 
-    allowedStyles: {
-      '*': {
-        color: COLOR_PATTERNS,
+  allowedStyles: {
+    '*': {
+      color: COLOR_PATTERNS,
 
-        'font-weight': [
-          /^(normal|bold|[1-9]00)$/
-        ],
+      'font-weight': [/^(normal|bold|[1-9]00)$/],
 
-        'font-style': [
-          /^(normal|italic|oblique)$/
-        ],
+      'font-style': [/^(normal|italic|oblique)$/],
 
-        'text-decoration': [
-          /^(none|underline|line-through)(\s+(underline|line-through))*$/
-        ],
+      'text-decoration': [TEXT_DECORATION_PATTERN],
 
-        'text-decoration-line': [
-          /^(none|underline|line-through)(\s+(underline|line-through))*$/
-        ],
+      'text-decoration-line': [TEXT_DECORATION_PATTERN],
 
-        'background-color':
-          COLOR_PATTERNS
-      }
-    },
+      'background-color': COLOR_PATTERNS
+    }
+  },
 
-    disallowedTagsMode: 'discard'
-  };
+  disallowedTagsMode: 'discard'
+};
 
 // ---------------------------------------------------------------------------
 // OUTILS GÉNÉRAUX
@@ -216,38 +155,22 @@ export const SCREENPLAY_HTML_SANITIZE_OPTIONS:
 /**
  * Vérifie qu’une valeur est un objet simple exploitable.
  */
-function isRecord(
-  value: unknown
-): value is Record<string, unknown> {
-  return (
-    value !== null &&
-    typeof value === 'object' &&
-    !Array.isArray(value)
-  );
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
 /**
  * Retourne une chaîne ou une valeur de repli.
  */
-function getString(
-  value: unknown,
-  fallback = ''
-): string {
-  return typeof value === 'string'
-    ? value
-    : fallback;
+function getString(value: unknown, fallback = ''): string {
+  return typeof value === 'string' ? value : fallback;
 }
 
 /**
  * Retourne un booléen ou une valeur de repli.
  */
-function getBoolean(
-  value: unknown,
-  fallback: boolean
-): boolean {
-  return typeof value === 'boolean'
-    ? value
-    : fallback;
+function getBoolean(value: unknown, fallback: boolean): boolean {
+  return typeof value === 'boolean' ? value : fallback;
 }
 
 /**
@@ -256,19 +179,10 @@ function getBoolean(
  * Les doublons sont remplacés afin qu’une scène, un en-tête et un élément ne
  * puissent pas partager accidentellement le même identifiant.
  */
-function getUniqueId(
-  value: unknown,
-  usedIds: Set<string>
-): string {
-  const requested =
-    typeof value === 'string'
-      ? value.trim()
-      : '';
+function getUniqueId(value: unknown, usedIds: Set<string>): string {
+  const requested = typeof value === 'string' ? value.trim() : '';
 
-  if (
-    requested &&
-    !usedIds.has(requested)
-  ) {
+  if (requested && !usedIds.has(requested)) {
     usedIds.add(requested);
     return requested;
   }
@@ -287,29 +201,15 @@ function getUniqueId(
 /**
  * Désinfecte le HTML d’un chapitre de roman.
  */
-export function sanitizeChapterHtml(
-  html: string
-): string {
-  return sanitizeHtml(
-    typeof html === 'string'
-      ? html
-      : '',
-    CHAPTER_HTML_SANITIZE_OPTIONS
-  );
+export function sanitizeChapterHtml(html: string): string {
+  return sanitizeHtml(typeof html === 'string' ? html : '', CHAPTER_HTML_SANITIZE_OPTIONS);
 }
 
 /**
  * Désinfecte le contenu interne d’un élément de scénario.
  */
-export function sanitizeScreenplayHtml(
-  html: string
-): string {
-  return sanitizeHtml(
-    typeof html === 'string'
-      ? html
-      : '',
-    SCREENPLAY_HTML_SANITIZE_OPTIONS
-  );
+export function sanitizeScreenplayHtml(html: string): string {
+  return sanitizeHtml(typeof html === 'string' ? html : '', SCREENPLAY_HTML_SANITIZE_OPTIONS);
 }
 
 /**
@@ -318,9 +218,7 @@ export function sanitizeScreenplayHtml(
  * Cette fonction est utilisée pour les valeurs qui ne doivent jamais contenir
  * de HTML, par exemple le lieu d’un en-tête de scène.
  */
-function sanitizePlainText(
-  value: unknown
-): string {
+function sanitizePlainText(value: unknown): string {
   const source = getString(value);
 
   if (!source) {
@@ -349,35 +247,25 @@ const SCREENPLAY_ELEMENT_TYPES: readonly ScreenplayElementType[] = [
   'shot'
 ];
 
-
-function isScreenplayElementType(
-  value: unknown
-): value is ScreenplayElementType {
+function isScreenplayElementType(value: unknown): value is ScreenplayElementType {
   return (
     typeof value === 'string' &&
-    SCREENPLAY_ELEMENT_TYPES.includes(
-      value as ScreenplayElementType
-    )
+    SCREENPLAY_ELEMENT_TYPES.includes(value as ScreenplayElementType)
   );
 }
 
-const SCREENPLAY_INTERIOR_EXTERIOR_VALUES:
-  readonly ScreenplayInteriorExterior[] = [
-    'INT.',
-    'EXT.',
-    'INT./EXT.',
-    'EXT./INT.',
-    'OTHER'
-  ];
+const SCREENPLAY_INTERIOR_EXTERIOR_VALUES: readonly ScreenplayInteriorExterior[] = [
+  'INT.',
+  'EXT.',
+  'INT./EXT.',
+  'EXT./INT.',
+  'OTHER'
+];
 
-function isScreenplayInteriorExterior(
-  value: unknown
-): value is ScreenplayInteriorExterior {
+function isScreenplayInteriorExterior(value: unknown): value is ScreenplayInteriorExterior {
   return (
     typeof value === 'string' &&
-    SCREENPLAY_INTERIOR_EXTERIOR_VALUES.includes(
-      value as ScreenplayInteriorExterior
-    )
+    SCREENPLAY_INTERIOR_EXTERIOR_VALUES.includes(value as ScreenplayInteriorExterior)
   );
 }
 
@@ -385,14 +273,8 @@ function isScreenplayInteriorExterior(
  * Compatibilité avec quelques anciennes valeurs internes susceptibles d’avoir
  * été enregistrées pendant le développement du mode scénario.
  */
-function normalizeInteriorExterior(
-  value: unknown
-): ScreenplayInteriorExterior {
-  if (
-    isScreenplayInteriorExterior(
-      value
-    )
-  ) {
+function normalizeInteriorExterior(value: unknown): ScreenplayInteriorExterior {
+  if (isScreenplayInteriorExterior(value)) {
     return value;
   }
 
@@ -414,20 +296,12 @@ function normalizeInteriorExterior(
   }
 }
 
-function normalizeConventionLanguage(
-  value: unknown
-): ScreenplayConventionLanguage {
-  return value === 'en'
-    ? 'en'
-    : 'fr';
+function normalizeConventionLanguage(value: unknown): ScreenplayConventionLanguage {
+  return value === 'en' ? 'en' : 'fr';
 }
 
-function normalizePageFormat(
-  value: unknown
-): ScreenplayPageFormat {
-  return value === 'letter'
-    ? 'letter'
-    : 'a4';
+function normalizePageFormat(value: unknown): ScreenplayPageFormat {
+  return value === 'letter' ? 'letter' : 'a4';
 }
 
 // ---------------------------------------------------------------------------
@@ -442,14 +316,9 @@ function sanitizeScreenplayElement(
     return null;
   }
 
-  const requestedType =
-    value.type;
+  const requestedType = value.type;
 
-  if (
-    !isScreenplayElementType(
-      requestedType
-    )
-  ) {
+  if (!isScreenplayElementType(requestedType)) {
     return null;
   }
 
@@ -459,16 +328,9 @@ function sanitizeScreenplayElement(
    * conserve pour ne pas supprimer silencieusement du texte.
    */
   return {
-    id: getUniqueId(
-      value.id,
-      usedIds
-    ),
-
+    id: getUniqueId(value.id, usedIds),
     type: requestedType,
-
-    html: sanitizeScreenplayHtml(
-      getString(value.html)
-    )
+    html: sanitizeScreenplayHtml(getString(value.html))
   };
 }
 
@@ -476,60 +338,25 @@ function sanitizeScreenplayHeading(
   value: unknown,
   usedIds: Set<string>
 ): ScreenplaySceneHeading {
-  if (
-    isRecord(value) &&
-    value.mode === 'free'
-  ) {
+  if (isRecord(value) && value.mode === 'free') {
     return {
-      id: getUniqueId(
-        value.id,
-        usedIds
-      ),
-
+      id: getUniqueId(value.id, usedIds),
       type: 'scene-heading',
-
       mode: 'free',
-
-      html: sanitizeScreenplayHtml(
-        getString(value.html)
-      )
+      html: sanitizeScreenplayHtml(getString(value.html))
     };
   }
 
-  const heading =
-    isRecord(value)
-      ? value
-      : {};
+  const heading = isRecord(value) ? value : {};
 
   return {
-    id: getUniqueId(
-      heading.id,
-      usedIds
-    ),
-
+    id: getUniqueId(heading.id, usedIds),
     type: 'scene-heading',
-
     mode: 'structured',
-
-    interiorExterior:
-      normalizeInteriorExterior(
-        heading.interiorExterior
-      ),
-
-    customInteriorExterior:
-      sanitizePlainText(
-        heading.customInteriorExterior
-      ),
-
-    location:
-      sanitizePlainText(
-        heading.location
-      ),
-
-    timeOfDay:
-      sanitizePlainText(
-        heading.timeOfDay
-      )
+    interiorExterior: normalizeInteriorExterior(heading.interiorExterior),
+    customInteriorExterior: sanitizePlainText(heading.customInteriorExterior),
+    location: sanitizePlainText(heading.location),
+    timeOfDay: sanitizePlainText(heading.timeOfDay)
   };
 }
 
@@ -541,23 +368,16 @@ function sanitizeScreenplayScene(
     return null;
   }
 
-  const elements: ScreenplayElement[] =
-    [];
+  const elements: ScreenplayElement[] = [];
 
   if (Array.isArray(value.elements)) {
-    value.elements.forEach(
-      (elementValue) => {
-        const element =
-          sanitizeScreenplayElement(
-            elementValue,
-            usedIds
-          );
+    value.elements.forEach((elementValue) => {
+      const element = sanitizeScreenplayElement(elementValue, usedIds);
 
-        if (element) {
-          elements.push(element);
-        }
+      if (element) {
+        elements.push(element);
       }
-    );
+    });
   }
 
   /*
@@ -565,283 +385,146 @@ function sanitizeScreenplayScene(
    */
   if (elements.length === 0) {
     elements.push({
-      id: getUniqueId(
-        undefined,
-        usedIds
-      ),
+      id: getUniqueId(undefined, usedIds),
       type: 'action',
       html: ''
     });
   }
 
   return {
-    id: getUniqueId(
-      value.id,
-      usedIds
-    ),
-
-    workingTitle:
-      sanitizePlainText(
-        value.workingTitle
-      ),
-
-    heading:
-      sanitizeScreenplayHeading(
-        value.heading,
-        usedIds
-      ),
-
+    id: getUniqueId(value.id, usedIds),
+    workingTitle: sanitizePlainText(value.workingTitle),
+    heading: sanitizeScreenplayHeading(value.heading, usedIds),
     elements
   };
 }
 
 function sanitizeScreenplayTitlePage(
   value: unknown,
-  legacySettings?: Record<
-    string,
-    unknown
-  >
+  legacySettings?: Record<string, unknown>
 ): ScreenplayTitlePage {
-  const titlePage =
-    isRecord(value)
-      ? value
-      : {};
+  const titlePage = isRecord(value) ? value : {};
 
   /*
    * `adaptationNote` était un ancien nom envisagé pour `sourceNote`.
    * Il est accepté uniquement pour assurer la compatibilité.
    */
-  const sourceNote =
-    titlePage.sourceNote ??
-    titlePage.adaptationNote;
+  const sourceNote = titlePage.sourceNote ?? titlePage.adaptationNote;
 
   return {
     enabled: getBoolean(
       titlePage.enabled,
-      getBoolean(
-        legacySettings?.includeTitlePage,
-        true
-      )
+      getBoolean(legacySettings?.includeTitlePage, true)
     ),
-
-    title:
-      sanitizePlainText(
-        titlePage.title
-      ),
-
-    authors:
-      sanitizePlainText(
-        titlePage.authors
-      ),
-
-    contact:
-      sanitizePlainText(
-        titlePage.contact
-      ),
-
-    version:
-      sanitizePlainText(
-        titlePage.version
-      ),
-
-    date:
-      sanitizePlainText(
-        titlePage.date
-      ),
-
-    sourceNote:
-      sanitizePlainText(
-        sourceNote
-      )
+    title: sanitizePlainText(titlePage.title),
+    authors: sanitizePlainText(titlePage.authors),
+    contact: sanitizePlainText(titlePage.contact),
+    version: sanitizePlainText(titlePage.version),
+    date: sanitizePlainText(titlePage.date),
+    sourceNote: sanitizePlainText(sourceNote)
   };
 }
 
-function sanitizeScreenplaySettings(
-  value: unknown
-): ScreenplaySettings {
-  const settings =
-    isRecord(value)
-      ? value
-      : {};
+function sanitizeScreenplaySettings(value: unknown): ScreenplaySettings {
+  const settings = isRecord(value) ? value : {};
 
   /*
    * `continuation` au singulier correspond à une ancienne variante de la
    * structure utilisée pendant le développement.
    */
-  const continuationsValue =
-    isRecord(settings.continuations)
-      ? settings.continuations
-      : isRecord(settings.continuation)
-        ? settings.continuation
-        : {};
+  const continuationsValue = isRecord(settings.continuations)
+    ? settings.continuations
+    : isRecord(settings.continuation)
+      ? settings.continuation
+      : {};
 
-  const conventionLanguage =
-    normalizeConventionLanguage(
-      settings.conventionLanguage
-    );
+  const conventionLanguage = normalizeConventionLanguage(settings.conventionLanguage);
 
-  const defaultBottomLabel =
-    conventionLanguage === 'en'
-      ? '(MORE)'
-      : '(À SUIVRE)';
+  const defaultBottomLabel = conventionLanguage === 'en' ? '(MORE)' : '(À SUIVRE)';
 
-  const defaultCharacterSuffix =
-    conventionLanguage === 'en'
-      ? "(CONT'D)"
-      : '(SUITE)';
+  const defaultCharacterSuffix = conventionLanguage === 'en' ? "(CONT'D)" : '(SUITE)';
 
   return {
     conventionLanguage,
 
-    pageFormat:
-      normalizePageFormat(
-        settings.pageFormat
-      ),
+    pageFormat: normalizePageFormat(settings.pageFormat),
 
-    showSceneNumbersInExport:
-      getBoolean(
-        settings.showSceneNumbersInExport,
-        getBoolean(
-          settings.showSceneNumbers,
-          false
-        )
-      ),
+    showSceneNumbersInExport: getBoolean(
+      settings.showSceneNumbersInExport,
+      getBoolean(settings.showSceneNumbers, false)
+    ),
 
-    boldSceneHeadings:
-      getBoolean(
-        settings.boldSceneHeadings,
-        false
-      ),
+    boldSceneHeadings: getBoolean(settings.boldSceneHeadings, false),
 
-    enableShotElement:
-      getBoolean(
-        settings.enableShotElement,
-        false
-      ),
+    enableShotElement: getBoolean(settings.enableShotElement, false),
 
     continuations: {
-      enabled: getBoolean(
-        continuationsValue.enabled,
-        true
-      ),
+      enabled: getBoolean(continuationsValue.enabled, true),
 
       bottomLabel:
-        sanitizePlainText(
-          continuationsValue.bottomLabel
-        ) || defaultBottomLabel,
+        sanitizePlainText(continuationsValue.bottomLabel) || defaultBottomLabel,
 
       characterSuffix:
         sanitizePlainText(
-          continuationsValue.characterSuffix ??
-            continuationsValue.nextPageSuffix
+          continuationsValue.characterSuffix ?? continuationsValue.nextPageSuffix
         ) || defaultCharacterSuffix
     }
   };
 }
 
-function createFallbackScreenplayScene(
-  usedIds: Set<string>
-): ScreenplayScene {
+function createFallbackScreenplayScene(usedIds: Set<string>): ScreenplayScene {
   return {
-    id: getUniqueId(
-      undefined,
-      usedIds
-    ),
+    id: getUniqueId(undefined, usedIds),
 
     workingTitle: '',
 
     heading: {
-      id: getUniqueId(
-        undefined,
-        usedIds
-      ),
-
+      id: getUniqueId(undefined, usedIds),
       type: 'scene-heading',
-
       mode: 'structured',
-
       interiorExterior: 'INT.',
-
       customInteriorExterior: '',
-
       location: '',
-
-      timeOfDay:
-        'JOUR'
+      timeOfDay: 'JOUR'
     },
 
     elements: [
       {
-        id: getUniqueId(
-          undefined,
-          usedIds
-        ),
-
+        id: getUniqueId(undefined, usedIds),
         type: 'action',
-
         html: ''
       }
     ]
   };
 }
 
-function sanitizeScreenplayData(
-  value: unknown
-): ScreenplayProjectData {
-  const screenplay =
-    isRecord(value)
-      ? value
-      : {};
+function sanitizeScreenplayData(value: unknown): ScreenplayProjectData {
+  const screenplay = isRecord(value) ? value : {};
 
-  const settingsRecord =
-    isRecord(screenplay.settings)
-      ? screenplay.settings
-      : {};
+  const settingsRecord = isRecord(screenplay.settings) ? screenplay.settings : {};
 
-  const usedIds =
-    new Set<string>();
+  const usedIds = new Set<string>();
 
-  const scenes: ScreenplayScene[] =
-    [];
+  const scenes: ScreenplayScene[] = [];
 
   if (Array.isArray(screenplay.scenes)) {
-    screenplay.scenes.forEach(
-      (sceneValue) => {
-        const scene =
-          sanitizeScreenplayScene(
-            sceneValue,
-            usedIds
-          );
+    screenplay.scenes.forEach((sceneValue) => {
+      const scene = sanitizeScreenplayScene(sceneValue, usedIds);
 
-        if (scene) {
-          scenes.push(scene);
-        }
+      if (scene) {
+        scenes.push(scene);
       }
-    );
+    });
   }
 
   if (scenes.length === 0) {
-    scenes.push(
-      createFallbackScreenplayScene(
-        usedIds
-      )
-    );
+    scenes.push(createFallbackScreenplayScene(usedIds));
   }
 
   return {
     version: 1,
-
-    settings:
-      sanitizeScreenplaySettings(
-        screenplay.settings
-      ),
-
-    titlePage:
-      sanitizeScreenplayTitlePage(
-        screenplay.titlePage,
-        settingsRecord
-      ),
-
+    settings: sanitizeScreenplaySettings(screenplay.settings),
+    titlePage: sanitizeScreenplayTitlePage(screenplay.titlePage, settingsRecord),
     scenes
   };
 }
@@ -850,48 +533,31 @@ function sanitizeScreenplayData(
 // DÉSINFECTION DU PROJET COMPLET
 // ---------------------------------------------------------------------------
 
-function sanitizeProjectType(
-  value: unknown
-): ProjectType {
-  return value === 'screenplay'
-    ? 'screenplay'
-    : 'novel';
+function sanitizeProjectType(value: unknown): ProjectType {
+  return value === 'screenplay' ? 'screenplay' : 'novel';
 }
 
-function sanitizeChapters(
-  value: unknown
-): Record<string, string> {
-  const chapters: Record<
-    string,
-    string
-  > = {};
+function sanitizeChapters(value: unknown): Record<string, string> {
+  const chapters: Record<string, string> = {};
 
   if (!isRecord(value)) {
     return chapters;
   }
 
-  Object.entries(value).forEach(
-    ([name, content]) => {
-      const safeName =
-        name.trim();
+  Object.entries(value).forEach(([name, content]) => {
+    const safeName = name.trim();
 
-      if (!safeName) {
-        return;
-      }
-
-      chapters[safeName] =
-        sanitizeChapterHtml(
-          getString(content)
-        );
+    if (!safeName) {
+      return;
     }
-  );
+
+    chapters[safeName] = sanitizeChapterHtml(getString(content));
+  });
 
   return chapters;
 }
 
-function sanitizeWritingSessions(
-  value: unknown
-): WritingSession[] {
+function sanitizeWritingSessions(value: unknown): WritingSession[] {
   if (!Array.isArray(value)) {
     return [];
   }
@@ -901,23 +567,15 @@ function sanitizeWritingSessions(
    * On conserve uniquement les entrées de forme objet pour éviter les valeurs
    * primitives manifestement invalides.
    */
-  return value.filter(
-    (entry): entry is WritingSession =>
-      isRecord(entry)
-  );
+  return value.filter((entry): entry is WritingSession => isRecord(entry));
 }
 
-function sanitizeGoals(
-  value: unknown
-): ProjectGoal[] {
+function sanitizeGoals(value: unknown): ProjectGoal[] {
   if (!Array.isArray(value)) {
     return [];
   }
 
-  return value.filter(
-    (entry): entry is ProjectGoal =>
-      isRecord(entry)
-  );
+  return value.filter((entry): entry is ProjectGoal => isRecord(entry));
 }
 
 /**
@@ -929,9 +587,7 @@ function sanitizeGoals(
  * - anciennes variantes des paramètres scénario : converties ;
  * - tableaux de sessions et d’objectifs absents : tableaux vides.
  */
-export function sanitizeProjectData(
-  projectData: unknown
-): ProjectData {
+export function sanitizeProjectData(projectData: unknown): ProjectData {
   if (!isRecord(projectData)) {
     return {
       projectType: 'novel',
@@ -943,55 +599,23 @@ export function sanitizeProjectData(
     };
   }
 
-  const projectType =
-    sanitizeProjectType(
-      projectData.projectType
-    );
+  const projectType = sanitizeProjectType(projectData.projectType);
 
-  const world =
-    isRecord(projectData.world)
-      ? projectData.world
-      : {};
+  const world = isRecord(projectData.world) ? projectData.world : {};
 
-  const customWbTypes =
-    isRecord(
-      projectData.customWbTypes
-    )
-      ? projectData.customWbTypes
-      : {};
+  const customWbTypes = isRecord(projectData.customWbTypes) ? projectData.customWbTypes : {};
 
   const result: ProjectData = {
     projectType,
-
-    chapters:
-      sanitizeChapters(
-        projectData.chapters
-      ),
-
-    world:
-      world as ProjectData['world'],
-
-    customWbTypes:
-      customWbTypes as NonNullable<
-        ProjectData['customWbTypes']
-      >,
-
-    writingSessions:
-      sanitizeWritingSessions(
-        projectData.writingSessions
-      ),
-
-    goals:
-      sanitizeGoals(
-        projectData.goals
-      )
+    chapters: sanitizeChapters(projectData.chapters),
+    world: world as ProjectData['world'],
+    customWbTypes: customWbTypes as NonNullable<ProjectData['customWbTypes']>,
+    writingSessions: sanitizeWritingSessions(projectData.writingSessions),
+    goals: sanitizeGoals(projectData.goals)
   };
 
   if (projectType === 'screenplay') {
-    result.screenplay =
-      sanitizeScreenplayData(
-        projectData.screenplay
-      );
+    result.screenplay = sanitizeScreenplayData(projectData.screenplay);
 
     /*
      * Un scénario utilise `screenplay.scenes` comme source principale.
