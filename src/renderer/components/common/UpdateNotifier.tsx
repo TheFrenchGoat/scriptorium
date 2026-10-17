@@ -24,15 +24,28 @@ export function UpdateNotifier(): React.ReactElement {
   const { t } = useI18n();
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
 
-  useEffect(() => {
+    useEffect(() => {
     const unsubs = [
       window.api.onUpdateAvailable((info) => setPhase({ kind: 'available', version: info.version })),
       window.api.onUpdateNotAvailable(() => setPhase({ kind: 'upToDate' })),
       window.api.onUpdateDownloaded((info) => setPhase({ kind: 'downloaded', version: info.version })),
       window.api.onUpdateError((message) => setPhase({ kind: 'error', message }))
     ];
+
+    // Rattrape une mise à jour trouvée AVANT que ce composant écoute
+    // (vérification lancée très tôt au démarrage).
+    window.api
+      .getPendingUpdate()
+      .then((p) => {
+        if (p) setPhase({ kind: 'available', version: p.version });
+      })
+      .catch(() => {
+        // Ne jamais bloquer l'interface si le main ne connaît pas ce canal.
+      });
+
     return () => unsubs.forEach((unsub) => unsub());
   }, []);
+
 
   const close = () => setPhase({ kind: 'idle' });
 

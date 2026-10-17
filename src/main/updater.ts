@@ -26,6 +26,7 @@ export const FOUR_HOURS_MS = 4 * 60 * 60 * 1000;
 // l'écriture. Une mise à jour TROUVÉE, elle, est toujours signalée, qu'elle
 // vienne d'un check manuel ou automatique.
 let isManualUpdateCheck = false;
+let pendingUpdate: { version: string } | null = null;
 let sendToWindow: (channel: string, ...args: unknown[]) => void = () => {};
 
 export function checkForUpdates(manual = false): void {
@@ -56,18 +57,19 @@ export function setupAutoUpdater(getWindow: () => BrowserWindow | null): void {
     getWindow()?.webContents.send(channel, ...args);
   };
 
-  autoUpdater.on('update-available', (info) => {
-    sendToWindow('updater:available', { version: info.version });
-    isManualUpdateCheck = false;
-  });
+autoUpdater.on('update-available', (info) => {
+  pendingUpdate = { version: info.version };
+  sendToWindow('updater:update-available', pendingUpdate);
+  isManualUpdateCheck = false;
+});
 
   autoUpdater.on('update-not-available', () => {
-    if (isManualUpdateCheck) sendToWindow('updater:not-available');
+    if (isManualUpdateCheck) sendToWindow('updater:update-not-available');
     isManualUpdateCheck = false;
   });
 
   autoUpdater.on('update-downloaded', (info) => {
-    sendToWindow('updater:downloaded', { version: info.version });
+    sendToWindow('updater:update-downloaded', { version: info.version });
     isManualUpdateCheck = false;
   });
 
@@ -84,4 +86,5 @@ export function setupAutoUpdater(getWindow: () => BrowserWindow | null): void {
   ipcMain.handle('updater:get-version', () => app.getVersion());
   ipcMain.handle('updater:confirm-download', () => autoUpdater.downloadUpdate());
   ipcMain.handle('updater:quit-and-install', () => autoUpdater.quitAndInstall());
+  ipcMain.handle('updater:get-pending', () => pendingUpdate);
 }

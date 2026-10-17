@@ -437,9 +437,14 @@ const api: ScriptoriumApi = {
   // MISES À JOUR AUTOMATIQUES
   // -----------------------------------------------------------------------
 
-  checkForUpdates: () =>
+    checkForUpdates: () =>
     ipcRenderer.invoke(
       'updater:check'
+    ),
+
+  getPendingUpdate: () =>
+    ipcRenderer.invoke(
+      'updater:get-pending'
     ),
 
   getAppVersion: () =>

@@ -938,7 +938,9 @@ export interface ScriptoriumApi {
   // Mise à jour automatique
   // ------------------------------------------------------------------------
 
-  checkForUpdates(): Promise<void>;
+  checkForUpdates: () => Promise<void>;          // (déjà présent, peut être écrit un peu différemment)
+  getPendingUpdate: () => Promise<{ version: string } | null>;
+
 
   getAppVersion(): Promise<string>;
 
