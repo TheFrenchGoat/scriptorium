@@ -48,9 +48,6 @@
 
 /*
  * Zones situées à l’extérieur des marges de rédaction.
- *
- * Elles restent très discrètes afin de conserver l’apparence minimaliste de
- * la règle tout en rendant les limites de la zone de texte compréhensibles.
  */
 .ruler-margin-zone {
   position: absolute;
@@ -58,31 +55,17 @@
   bottom: 0;
   z-index: 0;
   pointer-events: none;
-  background: color-mix(
-    in srgb,
-    var(--text-muted) 7%,
-    transparent
-  );
+  background: color-mix(in srgb, var(--text-muted) 7%, transparent);
 }
 
 .ruler-margin-zone-left {
   left: 0;
-  border-right: 1px solid
-    color-mix(
-      in srgb,
-      var(--text-muted) 20%,
-      transparent
-    );
+  border-right: 1px solid color-mix(in srgb, var(--text-muted) 20%, transparent);
 }
 
 .ruler-margin-zone-right {
   right: 0;
-  border-left: 1px solid
-    color-mix(
-      in srgb,
-      var(--text-muted) 20%,
-      transparent
-    );
+  border-left: 1px solid color-mix(in srgb, var(--text-muted) 20%, transparent);
 }
 
 .ruler-ticks {
@@ -97,30 +80,18 @@
   bottom: 0;
   width: 1px;
   height: 4px;
-  background: color-mix(
-    in srgb,
-    var(--text-muted) 42%,
-    transparent
-  );
+  background: color-mix(in srgb, var(--text-muted) 42%, transparent);
   transform: translateX(-0.5px);
 }
 
 .ruler-tick-half {
   height: 7px;
-  background: color-mix(
-    in srgb,
-    var(--text-muted) 55%,
-    transparent
-  );
+  background: color-mix(in srgb, var(--text-muted) 55%, transparent);
 }
 
 .ruler-tick-centimeter {
   height: 10px;
-  background: color-mix(
-    in srgb,
-    var(--text-muted) 72%,
-    transparent
-  );
+  background: color-mix(in srgb, var(--text-muted) 72%, transparent);
 }
 
 .ruler-tick-number {
@@ -129,24 +100,18 @@
   bottom: 11px;
   min-width: 22px;
   color: var(--text-muted);
-  font-family:
-    Arial,
-    sans-serif;
+  font-family: Arial, sans-serif;
   font-size: 10px;
   font-weight: 600;
   line-height: 1;
   text-align: center;
   white-space: nowrap;
   transform: translateX(-50%);
-  text-shadow:
-    0 1px 0 var(--bg-input);
+  text-shadow: 0 1px 0 var(--bg-input);
 }
 
 /*
  * Repères interactifs.
- *
- * Les règles globales des boutons de l’application sont neutralisées ici pour
- * éviter qu’elles ne modifient la taille ou la position des repères.
  */
 button.ruler-marker {
   position: absolute;
@@ -178,20 +143,13 @@ button.ruler-marker.active {
 }
 
 button.ruler-marker:focus-visible {
-  filter:
-    drop-shadow(
-      0 0 2px
-      color-mix(
-        in srgb,
-        var(--accent) 70%,
-        transparent
-      )
-    );
+  filter: drop-shadow(
+    0 0 2px color-mix(in srgb, var(--accent) 70%, transparent)
+  );
 }
 
 /*
- * Marges gauche et droite : triangle orienté vers la zone de rédaction,
- * accompagné d’un petit trait vertical.
+ * Marges gauche et droite.
  */
 .ruler-marker-left,
 .ruler-marker-right {
@@ -239,7 +197,7 @@ button.ruler-marker:focus-visible {
 }
 
 /*
- * Retrait de première ligne : triangle placé dans la partie haute de la règle.
+ * Retrait de première ligne.
  */
 .ruler-marker-indent {
   top: -1px;
@@ -272,9 +230,6 @@ button.ruler-marker:focus-visible {
 
 /*
  * Valeur affichée pendant le déplacement d’un repère.
- *
- * L’infobulle reste à l’intérieur de la hauteur de la règle afin de ne pas
- * recouvrir le texte de la page.
  */
 .ruler-drag-tooltip {
   position: absolute;
@@ -286,15 +241,59 @@ button.ruler-marker:focus-visible {
   color: var(--text);
   background: var(--bg-secondary);
   box-shadow: 0 2px 7px rgba(0, 0, 0, 0.18);
-  font-family:
-    Arial,
-    sans-serif;
+  font-family: Arial, sans-serif;
   font-size: 10px;
   font-weight: 600;
   line-height: 1.2;
   white-space: nowrap;
   pointer-events: none;
   transform: translateX(-50%);
+}
+
+/*
+ * Bouton de réinitialisation de la règle.
+ *
+ * Placé à droite de la barre de règle, au-dessus de celle-ci si la page est
+ * très large. Les règles globales des boutons sont neutralisées.
+ */
+button.ruler-reset-button {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  outline: none;
+  background: var(--bg-secondary);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  color: var(--text-muted);
+  cursor: pointer;
+  transform: translateY(-50%);
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease,
+    opacity 0.15s ease;
+}
+
+button.ruler-reset-button:hover:not(:disabled),
+button.ruler-reset-button:focus-visible {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--bg-secondary);
+}
+
+button.ruler-reset-button:disabled {
+  opacity: 0.35;
+  cursor: default;
 }
 
 /*
@@ -319,9 +318,13 @@ button.ruler-marker:focus-visible {
   color: var(--text);
 }
 
+[data-theme='contrast'] button.ruler-reset-button {
+  border-width: 2px;
+  color: var(--text);
+}
+
 /*
- * La règle devient un peu plus compacte sur les petites fenêtres, sans
- * changer son système de coordonnées.
+ * Règle plus compacte sur les petites fenêtres.
  */
 @media (max-width: 760px) {
   .editor-ruler-section {
