@@ -223,6 +223,7 @@ export interface EditorController {
   setWbAliases(itemId: string, aliases: string[]): boolean;
   toggleReadMode(): void;
   chaptersContaining(itemId: string): string[];
+  scenesContaining(itemId: string): { id: string; title: string }[];
 
   /** Crée ou modifie une catégorie. Renvoie son identifiant (slug). */
   saveCustomType(slug: string | null, definition: WbCategoryDef): string;
@@ -2559,6 +2560,39 @@ toggleReadMode() {
 
       chaptersContaining(itemId) {
         return mentionIndex.chaptersContaining(itemId);
+      },
+
+      scenesContaining(itemId) {
+        if (!isScreenplayData(s.projectData)) {
+          return [];
+        }
+
+        const screenplay = s.projectData.screenplay;
+        const sceneIds = mentionIndex.scenesContaining(
+          itemId,
+          screenplay.scenes
+        );
+
+        return sceneIds.flatMap((sceneId) => {
+          const index = screenplay.scenes.findIndex(
+            (scene) => scene.id === sceneId
+          );
+
+          if (index < 0) {
+            return [];
+          }
+
+          return [
+            {
+              id: sceneId,
+              title: getSceneDisplayTitle(
+                screenplay.scenes[index],
+                index,
+                screenplay.settings.conventionLanguage
+              )
+            }
+          ];
+        });
       },
 
       itemsUsingType(slug) {

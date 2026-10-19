@@ -11,12 +11,17 @@
 // - une mention posée dans le HTML (data-wb-key) compte aussi, même si son
 //   texte ne correspond plus exactement au nom.
 //
+// Scénario (étape 2e-2) : scenesContaining() cherche les mentions dans les
+// paragraphes des scènes. Le résultat est mémorisé par paragraphe : un
+// paragraphe modifié est un nouvel objet, lui seul est donc réanalysé.
+// Les en-têtes de scène ne sont pas comptés (ils ne sont pas surlignés).
+//
 // Ce module fournit aussi les outils de détection partagés avec
 // highlight.ts, afin que le surlignage et l'index reconnaissent exactement
 // les mêmes mots.
 
 import { stripHtmlToText } from './dom';
-import type { ProjectData, WbItem } from '../../shared/types';
+import type { ProjectData, ScreenplayElement, ScreenplayScene, WbItem } from '../../shared/types';
 
 // ============================================================================
 // OUTILS DE DÉTECTION PARTAGÉS
@@ -205,6 +210,10 @@ export interface MentionIndex {
   /** Chapitres où la fiche apparaît, triés dans l'ordre du projet. */
   chaptersContaining(itemId: string): string[];
 
+  /** Identifiants des scènes où la fiche apparaît, dans l'ordre du scénario.
+   *  Seuls les paragraphes sont lus (pas les en-têtes). */
+  scenesContaining(itemId: string, scenes: readonly ScreenplayScene[]): string[];
+
   removeChapter(chapterName: string): void;
   renameChapter(oldName: string, newName: string): void;
   removeItem(itemId: string): void;
@@ -227,6 +236,12 @@ export function createMentionIndex(getProjectData: () => ProjectData): MentionIn
   let chapterOrder = new Map<string, number>();
 
   let matcher: TermMatcher | null = null;
+
+  /** paragraphe de scénario -> identifiants des fiches qu'il mentionne. */
+  let elementCache = new WeakMap<ScreenplayElement, Set<string>>();
+
+  /** Signature des termes au moment où elementCache a été rempli. */
+  let elementCacheSignature = '';
 
   function getWorld(): Record<string, WbItem> {
     const world = getProjectData().world;
@@ -292,12 +307,13 @@ export function createMentionIndex(getProjectData: () => ProjectData): MentionIn
   }
 
   /**
-   * Identifiants des fiches mentionnées dans un chapitre.
+   * Identifiants des fiches mentionnées dans un HTML (chapitre ou paragraphe).
+   * `currentMatcher` évite de recalculer la signature à chaque appel.
    */
-  function findItemsInHtml(html: string): Set<string> {
+  function findItemsInHtml(html: string, currentMatcher?: TermMatcher): Set<string> {
     const world = getWorld();
     const found = new Set<string>();
-    const current = getMatcher();
+    const current = currentMatcher ?? getMatcher();
 
     if (current.regex) {
       const text = stripHtmlToText(html);
@@ -314,6 +330,22 @@ export function createMentionIndex(getProjectData: () => ProjectData): MentionIn
         found.add(key);
       }
     });
+
+    return found;
+  }
+
+  /** Fiches mentionnées dans un paragraphe de scénario (avec mémoire). */
+  function itemsInElement(element: ScreenplayElement, current: TermMatcher): Set<string> {
+    const cached = elementCache.get(element);
+
+    if (cached) {
+      return cached;
+    }
+
+    const html = typeof element.html === 'string' ? element.html : '';
+    const found = html ? findItemsInHtml(html, current) : new Set<string>();
+
+    elementCache.set(element, found);
 
     return found;
   }
@@ -396,6 +428,39 @@ export function createMentionIndex(getProjectData: () => ProjectData): MentionIn
       return Array.from(set).sort(
         (a, b) => (chapterOrder.get(a) ?? 0) - (chapterOrder.get(b) ?? 0)
       );
+    },
+
+    scenesContaining(itemId, scenes) {
+      if (!Array.isArray(scenes) || scenes.length === 0) {
+        return [];
+      }
+
+      const current = getMatcher();
+
+      // Un nom, un alias ou une fiche a changé : la mémoire n'est plus valable.
+      // (La suppression d'une fiche change aussi la signature.)
+      if (current.signature !== elementCacheSignature) {
+        elementCache = new WeakMap();
+        elementCacheSignature = current.signature;
+      }
+
+      const result: string[] = [];
+
+      scenes.forEach((scene) => {
+        if (!scene || !Array.isArray(scene.elements)) {
+          return;
+        }
+
+        const mentioned = scene.elements.some(
+          (element: ScreenplayElement) => !!element && itemsInElement(element, current).has(itemId)
+        );
+
+        if (mentioned) {
+          result.push(scene.id);
+        }
+      });
+
+      return result;
     },
 
     removeChapter(chapterName) {
