@@ -224,7 +224,11 @@ export interface EditorController {
   setWbIcon(itemId: string, icon: string): void;
   setWbColor(itemId: string, color: string): void;
   setWbAliases(itemId: string, aliases: string[]): boolean;
-  toggleReadMode(): void;
+  /**
+   * Bascule le mode lecture d'une fiche. Sans identifiant : la fiche de
+   * l'onglet actif. Avec identifiant : cette fiche (utile au panneau latéral).
+   */
+  toggleReadMode(itemId?: string): void;
   chaptersContaining(itemId: string): string[];
   scenesContaining(itemId: string): { id: string; title: string }[];
 
@@ -2584,12 +2588,23 @@ export function useEditorController({
         return true;
       },
 
-      toggleReadMode() {
-        if (s.activeType !== 'world' || !s.activeTab) {
+      /**
+       * Mode lecture d'une fiche.
+       *
+       * - Avec un identifiant (panneau latéral, ou fiche affichée dans un
+       *   onglet) : c'est cette fiche qui bascule.
+       * - Sans identifiant (barre d'outils, raccourci) : la fiche de l'onglet
+       *   actif, comme avant.
+       */
+      toggleReadMode(itemId) {
+        const targetId =
+          itemId ?? (s.activeType === 'world' ? s.activeTab : null);
+
+        if (!targetId) {
           return;
         }
 
-        const item = s.projectData.world[s.activeTab];
+        const item = s.projectData.world[targetId];
 
         if (!item) {
           return;

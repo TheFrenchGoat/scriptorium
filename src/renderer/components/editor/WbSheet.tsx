@@ -6,6 +6,10 @@
 // La propriété `name` contient l'IDENTIFIANT stable de la fiche (clé de
 // `data.world`, identique à `TabRef.name` pour un onglet de type 'world').
 // Le nom affiché provient de `item.name`.
+//
+// La propriété `compact` sert à l'affichage dans le panneau latéral : mise en
+// page resserrée, et identifiants HTML suffixés pour ne pas entrer en conflit
+// avec la même fiche ouverte dans un onglet.
 
 import React, { useEffect, useState } from 'react';
 import { useI18n } from '../../i18n';
@@ -16,6 +20,8 @@ export interface WbSheetProps {
   controller: EditorController;
   /** Identifiant stable de la fiche. */
   name: string;
+  /** Affichage resserré (panneau latéral). */
+  compact?: boolean;
 }
 
 /** Texte affiché dans la case des alias : les alias séparés par des virgules. */
@@ -31,7 +37,7 @@ function textToAliases(text: string): string[] {
     .filter((alias) => alias.length > 0);
 }
 
-export function WbSheet({ controller, name }: WbSheetProps): React.ReactElement | null {
+export function WbSheet({ controller, name, compact = false }: WbSheetProps): React.ReactElement | null {
   const { t } = useI18n();
   const itemId = name;
   const data = controller.data().world[itemId];
@@ -39,7 +45,14 @@ export function WbSheet({ controller, name }: WbSheetProps): React.ReactElement 
   const currentAliases = data ? aliasesToText(data.aliases) : '';
   const [nameDraft, setNameDraft] = useState(currentName);
   const [aliasesDraft, setAliasesDraft] = useState(currentAliases);
-  const readMode = controller.isReadMode();
+
+  // Le mode lecture est propre à chaque fiche : on le lit directement sur
+  // elle, que la fiche soit affichée dans un onglet ou dans le panneau.
+  const readMode = Boolean(data?.readMode);
+
+  // Identifiants HTML distincts dans le panneau (la même fiche peut être
+  // ouverte en même temps dans un onglet).
+  const idSuffix = compact ? '_panel' : '';
 
   useEffect(() => setNameDraft(currentName), [itemId, currentName]);
   useEffect(() => setAliasesDraft(currentAliases), [itemId, currentAliases]);
@@ -77,10 +90,10 @@ export function WbSheet({ controller, name }: WbSheetProps): React.ReactElement 
   };
 
   return (
-    <div className="wb-container">
+    <div className={`wb-container${compact ? ' wb-container-compact' : ''}`}>
       <div className="wb-header">
         <EmojiPicker
-          buttonId="wbIconBtn"
+          buttonId={`wbIconBtn${idSuffix}`}
           buttonTitle={t('wbIconInputTitle')}
           value={data.icon || category.icon}
           disabled={readMode}
@@ -89,7 +102,7 @@ export function WbSheet({ controller, name }: WbSheetProps): React.ReactElement 
 
         <input
           type="text"
-          id="wbNameInput_live"
+          id={`wbNameInput_live${idSuffix}`}
           className="wb-title-input"
           value={nameDraft}
           readOnly={readMode}
@@ -106,7 +119,7 @@ export function WbSheet({ controller, name }: WbSheetProps): React.ReactElement 
         <label className="wb-color-label" title={t('wbColorLabel')}>
           <input
             type="color"
-            id="wbColorInput"
+            id={`wbColorInput${idSuffix}`}
             value={color}
             disabled={readMode}
             onChange={(e) => controller.setWbColor(itemId, e.target.value)}
@@ -115,23 +128,23 @@ export function WbSheet({ controller, name }: WbSheetProps): React.ReactElement 
 
         <button
           type="button"
-          id="wbReadModeBtn"
+          id={`wbReadModeBtn${idSuffix}`}
           className={`wb-readmode-btn${readMode ? ' active' : ''}`}
           title={t('wbReadModeTitle')}
-          onClick={() => controller.toggleReadMode()}
+          onClick={() => controller.toggleReadMode(itemId)}
         >
           {readMode ? '🔒' : '👁'} <span>{t('wbReadModeLabel')}</span>
         </button>
       </div>
 
-      <div id="wbAliasesSection">
+      <div id={`wbAliasesSection${idSuffix}`}>
         <div className="wb-form-group">
-          <label className="wb-label" htmlFor="wbAliasesInput">
+          <label className="wb-label" htmlFor={`wbAliasesInput${idSuffix}`}>
             {t('wbAliasesLabel')}
           </label>
           <input
             type="text"
-            id="wbAliasesInput"
+            id={`wbAliasesInput${idSuffix}`}
             className="wb-input"
             value={aliasesDraft}
             placeholder={t('wbAliasesPlaceholder')}
@@ -151,7 +164,7 @@ export function WbSheet({ controller, name }: WbSheetProps): React.ReactElement 
         </div>
       </div>
 
-      <div id="wbFormFields">
+      <div id={`wbFormFields${idSuffix}`}>
         {template.fields.map((field) => (
           <div className="wb-form-group" key={field.key}>
             <label className="wb-label">{isCustomType ? field.label : t(`wbField_${field.key}` as never)}</label>
@@ -175,7 +188,7 @@ export function WbSheet({ controller, name }: WbSheetProps): React.ReactElement 
         ))}
       </div>
 
-            <div id="wbMentionsSection">
+      <div id={`wbMentionsSection${idSuffix}`}>
         <div className="wb-form-group">
           <label className="wb-label">{t('wbMentionedInLabel')}</label>
           {chaptersWithMention.length === 0 && scenesWithMention.length === 0 ? (

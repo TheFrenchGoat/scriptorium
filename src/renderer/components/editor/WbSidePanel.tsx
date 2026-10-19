@@ -1,6 +1,7 @@
 import { useI18n } from '../../i18n';
 import type { EditorController } from './useEditorController';
 import { WbSheet } from './WbSheet';
+import '../../styles/wb-compact.css';
 
 /**
  * Événement window qui pilote le panneau latéral des fiches.
@@ -113,6 +114,7 @@ export function WbSidePanel({
               key={currentId}
               controller={controller}
               name={currentId}
+              compact
             />
           </div>
         </>

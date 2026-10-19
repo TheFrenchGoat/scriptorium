@@ -1,0 +1,73 @@
+/* =========================================================
+   FICHE COMPACTE DANS LE PANNEAU LATÉRAL (lot 3d)
+   Toutes les règles commencent par .wb-container-compact :
+   elles ne touchent que la fiche affichée dans le panneau,
+   jamais celle ouverte dans un onglet.
+   ========================================================= */
+
+.wb-container.wb-container-compact {
+  max-width: none;
+  margin: 0;
+  padding: 12px 12px 40px;
+}
+
+/* En-tête : icône, nom, couleur, mode lecture */
+.wb-container-compact .wb-header {
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.wb-container-compact .wb-icon-btn {
+  width: 40px;
+  height: 40px;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.wb-container-compact .wb-header .wb-title-input {
+  flex: 1 1 140px;
+  min-width: 0;
+  font-size: 17px;
+  text-align: left;
+}
+
+.wb-container-compact .wb-color-label input {
+  width: 26px;
+  height: 26px;
+}
+
+.wb-container-compact .wb-readmode-btn {
+  padding: 5px 9px;
+  font-size: 12px;
+}
+
+/* Sélecteur d'icône : ne déborde pas du panneau */
+.wb-container-compact .wb-icon-picker {
+  width: 220px;
+  max-width: calc(100vw - 32px);
+}
+
+/* Champs */
+.wb-container-compact .wb-form-group {
+  margin-bottom: 12px;
+}
+
+.wb-container-compact .wb-label {
+  font-size: 12px;
+}
+
+.wb-container-compact .wb-input,
+.wb-container-compact .wb-textarea {
+  padding: 7px 9px;
+  font-size: 13.5px;
+}
+
+.wb-container-compact .wb-textarea {
+  min-height: 80px;
+}
+
+/* Mentions : boutons un peu plus petits */
+.wb-container-compact #wbMentionsSection_panel button {
+  font-size: 12px;
+}
