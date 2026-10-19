@@ -310,6 +310,14 @@ export const fr = {
     'Basculer en mode lecture (fige la fiche contre les modifications accidentelles)',
   wbReadModeLabel: 'Mode lecture',
 
+  wbAliasesLabel: 'Alias',
+  wbAliasesPlaceholder:
+    'ex : Jeannot, le Vieux Jean',
+  wbAliasesHint:
+    'Autres noms sous lesquels cette fiche apparaît dans le texte, séparés par des virgules. Ils sont surlignés comme le nom.',
+  wbAliasConflict:
+    'L’alias "{alias}" est déjà utilisé par la fiche "{name}". Choisissez-en un autre.',
+
   // -------------------------------------------------------------------------
   // CHAMPS WORLD BUILDING
   // -------------------------------------------------------------------------
@@ -1031,6 +1039,14 @@ export const en: Record<TranslationKey, string> = {
   wbReadModeTitle:
     'Switch to read mode (locks the sheet against accidental edits)',
   wbReadModeLabel: 'Read mode',
+
+  wbAliasesLabel: 'Aliases',
+  wbAliasesPlaceholder:
+    'e.g. Johnny, Old John',
+  wbAliasesHint:
+    'Other names this sheet goes by in the text, separated by commas. They are highlighted just like the name.',
+  wbAliasConflict:
+    'The alias "{alias}" is already used by the sheet "{name}". Please choose another one.',
 
   // -------------------------------------------------------------------------
   // WORLD BUILDING FIELDS

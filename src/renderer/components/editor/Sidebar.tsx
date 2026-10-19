@@ -9,6 +9,8 @@
 // les opérations. Leur numéro visible est recalculé depuis leur ordre actuel.
 //
 // La seconde section contient les fiches World Building dans les deux modes.
+// Les fiches sont identifiées par leur identifiant stable (clé de
+// `data.world`) ; leur nom affiché provient de `item.name`.
 
 import React, {
   useEffect,
@@ -57,7 +59,8 @@ export interface SidebarProps {
 
 interface RenameState {
   /**
-   * Nom du chapitre, nom de la fiche ou identifiant stable de la scène.
+   * Nom du chapitre, identifiant de la fiche ou identifiant stable de la
+   * scène.
    */
   oldName: string;
 
@@ -116,12 +119,33 @@ export function Sidebar({
   const chapterNames =
     Object.keys(data.chapters);
 
-  const wbNames =
+  /**
+   * Identifiants des fiches, dans l’ordre d’affichage.
+   */
+  const wbIds =
     Object.keys(data.world);
 
-  const customTypes =
-    Object.entries(
-      data.customWbTypes ?? {}
+  const registry =
+    controller.registry;
+
+  /**
+   * Catégories du projet (intégrées et personnalisées).
+   */
+  const allCategories =
+    registry
+      .categorySlugs()
+      .map((slug) =>
+        registry.categoryFor(slug)
+      );
+
+  const builtinCategories =
+    allCategories.filter(
+      (category) => category.builtin
+    );
+
+  const customCategories =
+    allCategories.filter(
+      (category) => !category.builtin
     );
 
   const [
@@ -170,6 +194,9 @@ export function Sidebar({
     null
   );
 
+  /**
+   * Identifiant de la fiche en cours de déplacement.
+   */
   const [
     draggedWb,
     setDraggedWb
@@ -506,13 +533,17 @@ export function Sidebar({
 
   const confirmNewWb =
     (): void => {
-      if (
-        newWbState &&
+      if (!newWbState) {
+        return;
+      }
+
+      const createdId =
         controller.createWbItem(
           newWbState.name,
           newWbState.type
-        )
-      ) {
+        );
+
+      if (createdId) {
         setNewWbState(null);
       }
     };
@@ -593,16 +624,9 @@ export function Sidebar({
   const wbTypeLabel = (
     type: WbType
   ): string => {
-    const custom =
-      data.customWbTypes?.[type];
-
-    if (custom) {
-      return custom.label;
-    }
-
-    return t(
-      `wbLabel_${type}` as never
-    );
+    return registry.categoryFor(
+      type
+    ).label;
   };
 
   // -----------------------------------------------------------------------
@@ -682,18 +706,18 @@ export function Sidebar({
   // -----------------------------------------------------------------------
 
   const handleWbDrop = (
-    targetName: string
+    targetId: string
   ): void => {
     if (
       !draggedWb ||
-      draggedWb === targetName
+      draggedWb === targetId
     ) {
       setDraggedWb(null);
       return;
     }
 
     const order =
-      wbNames.slice();
+      wbIds.slice();
 
     const from =
       order.indexOf(
@@ -702,7 +726,7 @@ export function Sidebar({
 
     const to =
       order.indexOf(
-        targetName
+        targetId
       );
 
     if (
@@ -1096,84 +1120,72 @@ export function Sidebar({
                 }`}
                 role="menu"
               >
-                {(
-                  [
-                    'character',
-                    'place',
-                    'object',
-                    'other'
-                  ] as const
-                ).map((builtin) => (
-                  <div
-                    key={builtin}
-                    className="wb-menu-item"
-                    role="menuitem"
-                    tabIndex={0}
-                    onClick={() => {
-                      openNewWbModal(
-                        builtin
-                      );
-                    }}
-                    onKeyDown={(
-                      event
-                    ) => {
-                      if (
-                        event.key ===
-                          'Enter' ||
-                        event.key ===
-                          ' '
-                      ) {
-                        event.preventDefault();
-
-                        openNewWbModal(
-                          builtin
-                        );
+                {builtinCategories.map(
+                  (category) => (
+                    <div
+                      key={
+                        category.slug
                       }
-                    }}
-                  >
-                    {
-                      {
-                        character:
-                          '👤',
-                        place: '🏰',
-                        object: '💎',
-                        other: '📝'
-                      }[builtin]
-                    }{' '}
+                      className="wb-menu-item"
+                      role="menuitem"
+                      tabIndex={0}
+                      onClick={() => {
+                        openNewWbModal(
+                          category.slug
+                        );
+                      }}
+                      onKeyDown={(
+                        event
+                      ) => {
+                        if (
+                          event.key ===
+                            'Enter' ||
+                          event.key ===
+                            ' '
+                        ) {
+                          event.preventDefault();
 
-                    <span>
-                      {t(
-                        `wbLabel_${builtin}`
-                      )}
-                    </span>
-                  </div>
-                ))}
+                          openNewWbModal(
+                            category.slug
+                          );
+                        }
+                      }}
+                    >
+                      {category.icon}{' '}
+
+                      <span>
+                        {
+                          category.label
+                        }
+                      </span>
+                    </div>
+                  )
+                )}
 
                 <div id="wbCustomTypeMenuItems">
-                  {customTypes.map(
-                    ([
-                      slug,
-                      definition
-                    ]) => (
+                  {customCategories.map(
+                    (category) => (
                       <div
                         className="wb-menu-item wb-menu-item-custom"
-                        key={slug}
+                        key={
+                          category.slug
+                        }
                       >
                         <button
                           type="button"
                           className="wb-menu-item-main"
                           onClick={() => {
                             openNewWbModal(
-                              slug
+                              category.slug
                             );
                           }}
                         >
-                          {definition.icon ||
+                          {category.icon ||
                             '📁'}{' '}
 
                           <span>
                             {
-                              definition.label
+                              category.label
                             }
                           </span>
                         </button>
@@ -1194,7 +1206,7 @@ export function Sidebar({
                               );
 
                               onOpenCustomTypeModal(
-                                slug
+                                category.slug
                               );
                             }}
                           >
@@ -1216,8 +1228,7 @@ export function Sidebar({
                               );
 
                               void controller.deleteCustomType(
-                                slug,
-                                definition
+                                category.slug
                               );
                             }}
                           >
@@ -1261,53 +1272,56 @@ export function Sidebar({
               id="wbList"
               className="item-list"
             >
-              {wbNames.map((name) => {
+              {wbIds.map((id) => {
                 const item =
-                  data.world[name];
+                  data.world[id];
+
+                if (!item) {
+                  return null;
+                }
 
                 const icon =
                   item.icon ||
-                  controller.registry
-                    .templateFor(
-                      item.wbType
-                    )
-                    .icon;
+                  registry.categoryFor(
+                    item.wbType
+                  ).icon;
 
                 return (
                   <SidebarItem
-                    key={name}
-                    name={name}
+                    key={id}
+                    name={item.name}
                     type="world"
                     icon={icon}
                     current={
                       activeTab ===
-                        name &&
+                        id &&
                       activeType ===
                         'world'
                     }
                     onOpen={() => {
                       controller.openItem(
-                        name,
+                        id,
                         'world'
                       );
                     }}
                     onRename={() => {
                       openRename({
-                        oldName: name,
+                        oldName: id,
                         type: 'world',
-                        value: name
+                        value:
+                          item.name
                       });
                     }}
                     onDelete={() => {
                       void controller.deleteItem(
-                        name,
+                        id,
                         'world'
                       );
                     }}
                     draggable
                     onDragStart={() => {
                       setDraggedWb(
-                        name
+                        id
                       );
                     }}
                     onDragEnd={() => {
@@ -1317,7 +1331,7 @@ export function Sidebar({
                     }}
                     onDropOn={() => {
                       handleWbDrop(
-                        name
+                        id
                       );
                     }}
                   />

@@ -9,24 +9,63 @@
 // WORLD BUILDING
 // ============================================================================
 
+/**
+ * Version actuelle du format du World Building.
+ *
+ * - 1 (implicite, propriété absente) : `world` indexé par le nom de la fiche,
+ *   types personnalisés dans `customWbTypes`.
+ * - 2 : `world` indexé par un identifiant stable, catégories unifiées dans
+ *   `wbCategories`, dossiers, étiquettes, alias, portraits, relations et
+ *   frise chronologique.
+ */
+export const WB_FORMAT_VERSION = 2;
+
 export type BuiltinWbType =
   | 'character'
   | 'place'
   | 'object'
   | 'other';
 
+/**
+ * Identifiant (slug) d’une catégorie de fiche.
+ *
+ * Les catégories intégrées gardent leur identifiant historique ; les
+ * catégories créées par l’auteur utilisent un slug libre.
+ */
 export type WbType =
   | BuiltinWbType
   | string;
 
+/**
+ * - `text` : texte court sur une ligne ;
+ * - `textarea` : texte long ;
+ * - `number` : valeur numérique (stockée sous forme de chaîne) ;
+ * - `select` : un choix parmi `options` ;
+ * - `reference` : lien vers une autre fiche (stocke son identifiant).
+ */
 export type WbFieldType =
   | 'text'
-  | 'textarea';
+  | 'textarea'
+  | 'number'
+  | 'select'
+  | 'reference';
 
 export interface WbField {
   key: string;
   label: string;
   type: WbFieldType;
+
+  /**
+   * Choix proposés lorsque `type` vaut `select`.
+   */
+  options?: string[];
+
+  /**
+   * Catégorie des fiches proposées lorsque `type` vaut `reference`.
+   *
+   * Absente : toutes les fiches sont proposées.
+   */
+  referenceCategory?: string;
 }
 
 export interface WbTemplate {
@@ -35,6 +74,49 @@ export interface WbTemplate {
   fields: WbField[];
 }
 
+/**
+ * Définition d’une catégorie de fiches (Personnage, Lieu, Faction…).
+ *
+ * Les catégories intégrées sont elles aussi stockées ici afin que l’auteur
+ * puisse les personnaliser (icône, couleur, champs, libellé).
+ */
+export interface WbCategoryDef {
+  /**
+   * Libellé affiché.
+   *
+   * Pour une catégorie intégrée, une chaîne vide signifie « utiliser le
+   * libellé traduit dans la langue de l’interface ».
+   */
+  label: string;
+
+  icon: string;
+
+  /**
+   * Couleur par défaut des fiches de la catégorie (#rrggbb).
+   */
+  color: string;
+
+  fields: WbField[];
+
+  /**
+   * Présent uniquement pour les quatre catégories d’origine.
+   *
+   * Permet de retrouver les libellés traduits des champs et de proposer une
+   * réinitialisation.
+   */
+  builtin?: BuiltinWbType;
+
+  /**
+   * Identifiant du modèle prêt à l’emploi dont la catégorie est issue.
+   */
+  presetId?: string;
+}
+
+/**
+ * Ancien format des types personnalisés (format 1).
+ *
+ * @deprecated Utilisé uniquement par la migration vers `wbCategories`.
+ */
 export interface CustomWbTypeDef {
   label: string;
   icon: string;
@@ -42,18 +124,175 @@ export interface CustomWbTypeDef {
   fields: WbField[];
 }
 
+/**
+ * Dossier de rangement des fiches.
+ *
+ * Un dossier appartient à une catégorie et peut contenir des sous-dossiers
+ * (`parentId`). L’ordre du tableau `wbFolders` est l’ordre d’affichage.
+ */
+export interface WbFolder {
+  id: string;
+  name: string;
+  category: WbType;
+  parentId: string | null;
+  collapsed?: boolean;
+}
+
 export interface WbItem {
-  wbType: WbType;
-  content: Record<string, string>;
+  /**
+   * Identifiant stable, identique à la clé dans `ProjectData.world`.
+   *
+   * Il est aussi utilisé dans l’attribut `data-wb-key` des mentions et dans
+   * `TabRef.name` des onglets de fiche.
+   */
+  id: string;
 
   /**
-   * Icône personnalisée ; à défaut, celle du type de fiche.
+   * Nom affiché de la fiche.
+   */
+  name: string;
+
+  /**
+   * Catégorie de la fiche (clé de `wbCategories`).
+   */
+  wbType: WbType;
+
+  /**
+   * Valeurs des champs, indexées par `WbField.key`.
+   */
+  content: Record<string, string>;
+
+  folderId: string | null;
+
+  tags: string[];
+
+  /**
+   * Autres noms détectés dans le texte (surnoms, titres, diminutifs).
+   */
+  aliases: string[];
+
+  /**
+   * Portrait ou illustration, sous forme d’URL de données
+   * (`data:image/jpeg;base64,…` ou `data:image/webp;base64,…`).
+   *
+   * L’image est réduite à 512 px et compressée lors de l’import.
+   */
+  image?: string;
+
+  /**
+   * Icône personnalisée ; à défaut, celle de la catégorie.
    */
   icon?: string;
 
   /**
-   * Couleur personnalisée ; à défaut, celle du type de fiche.
+   * Couleur personnalisée ; à défaut, celle de la catégorie.
    */
+  color?: string;
+
+  /**
+   * Fiche ouverte en mode lecture.
+   */
+  readMode?: boolean;
+
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Ancien format d’une fiche (format 1), indexée par son nom.
+ *
+ * @deprecated Utilisé uniquement par la migration.
+ */
+export interface LegacyWbItem {
+  wbType: WbType;
+  content: Record<string, string>;
+  icon?: string;
+  color?: string;
+}
+
+/**
+ * Famille d’une relation, utilisée pour le filtrage et l’arbre généalogique.
+ */
+export type WbRelationKind =
+  | 'family'
+  | 'social'
+  | 'other';
+
+/**
+ * Type de relation créé par l’auteur.
+ *
+ * Les types intégrés (parent, conjoint, allié…) sont définis dans la
+ * configuration du renderer et ne sont pas stockés dans le projet.
+ */
+export interface WbRelationTypeDef {
+  id: string;
+
+  /**
+   * Libellé vu depuis la source : « A est <label> de B ».
+   */
+  label: string;
+
+  /**
+   * Libellé vu depuis la cible : « B est <inverseLabel> de A ».
+   *
+   * Identique à `label` pour une relation symétrique.
+   */
+  inverseLabel: string;
+
+  symmetric: boolean;
+  kind: WbRelationKind;
+}
+
+/**
+ * Relation entre deux fiches, stockée une seule fois.
+ *
+ * Le sens inverse est calculé à l’affichage, ce qui garantit la cohérence.
+ */
+export interface WbRelation {
+  id: string;
+  sourceId: string;
+  targetId: string;
+
+  /**
+   * Identifiant d’un type intégré ou d’un `WbRelationTypeDef`.
+   */
+  typeId: string;
+
+  note?: string;
+}
+
+/**
+ * Événement de la frise chronologique.
+ *
+ * Les calendriers de fiction étant libres, la date affichée est un texte et
+ * l’ordre est déterminé par `sortKey`.
+ */
+export interface WbTimelineEvent {
+  id: string;
+  title: string;
+
+  /**
+   * Date affichée, par exemple « An 342, Ère des Rois ».
+   */
+  dateLabel: string;
+
+  /**
+   * Valeur numérique servant uniquement au tri.
+   */
+  sortKey: number;
+
+  description: string;
+
+  /**
+   * Fiches concernées.
+   */
+  itemIds: string[];
+
+  /**
+   * Chapitres où l’événement est raconté.
+   */
+  chapterNames: string[];
+
   color?: string;
 }
 
@@ -464,12 +703,57 @@ export interface ProjectData {
    */
   screenplay?: ScreenplayProjectData;
 
+  // --------------------------------------------------------------------------
+  // World Building
+  // --------------------------------------------------------------------------
+
+  /**
+   * Version du format du World Building (voir `WB_FORMAT_VERSION`).
+   *
+   * Absente : ancien format 1, converti automatiquement à l’ouverture.
+   */
+  wbFormat?: number;
+
+  /**
+   * Identifiant de fiche -> fiche.
+   *
+   * L’ordre d’insertion des clés est l’ordre d’affichage dans un même
+   * dossier. Les identifiants commencent par une lettre afin que cet ordre
+   * soit toujours respecté par JavaScript.
+   */
   world: Record<string, WbItem>;
 
+  /**
+   * Slug de catégorie -> définition.
+   *
+   * L’ordre d’insertion des clés est l’ordre d’affichage.
+   */
+  wbCategories?: Record<string, WbCategoryDef>;
+
+  wbFolders?: WbFolder[];
+
+  /**
+   * Types de relations ajoutés par l’auteur.
+   */
+  wbRelationTypes?: WbRelationTypeDef[];
+
+  wbRelations?: WbRelation[];
+
+  wbTimeline?: WbTimelineEvent[];
+
+  /**
+   * Ancien emplacement des types personnalisés (format 1).
+   *
+   * @deprecated Converti dans `wbCategories` puis supprimé par la migration.
+   */
   customWbTypes?: Record<
     string,
     CustomWbTypeDef
   >;
+
+  // --------------------------------------------------------------------------
+  // Suivi
+  // --------------------------------------------------------------------------
 
   writingSessions?: WritingSession[];
   goals?: ProjectGoal[];
@@ -499,7 +783,7 @@ export interface TabRef {
   /**
    * Pour un roman : nom du chapitre.
    * Pour un scénario : identifiant stable de la scène.
-   * Pour le World Building : nom de la fiche.
+   * Pour le World Building : identifiant stable de la fiche (format 2).
    */
   name: string;
 

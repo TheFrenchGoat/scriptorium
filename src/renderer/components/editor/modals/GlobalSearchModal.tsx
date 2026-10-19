@@ -52,8 +52,19 @@ export function GlobalSearchModal({ open, controller, onClose }: GlobalSearchMod
   const iconFor = (result: SearchResult): string => {
     if (result.type === 'chapter') return '📖';
     const wbEntry = controller.data().world[result.name];
-    if (wbEntry) return wbEntry.icon || controller.registry.templateFor(wbEntry.wbType).icon;
+    if (wbEntry) return wbEntry.icon || controller.registry.categoryFor(wbEntry.wbType).icon || '📝';
     return '📝';
+  };
+
+  /**
+   * Libellé visible d'un résultat. Pour une fiche World Building (format 2),
+   * result.name contient l'identifiant stable de la fiche : on affiche donc
+   * son nom actuel à la place.
+   */
+  const labelFor = (result: SearchResult): string => {
+    if (result.type === 'chapter') return result.name;
+    const wbEntry = controller.data().world[result.name];
+    return wbEntry?.name || result.name;
   };
 
   return (
@@ -98,7 +109,7 @@ export function GlobalSearchModal({ open, controller, onClose }: GlobalSearchMod
             >
               <div className="search-result-header">
                 <span className="search-result-name">
-                  {iconFor(result)} {result.name}
+                  {iconFor(result)} {labelFor(result)}
                 </span>
                 <span className="search-result-count">{t('occurrences', { count: result.count })}</span>
               </div>

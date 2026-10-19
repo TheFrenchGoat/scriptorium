@@ -692,10 +692,19 @@ export function EditorPage({
       /*
        * Annuler / rétablir dans les zones d'écriture uniquement.
        */
+      // Dans le scénario, Ctrl+Z et Ctrl+Y sont laissés au navigateur :
+      // l'historique des chapitres ne connaît pas les scènes.
+      const focusInScreenplay =
+        document.activeElement?.closest(
+          '.screenplay-editor'
+        ) != null;
+
       if (
         ctrlOrCmd &&
-        focusState.anyEditor
+        focusState.anyEditor &&
+        !focusInScreenplay
       ) {
+
         if (
           !event.shiftKey &&
           event.key.toLowerCase() ===
@@ -1276,6 +1285,7 @@ export function EditorPage({
                   )}
                   nativeSpellcheck={controller.nativeSpellcheckEnabled()}
                   zoom={zoom}
+                  
                 />
               )}
 
@@ -1291,6 +1301,8 @@ export function EditorPage({
                   }
                   zoom={zoom}
                   nativeSpellcheck={controller.nativeSpellcheckEnabled()}
+                  projectData={controller.data()}
+                  wbRegistry={controller.registry}
                   onChange={(
                     nextScreenplay
                   ) => {

@@ -9,11 +9,24 @@ import type {
 import { getLanguage, t } from '../../i18n';
 import { createEditHistory, type EditHistory } from '../../lib/edit-history';
 import { createMentionIndex, type MentionIndex } from '../../lib/mention-index';
-import { createWbRegistry, type WbRegistry } from '../../lib/wb-registry';
+import {
+  createWbRegistry,
+  type WbLang,
+  type WbRegistry
+} from '../../lib/wb-registry';
+import {
+  createWbItemRecord,
+  findWbItemByName,
+  migrateUiTabs,
+  needsWbUpgrade,
+  prepareWorldBuilding
+} from '../../lib/wb-migration';
 import {
   cleanInvalidMentions,
   highlightWorldBuilding,
   removeMentionsAcrossChapters,
+  removeMentionsIn,
+  renameMentionsIn,
   renameWorldMentionsAcrossChapters,
   syncMentionColors
 } from '../../lib/highlight';
@@ -41,18 +54,20 @@ import { buildMarkdown } from '../../lib/markdown-export';
 import { buildPrintHtml } from '../../lib/pdf-export';
 import { describeError } from '../../lib/errors';
 import {
+  buildBasicScreenplayPrintHtml,
+  buildScreenplayPlainText,
+  getScenePlainText
+} from '../../lib/screenplay-print';
+import {
   createScreenplayProject,
   createScreenplayScene,
   getSceneDisplayTitle,
-  getSceneHeadingText,
   getScreenplayTextStatistics,
-  screenplayHtmlToPlainText,
   type CreateScreenplaySceneOptions
 } from '../../lib/screenplay';
 import { createStatusStore, type StatusStore } from './editor-status';
 import type { InfoAction } from '../common/Dialogs';
 import type {
-  CustomWbTypeDef,
   EditorPrefs,
   GrammarPrefs,
   ItemType,
@@ -61,7 +76,9 @@ import type {
   ScreenplayProjectData,
   TabRef,
   UiState,
+  WbCategoryDef,
   WbField,
+  WbItem,
   WbType
 } from '../../../shared/types';
 
@@ -71,6 +88,8 @@ const HIGHLIGHT_LARGE_CHAPTER_EVERY_N = 5;
 const HISTORY_DEBOUNCE_MS = 700;
 const CHAPTER_SAVE_DEBOUNCE_MS = 2500;
 const SCREENPLAY_SAVE_DEBOUNCE_MS = 1500;
+/** Délai avant d'enregistrer les modifications d'une fiche (champs, mode lecture). */
+const WB_SAVE_DEBOUNCE_MS = 800;
 const BACKUP_INTERVAL_MS = 5 * 60 * 1000;
 
 /**
@@ -110,7 +129,6 @@ interface MutableState {
   editorEl: HTMLElement | null;
   zoom: number;
   nativeSpellcheck: boolean;
-  wbReadMode: boolean;
   editorPrefs: EditorPrefs;
   grammarPrefs: GrammarPrefs;
   grammarServerReady: boolean;
@@ -148,6 +166,7 @@ export interface EditorController {
   tabs(): TabRef[];
   activeTab(): string | null;
   activeType(): ItemType;
+  /** Mode lecture de la fiche active (propre à chaque fiche). */
   isReadMode(): boolean;
   isScreenplayProject(): boolean;
   prefs(): EditorPrefs;
@@ -155,14 +174,20 @@ export interface EditorController {
   nativeSpellcheckEnabled(): boolean;
   zoom(): number;
 
+  /** Fiche à partir de son identifiant. */
+  wbItem(itemId: string): WbItem | undefined;
+  /** Texte à afficher pour un onglet (nom du chapitre, titre de scène, nom de fiche). */
+  tabLabel(tab: TabRef): string;
+
   attachEditor(element: HTMLElement | null): void;
   onChapterMounted(name: string): void;
   handleInput(): void;
   handlePaste(event: ReactClipboardEvent<HTMLElement>): void;
   handleEditorClick(event: ReactMouseEvent<HTMLElement>): void;
 
-  openItem(name: string, type: ItemType): void;
-  switchTab(name: string, type: ItemType): void;
+  /** Pour une fiche, `key` est son identifiant. */
+  openItem(key: string, type: ItemType): void;
+  switchTab(key: string, type: ItemType): void;
   closeTab(index: number): Promise<void>;
   moveTab(from: number, to: number): void;
   cycleTab(delta: number): void;
@@ -186,18 +211,25 @@ export interface EditorController {
   renameScene(sceneId: string, workingTitle: string): boolean;
   deleteScene(sceneId: string): Promise<void>;
   reorderScenes(sceneIds: string[]): void;
-  createWbItem(name: string, type: WbType): boolean;
-  deleteItem(name: string, type: ItemType): Promise<void>;
-  renameItem(oldName: string, newName: string, type: ItemType): Promise<boolean>;
+
+  /** Crée une fiche et renvoie son identifiant (null si le nom est vide ou déjà pris). */
+  createWbItem(name: string, type: WbType): string | null;
+  deleteItem(key: string, type: ItemType): Promise<void>;
+  renameItem(key: string, newName: string, type: ItemType): Promise<boolean>;
   reorderSidebar(type: ItemType, newOrder: string[]): void;
-  updateWbField(name: string, fieldKey: string, value: string): void;
-  setWbIcon(name: string, icon: string): void;
-  setWbColor(name: string, color: string): void;
+  updateWbField(itemId: string, fieldKey: string, value: string): void;
+  setWbIcon(itemId: string, icon: string): void;
+  setWbColor(itemId: string, color: string): void;
+  setWbAliases(itemId: string, aliases: string[]): boolean;
   toggleReadMode(): void;
-  chaptersContaining(name: string): string[];
-  saveCustomType(slug: string | null, definition: CustomWbTypeDef): string;
-  deleteCustomType(slug: string, definition: CustomWbTypeDef): Promise<void>;
+  chaptersContaining(itemId: string): string[];
+
+  /** Crée ou modifie une catégorie. Renvoie son identifiant (slug). */
+  saveCustomType(slug: string | null, definition: WbCategoryDef): string;
+  deleteCustomType(slug: string): Promise<void>;
+  /** Identifiants des fiches de cette catégorie. */
   itemsUsingType(slug: string): string[];
+
   replaceAll(findText: string, replacementText: string, wholeProject: boolean): void;
 
   updatePrefs(prefs: EditorPrefs): void;
@@ -221,6 +253,21 @@ export interface EditorControllerDeps {
   onApplyPrefs: (prefs: EditorPrefs) => void;
 }
 
+function currentWbLang(): WbLang {
+  return getLanguage() === 'en' ? 'en' : 'fr';
+}
+
+/** Projet roman vide. Le World Building est complété par prepareWorldBuilding. */
+function createBlankNovelData(): ProjectData {
+  return {
+    projectType: 'novel',
+    chapters: {},
+    world: {},
+    writingSessions: [],
+    goals: []
+  };
+}
+
 function isScreenplayData(
   projectData: ProjectData | null | undefined
 ): projectData is ProjectData & { screenplay: ScreenplayProjectData } {
@@ -236,59 +283,6 @@ function getProjectWordTotal(projectData: ProjectData): number {
   }
 
   return getCachedTotalStats(projectData).words;
-}
-
-function getScenePlainText(
-  screenplay: ScreenplayProjectData,
-  sceneId: string
-): string {
-  const scene = screenplay.scenes.find((entry) => entry.id === sceneId);
-
-  if (!scene) {
-    return '';
-  }
-
-  const heading = getSceneHeadingText(
-    scene,
-    screenplay.settings.conventionLanguage
-  );
-
-  const body = scene.elements
-    .map((element) => screenplayHtmlToPlainText(element.html))
-    .filter(Boolean)
-    .join('\n');
-
-  return [heading, body].filter(Boolean).join('\n\n');
-}
-
-function buildScreenplayPlainText(
-  screenplay: ScreenplayProjectData,
-  includeWorkingTitles = false
-): string {
-  return screenplay.scenes
-    .map((scene, index) => {
-      const heading = getSceneHeadingText(
-        scene,
-        screenplay.settings.conventionLanguage
-      );
-
-      const body = scene.elements
-        .map((element) => screenplayHtmlToPlainText(element.html))
-        .filter(Boolean)
-        .join('\n\n');
-
-      const workingTitle = includeWorkingTitles
-        ? getSceneDisplayTitle(
-            scene,
-            index,
-            screenplay.settings.conventionLanguage
-          )
-        : '';
-
-      return [workingTitle, heading, body].filter(Boolean).join('\n\n');
-    })
-    .filter(Boolean)
-    .join('\n\n\n');
 }
 
 function countText(text: string): { words: number; chars: number } {
@@ -310,270 +304,44 @@ function activeEditableElement(): HTMLElement | null {
   return null;
 }
 
-function escapePlainTextForHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+function touchWbItem(item: WbItem): void {
+  item.updatedAt = new Date().toISOString();
 }
 
-function buildBasicScreenplayPrintHtml(
-  projectName: string,
-  screenplay: ScreenplayProjectData
-): string {
-  const titlePage = screenplay.titlePage;
+/**
+ * Retire une fiche supprimée des relations et de la frise.
+ * (Les dossiers ne référencent pas les fiches : c'est la fiche qui porte
+ * son folderId, il n'y a donc rien à nettoyer de ce côté.)
+ */
+function detachWbItem(data: ProjectData, itemId: string): void {
+  if (Array.isArray(data.wbRelations)) {
+    data.wbRelations = data.wbRelations.filter(
+      (relation) =>
+        relation.sourceId !== itemId && relation.targetId !== itemId
+    );
+  }
 
-  const titlePageHtml = titlePage.enabled
-    ? `
-        <section class="title-page">
-          <div class="title-main">
-            <div class="title">
-              ${escapePlainTextForHtml(titlePage.title || projectName)}
-            </div>
+  if (Array.isArray(data.wbTimeline)) {
+    data.wbTimeline = data.wbTimeline.map((event) =>
+      event.itemIds.includes(itemId)
+        ? { ...event, itemIds: event.itemIds.filter((id) => id !== itemId) }
+        : event
+    );
+  }
+}
 
-            ${
-              titlePage.authors
-                ? `<div>Écrit par</div>
-                   <div class="authors">${escapePlainTextForHtml(
-                     titlePage.authors
-                   )}</div>`
-                : ''
-            }
+/** Valeurs par défaut communes au chargement et à la restauration. */
+function ensureProjectDefaults(projectData: ProjectData): void {
+  if (!projectData.projectType) {
+    projectData.projectType = projectData.screenplay ? 'screenplay' : 'novel';
+  }
 
-            ${
-              titlePage.sourceNote
-                ? `<div class="source">${escapePlainTextForHtml(
-                    titlePage.sourceNote
-                  )}</div>`
-                : ''
-            }
-          </div>
-
-          ${
-            titlePage.contact
-              ? `<div class="contact">${escapePlainTextForHtml(
-                  titlePage.contact
-                )}</div>`
-              : ''
-          }
-
-          ${
-            titlePage.version || titlePage.date
-              ? `<div class="version">${escapePlainTextForHtml(
-                  [titlePage.version, titlePage.date]
-                    .filter(Boolean)
-                    .join('\n')
-                )}</div>`
-              : ''
-          }
-        </section>
-      `
-    : '';
-
-  const scenesHtml = screenplay.scenes
-    .map((scene, index) => {
-      const heading = getSceneHeadingText(
-        scene,
-        screenplay.settings.conventionLanguage
-      );
-
-      const number = screenplay.settings.showSceneNumbersInExport
-        ? `<span class="scene-number">${index + 1}</span>`
-        : '';
-
-      const elements = scene.elements
-        .map((element) => {
-          const text = screenplayHtmlToPlainText(element.html);
-
-          if (!text) {
-            return '';
-          }
-
-          return `
-                <div class="element ${element.type}">
-                  ${escapePlainTextForHtml(text).replace(/\n/g, '<br>')}
-                </div>
-              `;
-        })
-        .join('');
-
-      return `
-          <section class="scene">
-            <div class="heading">
-              ${number}
-              ${escapePlainTextForHtml(heading)}
-            </div>
-            ${elements}
-          </section>
-        `;
-    })
-    .join('');
-
-  const pageSize =
-    screenplay.settings.pageFormat === 'letter' ? 'Letter' : 'A4';
-
-  return `
-    <!doctype html>
-    <html lang="${screenplay.settings.conventionLanguage}">
-      <head>
-        <meta charset="utf-8">
-
-        <style>
-          @page {
-            size: ${pageSize};
-            margin: 25.4mm 20mm 25.4mm 38mm;
-          }
-
-          * {
-            box-sizing: border-box;
-          }
-
-          html,
-          body {
-            margin: 0;
-            padding: 0;
-            color: #000;
-            background: #fff;
-          }
-
-          body {
-            font-family:
-              "Courier Prime",
-              "Courier New",
-              Courier,
-              monospace;
-            font-size: 12pt;
-            line-height: 1.2;
-          }
-
-          .title-page {
-            position: relative;
-            width: 100%;
-            height: 100vh;
-            break-after: page;
-            page-break-after: always;
-          }
-
-          .title-main {
-            position: absolute;
-            top: 38%;
-            left: 10%;
-            right: 10%;
-            text-align: center;
-          }
-
-          .title {
-            margin-bottom: 24pt;
-            text-transform: uppercase;
-          }
-
-          .authors,
-          .source {
-            margin-top: 12pt;
-            white-space: pre-wrap;
-          }
-
-          .contact {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            max-width: 45%;
-            white-space: pre-wrap;
-          }
-
-          .version {
-            position: absolute;
-            right: 0;
-            bottom: 0;
-            max-width: 45%;
-            text-align: right;
-            white-space: pre-wrap;
-          }
-
-          .scene {
-            margin: 0;
-            padding: 0;
-          }
-
-          .heading {
-            position: relative;
-            margin: 12pt 0;
-            text-transform: uppercase;
-            break-after: avoid;
-            page-break-after: avoid;
-            ${screenplay.settings.boldSceneHeadings ? 'font-weight: bold;' : ''}
-          }
-
-          .scene-number {
-            position: absolute;
-            right: calc(100% + 12pt);
-          }
-
-          .element {
-            min-height: 12pt;
-            margin: 0;
-            white-space: pre-wrap;
-            overflow-wrap: break-word;
-          }
-
-          .action {
-            width: 100%;
-            margin-bottom: 12pt;
-            text-align: left;
-          }
-
-          .character {
-            width: 42%;
-            margin-top: 12pt;
-            margin-left: 38%;
-            text-align: left;
-            text-transform: uppercase;
-            break-after: avoid;
-            page-break-after: avoid;
-          }
-
-          .parenthetical {
-            width: 48%;
-            margin-left: 28%;
-            text-align: left;
-            break-after: avoid;
-            page-break-after: avoid;
-          }
-
-          .dialogue {
-            width: 58%;
-            margin-left: 20%;
-            margin-bottom: 12pt;
-            text-align: left;
-          }
-
-          .transition {
-            width: 54%;
-            margin: 12pt 0 12pt auto;
-            text-align: right;
-            text-transform: uppercase;
-            break-after: avoid;
-            page-break-after: avoid;
-          }
-
-          .shot {
-            width: 100%;
-            margin: 12pt 0;
-            text-align: left;
-            text-transform: uppercase;
-            break-after: avoid;
-            page-break-after: avoid;
-          }
-        </style>
-      </head>
-
-      <body>
-        ${titlePageHtml}
-        ${scenesHtml}
-      </body>
-    </html>
-  `;
+  projectData.chapters = projectData.chapters || {};
+  projectData.world = projectData.world || {};
+  projectData.writingSessions = Array.isArray(projectData.writingSessions)
+    ? projectData.writingSessions
+    : [];
+  projectData.goals = Array.isArray(projectData.goals) ? projectData.goals : [];
 }
 
 export function useEditorController({
@@ -586,14 +354,7 @@ export function useEditorController({
 
   const stateRef = useRef<MutableState>({
     projects: {},
-    projectData: {
-      projectType: 'novel',
-      chapters: {},
-      world: {},
-      customWbTypes: {},
-      writingSessions: [],
-      goals: []
-    },
+    projectData: createBlankNovelData(),
     uiState: {},
     openTabs: [],
     activeTab: null,
@@ -601,7 +362,6 @@ export function useEditorController({
     editorEl: null,
     zoom: 1,
     nativeSpellcheck: true,
-    wbReadMode: false,
     editorPrefs: DEFAULT_EDITOR_PREFS,
     grammarPrefs: {
       enabled: false,
@@ -628,7 +388,7 @@ export function useEditorController({
   const historyRef = useRef<EditHistory>(createEditHistory());
 
   const registryRef = useRef<WbRegistry>(
-    createWbRegistry(() => stateRef.current.projectData)
+    createWbRegistry(() => stateRef.current.projectData, currentWbLang)
   );
 
   const indexRef = useRef<MentionIndex>(
@@ -650,6 +410,9 @@ export function useEditorController({
     null
   );
 
+  /** Sauvegarde différée des fiches (champs, mode lecture). */
+  const wbSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const pendingChapterSavesRef = useRef<Map<string, PendingChapterSave>>(
     new Map()
   );
@@ -661,6 +424,9 @@ export function useEditorController({
    * directement de debouncedGrammarCheck (qui est défini après lui).
    */
   const requestGrammarCheckRef = useRef<() => void>(() => undefined);
+
+  /** Utilisé au démontage pour enregistrer ce qui était encore en attente. */
+  const saveAllRef = useRef<() => Promise<void>>(async () => undefined);
 
   const api = useRef<EditorController | null>(null);
 
@@ -903,6 +669,13 @@ export function useEditorController({
     }
   }, []);
 
+  const cancelPendingWbSave = useCallback((): void => {
+    if (wbSaveTimerRef.current) {
+      clearTimeout(wbSaveTimerRef.current);
+      wbSaveTimerRef.current = null;
+    }
+  }, []);
+
   const saveChapterSnapshot = useCallback(
     async (
       chapterName: string,
@@ -975,6 +748,7 @@ export function useEditorController({
   const saveAll = useCallback(async (): Promise<void> => {
     cancelAllPendingChapterSaves();
     cancelPendingScreenplaySave();
+    cancelPendingWbSave();
 
     if (s.activeType === 'chapter' && s.activeTab && s.editorEl) {
       s.projectData.chapters[s.activeTab] = s.editorEl.innerHTML;
@@ -1000,6 +774,7 @@ export function useEditorController({
   }, [
     cancelAllPendingChapterSaves,
     cancelPendingScreenplaySave,
+    cancelPendingWbSave,
     enqueuePersistence,
     maybeCreateBackup,
     persistUiState,
@@ -1008,6 +783,8 @@ export function useEditorController({
     s,
     setSaveStatus
   ]);
+
+  saveAllRef.current = saveAll;
 
   const scheduleScreenplaySave = useCallback((): void => {
     cancelPendingScreenplaySave();
@@ -1018,7 +795,22 @@ export function useEditorController({
     }, SCREENPLAY_SAVE_DEBOUNCE_MS);
   }, [cancelPendingScreenplaySave, saveAll]);
 
+  const scheduleWbSave = useCallback((): void => {
+    cancelPendingWbSave();
+
+    wbSaveTimerRef.current = setTimeout(() => {
+      wbSaveTimerRef.current = null;
+      void saveAll();
+    }, WB_SAVE_DEBOUNCE_MS);
+  }, [cancelPendingWbSave, saveAll]);
+
   const save = useCallback(async (): Promise<void> => {
+    // Une modification de fiche en attente : on enregistre tout de suite.
+    if (wbSaveTimerRef.current) {
+      await saveAll();
+      return;
+    }
+
     if (s.activeType === 'chapter' && s.activeTab && s.editorEl) {
       const chapterName = s.activeTab;
       const html = s.editorEl.innerHTML;
@@ -1235,21 +1027,23 @@ export function useEditorController({
   }, [debouncedGrammarCheck, s, status, updateGrammarStatus]);
 
   /**
-   * Surlignage World Building.
+   * Surlignage World Building. Renvoie vrai si le contenu a changé.
    *
    * highlightWorldBuilding ajoute / retire des <span> : on préserve la
    * sélection de l'utilisateur autour de cette mutation.
    */
-  const highlight = useCallback((): void => {
+  const highlight = useCallback((): boolean => {
     if (s.activeType !== 'chapter' || !s.editorEl) {
-      return;
+      return false;
     }
 
     const editor = s.editorEl;
 
-    withPreservedSelection(editor, () => {
-      highlightWorldBuilding(editor, s.projectData, registry);
-    });
+    return Boolean(
+      withPreservedSelection(editor, () =>
+        highlightWorldBuilding(editor, s.projectData, registry)
+      )
+    );
   }, [registry, s]);
 
   const debouncedHighlight = useMemo(
@@ -1366,47 +1160,23 @@ export function useEditorController({
     void (async () => {
       const projects = await window.api.getProjects();
 
+      const existed = Boolean(projects[projectName]);
       let projectData = projects[projectName];
+      let mustSaveProjects = false;
 
       if (projectData && !projectData.chapters && !projectData.world) {
+        // Très ancien format : le projet ne contenait que les chapitres.
         projectData = {
-          projectType: 'novel',
-          chapters: projectData as unknown as Record<string, string>,
-          world: {},
-          customWbTypes: {},
-          writingSessions: [],
-          goals: []
+          ...createBlankNovelData(),
+          chapters: projectData as unknown as Record<string, string>
         };
 
-        projects[projectName] = projectData;
-
-        await window.api.saveProjects(projects);
+        mustSaveProjects = true;
       } else if (!projectData) {
-        projectData = {
-          projectType: 'novel',
-          chapters: {},
-          world: {},
-          customWbTypes: {},
-          writingSessions: [],
-          goals: []
-        };
+        projectData = createBlankNovelData();
       }
 
-      if (!projectData.projectType) {
-        projectData.projectType = projectData.screenplay
-          ? 'screenplay'
-          : 'novel';
-      }
-
-      projectData.chapters = projectData.chapters || {};
-      projectData.world = projectData.world || {};
-      projectData.customWbTypes = projectData.customWbTypes || {};
-      projectData.writingSessions = Array.isArray(projectData.writingSessions)
-        ? projectData.writingSessions
-        : [];
-      projectData.goals = Array.isArray(projectData.goals)
-        ? projectData.goals
-        : [];
+      ensureProjectDefaults(projectData);
 
       if (projectData.projectType === 'screenplay') {
         if (!projectData.screenplay) {
@@ -1438,7 +1208,50 @@ export function useEditorController({
         }
       }
 
+      // World Building : conversion au format 2 (filet de sécurité, la page
+      // des projets la fait normalement déjà) puis valeurs par défaut.
+      if (
+        needsWbUpgrade(projectData) &&
+        Object.keys(projectData.world).length > 0
+      ) {
+        try {
+          await window.api.createBackup(projectName, projectData);
+        } catch (error) {
+          console.error(
+            'Échec de la sauvegarde avant conversion du World Building :',
+            error
+          );
+        }
+      }
+
+      const prepared = prepareWorldBuilding(projectData, currentWbLang());
+
+      projectData = prepared.data;
+
+      if (prepared.changed) {
+        mustSaveProjects = true;
+      }
+
+      if (mustSaveProjects && existed) {
+        projects[projectName] = projectData;
+
+        try {
+          await window.api.saveProjects(projects);
+        } catch (error) {
+          console.error('Échec de la sauvegarde du projet converti :', error);
+        }
+      }
+
       const uiState = await window.api.getUiState();
+
+      if (uiState[projectName]) {
+        const migrated = migrateUiTabs(uiState[projectName], projectData);
+
+        if (migrated.changed) {
+          uiState[projectName] = migrated.ui;
+        }
+      }
+
       const savedProjectState = uiState[projectName];
 
       let openTabs = savedProjectState?.openTabs || [];
@@ -1463,6 +1276,14 @@ export function useEditorController({
         });
 
         if (activeType === 'scene' && activeTab && !sceneIds.has(activeTab)) {
+          activeTab = null;
+        }
+
+        if (
+          activeType === 'world' &&
+          activeTab &&
+          !projectData.world[activeTab]
+        ) {
           activeTab = null;
         }
 
@@ -1507,6 +1328,14 @@ export function useEditorController({
           activeTab = null;
         }
 
+        if (
+          activeType === 'world' &&
+          activeTab &&
+          !projectData.world[activeTab]
+        ) {
+          activeTab = null;
+        }
+
         if (activeType === 'scene') {
           activeTab = null;
           activeType = 'chapter';
@@ -1540,6 +1369,8 @@ export function useEditorController({
       s.nativeSpellcheck = nativeSpellcheck;
       s.grammarPrefs = grammarPrefs;
       s.ready = true;
+
+      registry.bumpVersion();
 
       if (!isScreenplayData(projectData)) {
         invalidateProjectWordCache(projectData);
@@ -1594,8 +1425,21 @@ export function useEditorController({
 
       pendingHistoryRef.current = null;
 
+      // Ce qui attendait encore d'être enregistré est sauvegardé maintenant
+      // au lieu d'être perdu à la fermeture de l'éditeur.
+      const hadPendingWork =
+        pendingChapterSavesRef.current.size > 0 ||
+        screenplaySaveTimerRef.current !== null ||
+        wbSaveTimerRef.current !== null;
+
       if (screenplaySaveTimerRef.current) {
         clearTimeout(screenplaySaveTimerRef.current);
+        screenplaySaveTimerRef.current = null;
+      }
+
+      if (wbSaveTimerRef.current) {
+        clearTimeout(wbSaveTimerRef.current);
+        wbSaveTimerRef.current = null;
       }
 
       pendingChapterSavesRef.current.forEach((pending) => {
@@ -1603,6 +1447,10 @@ export function useEditorController({
       });
 
       pendingChapterSavesRef.current.clear();
+
+      if (hadPendingWork && stateRef.current.ready) {
+        void saveAllRef.current();
+      }
     };
   }, []);
 
@@ -1617,12 +1465,45 @@ export function useEditorController({
       tabs: () => stateRef.current.openTabs,
       activeTab: () => stateRef.current.activeTab,
       activeType: () => stateRef.current.activeType,
-      isReadMode: () => stateRef.current.wbReadMode,
+
+      isReadMode: () => {
+        const state = stateRef.current;
+
+        if (state.activeType !== 'world' || !state.activeTab) {
+          return false;
+        }
+
+        return Boolean(state.projectData.world[state.activeTab]?.readMode);
+      },
+
       isScreenplayProject: () => isScreenplayData(stateRef.current.projectData),
       prefs: () => stateRef.current.editorPrefs,
       grammarPrefs: () => stateRef.current.grammarPrefs,
       nativeSpellcheckEnabled: () => stateRef.current.nativeSpellcheck,
       zoom: () => stateRef.current.zoom,
+
+      wbItem: (itemId) => stateRef.current.projectData.world[itemId],
+
+      tabLabel(tab) {
+        if (tab.type === 'world') {
+          return s.projectData.world[tab.name]?.name || tab.name;
+        }
+
+        if (tab.type === 'scene' && isScreenplayData(s.projectData)) {
+          const scenes = s.projectData.screenplay.scenes;
+          const index = scenes.findIndex((scene) => scene.id === tab.name);
+
+          if (index >= 0) {
+            return getSceneDisplayTitle(
+              scenes[index],
+              index,
+              s.projectData.screenplay.settings.conventionLanguage
+            );
+          }
+        }
+
+        return tab.name;
+      },
 
       attachEditor(element) {
         s.editorEl = element;
@@ -1735,44 +1616,51 @@ export function useEditorController({
         event.preventDefault();
         event.stopPropagation();
 
-        const worldKey = mention.dataset.wbKey;
+        const itemId = mention.dataset.wbKey;
 
-        if (worldKey && s.projectData.world[worldKey]) {
-          ctrl.openItem(worldKey, 'world');
-        } else {
-          showInfo(t('itemNotFound'));
+        if (itemId && s.projectData.world[itemId]) {
+          ctrl.openItem(itemId, 'world');
+          return;
+        }
 
-          const editor = s.editorEl;
+        showInfo(t('itemNotFound'));
 
-          if (editor) {
-            withPreservedSelection(editor, () => {
-              cleanInvalidMentions(editor, Object.keys(s.projectData.world));
-            });
-          }
+        const editor = s.editorEl;
+
+        if (!editor) {
+          return;
+        }
+
+        const cleaned = withPreservedSelection(editor, () =>
+          cleanInvalidMentions(editor, s.projectData.world)
+        );
+
+        if (cleaned) {
+          ctrl.handleInput();
         }
       },
 
-      openItem(name, type) {
+      openItem(key, type) {
         const existing = s.openTabs.find(
-          (tab) => tab.name === name && tab.type === type
+          (tab) => tab.name === key && tab.type === type
         );
 
         if (!existing) {
-          s.openTabs = [...s.openTabs, { name, type }];
+          s.openTabs = [...s.openTabs, { name: key, type }];
         }
 
-        ctrl.switchTab(name, type);
+        ctrl.switchTab(key, type);
       },
 
-      switchTab(name, type) {
-        if (s.activeTab === name && s.activeType === type) {
+      switchTab(key, type) {
+        if (s.activeTab === key && s.activeType === type) {
           bump();
           return;
         }
 
         void save();
 
-        s.activeTab = name;
+        s.activeTab = key;
         s.activeType = type;
 
         updateStats();
@@ -1794,7 +1682,7 @@ export function useEditorController({
 
         if (status.get().saveState === 'error') {
           const confirmed = await showConfirm(
-            t('closeTabUnsavedWarning', { name: closed.name })
+            t('closeTabUnsavedWarning', { name: ctrl.tabLabel(closed) })
           );
 
           if (!confirmed) {
@@ -2069,32 +1957,48 @@ export function useEditorController({
       createWbItem(name, type) {
         const trimmed = name.trim();
 
-        if (!trimmed || s.projectData.world[trimmed]) {
-          return false;
+        if (!trimmed) {
+          return null;
         }
 
-        s.projectData.world[trimmed] = {
-          wbType: type,
-          content: {}
-        };
+        if (findWbItemByName(s.projectData.world, trimmed)) {
+          return null;
+        }
 
-        mentionIndex.addEntryForNewItem(trimmed);
+        const item = createWbItemRecord(
+          trimmed,
+          type,
+          registry.cloneCategoryDefinitions()[type] ?? { ...registry.categoryFor(type), builtin: undefined }
+        );
+
+        s.projectData.world[item.id] = item;
+
+        mentionIndex.refreshItem(item.id);
+        registry.bumpVersion();
 
         setSaveStatus('pending');
 
         void saveAll();
 
-        ctrl.openItem(trimmed, 'world');
+        ctrl.openItem(item.id, 'world');
 
-        return true;
+        return item.id;
       },
 
-      async deleteItem(name, type) {
-        let displayName = name;
+      async deleteItem(key, type) {
+        let displayName = key;
 
-        if (type === 'scene' && isScreenplayData(s.projectData)) {
+        if (type === 'world') {
+          const item = s.projectData.world[key];
+
+          if (!item) {
+            return;
+          }
+
+          displayName = item.name;
+        } else if (type === 'scene' && isScreenplayData(s.projectData)) {
           const sceneIndex = s.projectData.screenplay.scenes.findIndex(
-            (scene) => scene.id === name
+            (scene) => scene.id === key
           );
 
           const scene = s.projectData.screenplay.scenes[sceneIndex];
@@ -2124,14 +2028,14 @@ export function useEditorController({
           const currentScenes = s.projectData.screenplay.scenes;
 
           const sceneIndex = currentScenes.findIndex(
-            (scene) => scene.id === name
+            (scene) => scene.id === key
           );
 
           if (sceneIndex < 0) {
             return;
           }
 
-          let nextScenes = currentScenes.filter((scene) => scene.id !== name);
+          let nextScenes = currentScenes.filter((scene) => scene.id !== key);
 
           if (nextScenes.length === 0) {
             nextScenes = [
@@ -2151,10 +2055,10 @@ export function useEditorController({
           };
 
           s.openTabs = s.openTabs.filter(
-            (tab) => !(tab.type === 'scene' && tab.name === name)
+            (tab) => !(tab.type === 'scene' && tab.name === key)
           );
 
-          if (s.activeType === 'scene' && s.activeTab === name) {
+          if (s.activeType === 'scene' && s.activeTab === key) {
             const nextScene =
               nextScenes[Math.min(sceneIndex, nextScenes.length - 1)];
 
@@ -2182,14 +2086,14 @@ export function useEditorController({
           return;
         }
 
-        if (s.activeTab === name && s.activeType === type) {
-          s.activeTab = null;
-        }
-
         if (type === 'chapter') {
-          cancelPendingChapterSave(name);
+          if (s.activeTab === key && s.activeType === 'chapter') {
+            s.activeTab = null;
+          }
 
-          if (pendingHistoryRef.current?.name === name) {
+          cancelPendingChapterSave(key);
+
+          if (pendingHistoryRef.current?.name === key) {
             if (historyTimerRef.current) {
               clearTimeout(historyTimerRef.current);
               historyTimerRef.current = null;
@@ -2198,19 +2102,49 @@ export function useEditorController({
             pendingHistoryRef.current = null;
           }
 
-          delete s.projectData.chapters[name];
+          delete s.projectData.chapters[key];
 
-          history.remove(name);
-          mentionIndex.removeChapter(name);
+          history.remove(key);
+          mentionIndex.removeChapter(key);
         } else {
-          delete s.projectData.world[name];
+          // Fiche : les mentions deviennent du texte simple partout.
+          flushPendingHistoryCommit();
 
-          removeMentionsAcrossChapters(s.projectData, name);
-          mentionIndex.removeItem(name);
+          const open = activeChapterEditor();
+
+          if (open) {
+            s.projectData.chapters[open.name] = open.editor.innerHTML;
+          }
+
+          if (s.activeTab === key && s.activeType === 'world') {
+            s.activeTab = null;
+          }
+
+          delete s.projectData.world[key];
+
+          detachWbItem(s.projectData, key);
+
+          const changedChapters = removeMentionsAcrossChapters(
+            s.projectData,
+            key
+          );
+
+          if (open) {
+            withPreservedSelection(open.editor, () => {
+              removeMentionsIn(open.editor, key);
+            });
+
+            s.projectData.chapters[open.name] = open.editor.innerHTML;
+          }
+
+          resyncChapters(changedChapters, open?.name ?? null);
+
+          mentionIndex.removeItem(key);
+          registry.bumpVersion();
         }
 
         const index = s.openTabs.findIndex(
-          (tab) => tab.name === name && tab.type === type
+          (tab) => tab.name === key && tab.type === type
         );
 
         if (index !== -1) {
@@ -2230,112 +2164,151 @@ export function useEditorController({
         setSaveStatus('pending');
 
         updateStats();
+        updateUndoRedo();
         bump();
 
         await saveAll();
       },
 
-      async renameItem(oldName, newName, type) {
+      async renameItem(key, newName, type) {
         if (type === 'scene') {
-          return ctrl.renameScene(oldName, newName);
+          return ctrl.renameScene(key, newName);
         }
 
         const trimmed = newName.trim();
 
-        if (!trimmed || trimmed === oldName) {
+        if (!trimmed) {
           return false;
         }
 
         if (type === 'chapter') {
+          if (trimmed === key) {
+            return false;
+          }
+
           if (s.projectData.chapters[trimmed] !== undefined) {
             showInfo(t('alreadyExists'));
             return false;
           }
 
-          cancelPendingChapterSave(oldName);
+          cancelPendingChapterSave(key);
           flushPendingHistoryCommit();
 
           const nextChapters: Record<string, string> = {};
 
-          Object.keys(s.projectData.chapters).forEach((key) => {
-            if (key === oldName) {
-              nextChapters[trimmed] = s.projectData.chapters[oldName];
+          Object.keys(s.projectData.chapters).forEach((chapterKey) => {
+            if (chapterKey === key) {
+              nextChapters[trimmed] = s.projectData.chapters[key];
             } else {
-              nextChapters[key] = s.projectData.chapters[key];
+              nextChapters[chapterKey] = s.projectData.chapters[chapterKey];
             }
           });
 
           s.projectData.chapters = nextChapters;
 
-          history.rename(oldName, trimmed);
-          mentionIndex.renameChapter(oldName, trimmed);
-        } else {
-          if (s.projectData.world[trimmed]) {
-            showInfo(t('alreadyExists'));
+          history.rename(key, trimmed);
+          mentionIndex.renameChapter(key, trimmed);
+
+          s.openTabs = s.openTabs.map((tab) =>
+            tab.name === key && tab.type === 'chapter'
+              ? { ...tab, name: trimmed }
+              : tab
+          );
+
+          if (s.activeTab === key && s.activeType === 'chapter') {
+            s.activeTab = trimmed;
+          }
+
+          setSaveStatus('pending');
+
+          bump();
+
+          await saveAll();
+
+          return true;
+        }
+
+        // Fiche : l'identifiant ne change pas, seul le nom change.
+        const item = s.projectData.world[key];
+
+        if (!item) {
+          return false;
+        }
+
+        const oldName = item.name;
+
+        if (trimmed === oldName) {
+          return false;
+        }
+
+        const duplicate = findWbItemByName(s.projectData.world, trimmed);
+
+        if (duplicate && duplicate.id !== key) {
+          showInfo(t('alreadyExists'));
+          return false;
+        }
+
+        const affectedChapters = mentionIndex.chaptersContaining(key);
+
+        if (affectedChapters.length > 0) {
+          const proceed = await showConfirm(
+            t('renameWbMentionsWarning', {
+              oldName,
+              newName: trimmed,
+              count: affectedChapters.length
+            })
+          );
+
+          if (!proceed) {
             return false;
           }
-
-          const affectedChapters = mentionIndex.chaptersContaining(oldName);
-
-          if (affectedChapters.length > 0) {
-            const proceed = await showConfirm(
-              t('renameWbMentionsWarning', {
-                oldName,
-                newName: trimmed,
-                count: affectedChapters.length
-              })
-            );
-
-            if (!proceed) {
-              return false;
-            }
-          }
-
-          const nextWorld: ProjectData['world'] = {};
-
-          Object.keys(s.projectData.world).forEach((key) => {
-            if (key === oldName) {
-              nextWorld[trimmed] = s.projectData.world[oldName];
-            } else {
-              nextWorld[key] = s.projectData.world[key];
-            }
-          });
-
-          s.projectData.world = nextWorld;
-
-          if (affectedChapters.length > 0) {
-            renameWorldMentionsAcrossChapters(s.projectData, oldName, trimmed);
-          }
-
-          mentionIndex.renameItem(oldName, trimmed);
         }
 
-        s.openTabs = s.openTabs.map((item) =>
-          item.name === oldName && item.type === type
-            ? { ...item, name: trimmed }
-            : item
+        flushPendingHistoryCommit();
+
+        const open = activeChapterEditor();
+
+        if (open) {
+          s.projectData.chapters[open.name] = open.editor.innerHTML;
+        }
+
+        item.name = trimmed;
+        touchWbItem(item);
+
+        const changedChapters = renameWorldMentionsAcrossChapters(
+          s.projectData,
+          key,
+          oldName,
+          trimmed
         );
 
-        if (s.activeTab === oldName && s.activeType === type) {
-          s.activeTab = trimmed;
+        if (open) {
+          withPreservedSelection(open.editor, () => {
+            renameMentionsIn(open.editor, key, oldName, trimmed);
+          });
+
+          s.projectData.chapters[open.name] = open.editor.innerHTML;
         }
 
-        if (s.activeType === 'chapter' && s.activeTab && s.editorEl) {
-          s.editorEl.innerHTML = s.projectData.chapters[s.activeTab] || '';
+        registry.bumpVersion();
+        mentionIndex.refreshItem(key);
 
+        // Le nouveau nom peut apparaître ailleurs dans le chapitre ouvert.
+        if (open) {
           highlight();
+          s.projectData.chapters[open.name] = open.editor.innerHTML;
+        }
 
-          const finalHtml = s.editorEl.innerHTML;
+        resyncChapters(changedChapters, open?.name ?? null);
 
-          s.projectData.chapters[s.activeTab] = finalHtml;
-
-          history.resyncOnly(s.activeTab, finalHtml);
-
-          updateStats();
+        if (!isScreenplayData(s.projectData)) {
+          invalidateProjectWordCache(s.projectData);
         }
 
         setSaveStatus('pending');
 
+        updateStats();
+        updateUndoRedo();
         bump();
 
         await saveAll();
@@ -2378,15 +2351,31 @@ export function useEditorController({
             }
           });
 
+          // Les chapitres absents de la nouvelle liste ne sont jamais perdus.
+          Object.keys(s.projectData.chapters).forEach((key) => {
+            if (next[key] === undefined) {
+              next[key] = s.projectData.chapters[key];
+            }
+          });
+
           s.projectData.chapters = next;
 
           mentionIndex.rebuildChapterOrder();
         } else {
           const next: ProjectData['world'] = {};
 
-          newOrder.forEach((key) => {
-            if (s.projectData.world[key]) {
-              next[key] = s.projectData.world[key];
+          newOrder.forEach((itemId) => {
+            const item = s.projectData.world[itemId];
+
+            if (item) {
+              next[itemId] = item;
+            }
+          });
+
+          // Les fiches absentes de la nouvelle liste ne sont jamais perdues.
+          Object.keys(s.projectData.world).forEach((itemId) => {
+            if (!next[itemId]) {
+              next[itemId] = s.projectData.world[itemId];
             }
           });
 
@@ -2400,28 +2389,40 @@ export function useEditorController({
         void saveAll();
       },
 
-      updateWbField(name, fieldKey, value) {
-        const item = s.projectData.world[name];
+            updateWbField(itemId, fieldKey, value) {
+        const item = s.projectData.world[itemId];
 
         if (!item) {
           return;
         }
 
+        if (item.content[fieldKey] === value) {
+          return;
+        }
+
         item.content[fieldKey] = value;
+        touchWbItem(item);
+
+        s.hasUnsavedChangesSinceLastBackup = true;
 
         setSaveStatus('pending');
 
-        void saveAll();
+        scheduleWbSave();
+
+        // Sans ce rafraîchissement, le champ (piloté par React) réaffiche
+        // aussitôt l'ancienne valeur : la frappe semble ne rien faire.
+        bump();
       },
 
-      setWbIcon(name, icon) {
-        const item = s.projectData.world[name];
+      setWbIcon(itemId, icon) {
+        const item = s.projectData.world[itemId];
 
         if (!item) {
           return;
         }
 
         item.icon = icon;
+        touchWbItem(item);
 
         setSaveStatus('pending');
 
@@ -2429,14 +2430,15 @@ export function useEditorController({
         bump();
       },
 
-      setWbColor(name, color) {
-        const item = s.projectData.world[name];
+      setWbColor(itemId, color) {
+        const item = s.projectData.world[itemId];
 
         if (!item) {
           return;
         }
 
         item.color = color;
+        touchWbItem(item);
 
         s.wbColorVersion += 1;
 
@@ -2446,25 +2448,127 @@ export function useEditorController({
         bump();
       },
 
-      toggleReadMode() {
-        s.wbReadMode = !s.wbReadMode;
+            setWbAliases(itemId, aliases) {
+        const item = s.projectData.world[itemId];
+
+        if (!item) {
+          return false;
+        }
+
+        const keyOf = (value: string): string =>
+          value.normalize('NFC').trim().toLocaleLowerCase();
+
+        // Nettoyage : sans vide, sans doublon, sans le nom de la fiche.
+        const ownNameKey = keyOf(item.name);
+        const seen = new Set<string>();
+        const cleaned: string[] = [];
+
+        aliases.forEach((raw) => {
+          const alias = typeof raw === 'string' ? raw.trim() : '';
+          const key = keyOf(alias);
+
+          if (!alias || key === ownNameKey || seen.has(key)) {
+            return;
+          }
+
+          seen.add(key);
+          cleaned.push(alias);
+        });
+
+        // Un alias ne doit pas être le nom ou l'alias d'une autre fiche.
+        for (const otherId of Object.keys(s.projectData.world)) {
+          if (otherId === itemId) {
+            continue;
+          }
+
+          const other = s.projectData.world[otherId];
+
+          if (!other) {
+            continue;
+          }
+
+          const otherKeys = new Set<string>([keyOf(other.name)]);
+
+          if (Array.isArray(other.aliases)) {
+            other.aliases.forEach((alias) => otherKeys.add(keyOf(alias)));
+          }
+
+          const conflict = cleaned.find((alias) => otherKeys.has(keyOf(alias)));
+
+          if (conflict) {
+            showInfo(
+              t('wbAliasConflict', { alias: conflict, name: other.name })
+            );
+            return false;
+          }
+        }
+
+        const previous = Array.isArray(item.aliases) ? item.aliases : [];
+
+        const unchanged =
+          previous.length === cleaned.length &&
+          previous.every((alias, index) => alias === cleaned[index]);
+
+        if (unchanged) {
+          return true;
+        }
+
+        item.aliases = cleaned;
+        touchWbItem(item);
+
+        mentionIndex.refreshItem(itemId);
+        registry.bumpVersion();
+
+        // Chapitre ouvert : les nouveaux alias sont surlignés tout de suite,
+        // et les mentions d'un alias retiré redeviennent du texte simple.
+        const open = activeChapterEditor();
+
+        if (open) {
+          flushPendingHistoryCommit();
+          highlight();
+          s.projectData.chapters[open.name] = open.editor.innerHTML;
+          resyncChapters([], open.name);
+        }
+
+        s.hasUnsavedChangesSinceLastBackup = true;
+
+        setSaveStatus('pending');
+
+        void saveAll();
+        bump();
+
+        return true;
+      },
+
+toggleReadMode() {
+        if (s.activeType !== 'world' || !s.activeTab) {
+          return;
+        }
+
+        const item = s.projectData.world[s.activeTab];
+
+        if (!item) {
+          return;
+        }
+
+        item.readMode = !item.readMode;
+
+        scheduleWbSave();
         bump();
       },
 
-      chaptersContaining(name) {
-        return mentionIndex.chaptersContaining(name);
+      chaptersContaining(itemId) {
+        return mentionIndex.chaptersContaining(itemId);
       },
 
       itemsUsingType(slug) {
         return Object.keys(s.projectData.world).filter(
-          (name) => s.projectData.world[name].wbType === slug
+          (itemId) => s.projectData.world[itemId].wbType === slug
         );
       },
 
       saveCustomType(slug, definition) {
-        if (!s.projectData.customWbTypes) {
-          s.projectData.customWbTypes = {};
-        }
+        const categories = registry.cloneCategoryDefinitions();
 
         let finalSlug = slug;
 
@@ -2475,15 +2579,24 @@ export function useEditorController({
 
           let index = 2;
 
-          while (s.projectData.customWbTypes[finalSlug]) {
+          while (categories[finalSlug]) {
             finalSlug = `${baseSlug}_${index}`;
             index += 1;
           }
         }
 
-        s.projectData.customWbTypes[finalSlug] = definition;
+        const previous = categories[finalSlug];
+
+        categories[finalSlug] = previous
+          ? { ...previous, ...definition, builtin: previous.builtin }
+          : { ...definition };
+
+        s.projectData.wbCategories = categories;
 
         registry.bumpVersion();
+
+        // L'icône ou la couleur de la catégorie a pu changer.
+        s.wbColorVersion += 1;
 
         setSaveStatus('pending');
 
@@ -2493,35 +2606,44 @@ export function useEditorController({
         return finalSlug;
       },
 
-      async deleteCustomType(slug, definition) {
+      async deleteCustomType(slug) {
+        const label = registry.labelFor(slug);
         const usedBy = ctrl.itemsUsingType(slug);
 
         if (usedBy.length > 0) {
           showInfo(
             t('customTypeDeleteBlocked', {
               count: usedBy.length,
-              label: definition.label
+              label
             }),
-            usedBy.map((name) => ({
-              label: `${definition.icon || '📁'} ${name}`,
-              onClick: () => {
-                ctrl.openItem(name, 'world');
-              }
-            }))
+            usedBy.map((itemId) => {
+              const item = s.projectData.world[itemId];
+
+              return {
+                label: `${registry.iconFor(item)} ${item.name}`,
+                onClick: () => {
+                  ctrl.openItem(itemId, 'world');
+                }
+              };
+            })
           );
 
           return;
         }
 
         const confirmed = await showConfirm(
-          t('customTypeConfirmDelete', { label: definition.label })
+          t('customTypeConfirmDelete', { label })
         );
 
         if (!confirmed) {
           return;
         }
 
-        delete s.projectData.customWbTypes?.[slug];
+        const categories = registry.cloneCategoryDefinitions();
+
+        delete categories[slug];
+
+        s.projectData.wbCategories = categories;
 
         registry.bumpVersion();
 
@@ -2590,8 +2712,7 @@ export function useEditorController({
           return;
         }
 
-        // La frappe en attente devient une étape d'historique à part entière
-        // (elle était auparavant perdue).
+        // La frappe en attente devient une étape d'historique à part entière.
         flushPendingHistoryCommit();
 
         if (!wholeProject) {
@@ -2673,7 +2794,11 @@ export function useEditorController({
 
           history.commit(chapterName, newHtml);
 
-          if (chapterName === s.activeTab && s.editorEl) {
+          if (
+            chapterName === s.activeTab &&
+            s.activeType === 'chapter' &&
+            s.editorEl
+          ) {
             s.editorEl.innerHTML = newHtml;
 
             highlight();
@@ -2687,6 +2812,10 @@ export function useEditorController({
         });
 
         mentionIndex.rebuildAll();
+
+        if (!isScreenplayData(s.projectData)) {
+          invalidateProjectWordCache(s.projectData);
+        }
 
         updateUndoRedo();
 
@@ -2736,7 +2865,7 @@ export function useEditorController({
 
           const editor = s.editorEl;
 
-          if (editor && s.activeTab) {
+          if (editor && s.activeTab && s.activeType === 'chapter') {
             const hadMarks = withPreservedSelection(editor, () =>
               clearGrammarMarks(editor)
             );
@@ -3010,26 +3139,44 @@ export function useEditorController({
 
         const restored = await window.api.restoreBackup(projectName, fileName);
 
-        s.projectData = restored;
-        s.projectData.chapters = s.projectData.chapters || {};
-        s.projectData.world = s.projectData.world || {};
-        s.projectData.customWbTypes = s.projectData.customWbTypes || {};
-        s.projectData.writingSessions = Array.isArray(
-          s.projectData.writingSessions
-        )
-          ? s.projectData.writingSessions
-          : [];
-        s.projectData.goals = Array.isArray(s.projectData.goals)
-          ? s.projectData.goals
-          : [];
+        cancelAllPendingChapterSaves();
+        cancelPendingScreenplaySave();
+        cancelPendingWbSave();
+
+        if (historyTimerRef.current) {
+          clearTimeout(historyTimerRef.current);
+          historyTimerRef.current = null;
+        }
+
+        pendingHistoryRef.current = null;
+
+        // L'historique d'annulation portait sur l'ancien contenu.
+        Object.keys(s.projectData.chapters).forEach((chapterName) => {
+          history.remove(chapterName);
+        });
+
+        ensureProjectDefaults(restored);
+
+        // Une sauvegarde ancienne peut être au format 1 : on la convertit.
+        let nextData = prepareWorldBuilding(restored, currentWbLang()).data;
+
+        ensureProjectDefaults(nextData);
 
         if (
-          s.projectData.projectType === 'screenplay' &&
-          s.projectData.screenplay &&
-          s.projectData.screenplay.scenes.length === 0
+          nextData.projectType === 'screenplay' &&
+          nextData.screenplay &&
+          nextData.screenplay.scenes.length === 0
         ) {
-          s.projectData.screenplay.scenes = [createScreenplayScene()];
+          nextData = {
+            ...nextData,
+            screenplay: {
+              ...nextData.screenplay,
+              scenes: [createScreenplayScene()]
+            }
+          };
         }
+
+        s.projectData = nextData;
 
         registry.bumpVersion();
 
@@ -3043,9 +3190,6 @@ export function useEditorController({
         mentionIndex.rebuildAll();
 
         s.projects[projectName] = s.projectData;
-
-        cancelAllPendingChapterSaves();
-        cancelPendingScreenplaySave();
 
         await window.api.saveProjects(s.projects);
 
@@ -3067,6 +3211,7 @@ export function useEditorController({
         await persistUiState();
 
         updateStats();
+        updateUndoRedo();
         bump();
       },
 
@@ -3109,6 +3254,42 @@ export function useEditorController({
         return true;
       }
     };
+
+    /** Chapitre affiché dans l'éditeur, s'il y en a un. */
+    function activeChapterEditor(): { name: string; editor: HTMLElement } | null {
+      if (s.activeType !== 'chapter' || !s.activeTab || !s.editorEl) {
+        return null;
+      }
+
+      return { name: s.activeTab, editor: s.editorEl };
+    }
+
+    /**
+     * Après une modification des mentions dans plusieurs chapitres :
+     * l'historique et l'index sont remis en phase avec le nouveau contenu,
+     * sans créer d'étape d'annulation.
+     */
+    function resyncChapters(
+      changedChapters: string[],
+      openChapter: string | null
+    ): void {
+      const names = new Set(changedChapters);
+
+      if (openChapter) {
+        names.add(openChapter);
+      }
+
+      names.forEach((chapterName) => {
+        const html = s.projectData.chapters[chapterName];
+
+        if (html === undefined) {
+          return;
+        }
+
+        history.resyncOnly(chapterName, html);
+        mentionIndex.updateForChapter(chapterName, html);
+      });
+    }
 
     /**
      * Annuler / rétablir.
@@ -3283,6 +3464,8 @@ export function buildCustomTypeFields(
     label: string;
     type: WbField['type'];
     existingKey?: string;
+    options?: WbField['options'];
+    referenceCategory?: WbField['referenceCategory'];
   }[]
 ): WbField[] {
   const usedKeys = new Set(
@@ -3290,30 +3473,37 @@ export function buildCustomTypeFields(
   );
 
   return rawFields.map((field) => {
-    if (field.existingKey) {
-      return {
-        key: field.existingKey,
-        label: field.label,
-        type: field.type
-      };
+    let key = field.existingKey;
+
+    if (!key) {
+      const base = slugify(field.label, 'champ');
+
+      key = base;
+
+      let index = 2;
+
+      while (usedKeys.has(key)) {
+        key = `${base}_${index}`;
+        index += 1;
+      }
+
+      usedKeys.add(key);
     }
 
-    const base = slugify(field.label, 'champ');
-
-    let uniqueKey = base;
-    let index = 2;
-
-    while (usedKeys.has(uniqueKey)) {
-      uniqueKey = `${base}_${index}`;
-      index += 1;
-    }
-
-    usedKeys.add(uniqueKey);
-
-    return {
-      key: uniqueKey,
+    const result: WbField = {
+      key,
       label: field.label,
       type: field.type
     };
+
+    if (field.options !== undefined) {
+      result.options = field.options;
+    }
+
+    if (field.referenceCategory !== undefined) {
+      result.referenceCategory = field.referenceCategory;
+    }
+
+    return result;
   });
 }

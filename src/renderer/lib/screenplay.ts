@@ -637,7 +637,6 @@ export function createScreenplayProject(
      */
     chapters: {},
     world: {},
-    customWbTypes: {},
     writingSessions: [],
     goals: [],
     screenplay

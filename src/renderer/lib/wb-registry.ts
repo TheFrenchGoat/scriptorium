@@ -1,99 +1,416 @@
 // src/renderer/lib/wb-registry.ts
-// Les 4 types intégrés (Personnage/Lieu/Objet/Autre) restent définis dans
-// wb-config.ts. En plus, chaque projet peut définir ses propres types avec
-// leurs propres champs (projectData.customWbTypes). Ce registre renvoie une
-// vue FUSIONNÉE (intégrés + personnalisés de CE projet), utilisée partout où
-// le code a besoin de résoudre les infos d'un type — pour ne jamais avoir à
-// savoir, au point d'appel, si un wbType donné est intégré ou personnalisé.
 //
-// Mise en cache : ces fonctions sont appelées à chaque rendu de sidebar,
-// d'onglet ou de fiche (donc très souvent), alors que customWbTypes ne change
-// que sur des actions rares. `bumpVersion()` est appelé à chacune de ces
-// actions ; le cache n'est reconstruit que si la version a changé.
+// Registre du World Building.
+// Point d'accès unique aux catégories, champs, icônes, couleurs et types de
+// relations du projet ouvert.
+//
+// Les données sont lues à la demande via getProjectData(), puis mises en cache.
+// Le cache se renouvelle tout seul quand :
+//   - la langue de l'interface change ;
+//   - l'objet wbCategories ou le tableau wbRelationTypes est remplacé.
+// Après une modification « sur place » (mutation directe de ces objets),
+// il faut appeler bumpVersion().
+//
+// Les objets renvoyés sont en lecture seule. Pour modifier les catégories :
+// partir de cloneCategoryDefinitions(), modifier la copie, puis l'enregistrer
+// dans le projet (data.wbCategories = copie), et appeler bumpVersion().
 
+import type { ProjectData, WbCategoryDef, WbField, WbItem } from '../../shared/types';
 import {
-  WB_CONFIG,
-  WB_DEFAULT_COLORS,
   WB_FALLBACK_COLOR,
-  WB_TEMPLATES,
-  type WbConfigEntry
+  WB_FALLBACK_ICON,
+  createDefaultCategories,
+  relationLabelFrom,
+  resolveCategoryLabel,
+  resolveFieldLabel,
+  resolveRelationTypes,
 } from './wb-config';
-import type { BuiltinWbType, ProjectData, WbItem, WbTemplate, WbType } from '../../shared/types';
+import type { ResolvedRelationType } from './wb-config';
 
-export interface WbRegistry {
-  templates(): Record<string, WbTemplate>;
-  config(): Record<string, WbConfigEntry>;
-  templateFor(type: WbType): WbTemplate;
-  configFor(type: WbType): WbConfigEntry;
-  isCustomType(type: WbType): boolean;
-  colorFor(item: WbItem | undefined | null): string;
-  bumpVersion(): void;
-  version(): number;
+/** Langue acceptée par les fonctions de wb-config (déduite automatiquement). */
+export type WbLang = NonNullable<Parameters<typeof resolveCategoryLabel>[2]>;
+
+const DEFAULT_LANG = 'fr' as WbLang;
+
+/** Catégorie prête à afficher. */
+export interface WbCategoryInfo {
+  /** Clé dans wbCategories, et valeur de WbItem.wbType. */
+  slug: string;
+  /** Libellé affiché (traduction automatique pour les catégories intégrées). */
+  label: string;
+  icon: string;
+  color: string;
+  /** Champs tels qu'enregistrés. Utiliser fieldLabel() pour leur libellé. */
+  fields: WbField[];
+  builtin: boolean;
+  presetId?: string;
+  /** false si la catégorie n'existe pas dans le projet (fiche orpheline). */
+  known: boolean;
 }
 
-export function createWbRegistry(getProjectData: () => ProjectData): WbRegistry {
-  let customVersion = 0;
-  let cachedTemplatesVersion = -1;
-  let cachedTemplates: Record<string, WbTemplate> | null = null;
-  let cachedConfigVersion = -1;
-  let cachedConfig: Record<string, WbConfigEntry> | null = null;
+/** Forme renvoyée par templateFor(), conservée pour compatibilité. */
+export interface WbTemplateView {
+  fields: WbField[];
+}
 
-  function templates(): Record<string, WbTemplate> {
-    if (cachedTemplates && cachedTemplatesVersion === customVersion) return cachedTemplates;
-    const merged: Record<string, WbTemplate> = { ...WB_TEMPLATES };
-    Object.entries(getProjectData().customWbTypes ?? {}).forEach(([key, def]) => {
-      merged[key] = { icon: def.icon, label: def.label, fields: def.fields };
-    });
-    cachedTemplates = merged;
-    cachedTemplatesVersion = customVersion;
-    return merged;
-  }
+export type WbProjectGetter = () => ProjectData | null | undefined;
+export type WbLangGetter = () => WbLang | null | undefined;
 
-  function config(): Record<string, WbConfigEntry> {
-    if (cachedConfig && cachedConfigVersion === customVersion) return cachedConfig;
-    const merged: Record<string, WbConfigEntry> = { ...WB_CONFIG };
-    Object.entries(getProjectData().customWbTypes ?? {}).forEach(([key, def]) => {
-      // colorClass n'est utile que comme repli visuel avant qu'une couleur
-      // effective (colorFor, inline) ne soit appliquée ; 'type-other' est un
-      // repli neutre suffisant pour un type personnalisé.
-      merged[key] = { label: def.label, colorClass: 'type-other', icon: def.icon };
-    });
-    cachedConfig = merged;
-    cachedConfigVersion = customVersion;
-    return merged;
+export interface WbRegistry {
+  /** Numéro de version, incrémenté par bumpVersion(). */
+  readonly version: number;
+  /** Vide les caches après une modification sur place des catégories ou des types de relations. */
+  bumpVersion(): void;
+  currentLang(): WbLang;
+
+  // Catégories
+  categories(): WbCategoryInfo[];
+  categorySlugs(): string[];
+  hasCategory(slug: string | null | undefined): boolean;
+  categoryFor(slug: string | null | undefined): WbCategoryInfo;
+  labelFor(slug: string | null | undefined): string;
+  isBuiltinCategory(slug: string | null | undefined): boolean;
+  cloneCategoryDefinitions(): Record<string, WbCategoryDef>;
+
+  // Champs
+  fieldsFor(slug: string | null | undefined): WbField[];
+  fieldLabel(slug: string | null | undefined, field: WbField): string;
+
+  // Apparence d'une fiche (ou d'une catégorie si on passe un slug)
+  iconFor(target: WbItem | string | null | undefined): string;
+  colorFor(target: WbItem | string | null | undefined): string;
+
+  // Relations
+  relationTypes(): ResolvedRelationType[];
+  relationType(id: string | null | undefined): ResolvedRelationType | undefined;
+  relationLabel(typeId: string, fromSource: boolean): string;
+
+  // Compatibilité avec l'ancien registre
+  readonly config: Record<string, WbCategoryInfo>;
+  configFor(slug: string | null | undefined): WbCategoryInfo;
+  templateFor(slug: string | null | undefined): WbTemplateView;
+  isCustomType(slug: string | null | undefined): boolean;
+}
+
+interface CategoryEntry {
+  info: WbCategoryInfo;
+  def: WbCategoryDef;
+}
+
+interface CategoryCache {
+  version: number;
+  lang: WbLang;
+  source: ProjectData['wbCategories'];
+  list: WbCategoryInfo[];
+  slugs: string[];
+  record: Record<string, WbCategoryInfo>;
+  bySlug: Map<string, CategoryEntry>;
+  orphans: Map<string, CategoryEntry>;
+}
+
+interface RelationCache {
+  version: number;
+  lang: WbLang;
+  source: ProjectData['wbRelationTypes'];
+  list: ResolvedRelationType[];
+  byId: Map<string, ResolvedRelationType>;
+}
+
+// ---------------------------------------------------------------------------
+// Outils internes
+// ---------------------------------------------------------------------------
+
+function isFilled(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function hasOwn(target: object, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(target, key);
+}
+
+function hasEntries<T>(value: Record<string, T> | null | undefined): value is Record<string, T> {
+  return !!value && typeof value === 'object' && Object.keys(value).length > 0;
+}
+
+let defaultCategoriesCache: Record<string, WbCategoryDef> | null = null;
+
+/** Catégories par défaut, créées une seule fois (ne jamais les modifier directement). */
+function getDefaultCategories(): Record<string, WbCategoryDef> {
+  if (!defaultCategoriesCache) {
+    const created: Record<string, WbCategoryDef> = createDefaultCategories();
+    defaultCategoriesCache = created;
   }
+  return defaultCategoriesCache;
+}
+
+function defaultCategoryFor(slug: string): WbCategoryDef | undefined {
+  const defaults = getDefaultCategories();
+  return hasOwn(defaults, slug) ? defaults[slug] : undefined;
+}
+
+function buildCategoryInfo(
+  slug: string,
+  def: WbCategoryDef,
+  lang: WbLang,
+  known: boolean,
+): WbCategoryInfo {
+  const fallback = defaultCategoryFor(slug);
+
+  let icon: string = WB_FALLBACK_ICON;
+  if (isFilled(def.icon)) icon = def.icon;
+  else if (fallback && isFilled(fallback.icon)) icon = fallback.icon;
+
+  let color: string = WB_FALLBACK_COLOR;
+  if (isFilled(def.color)) color = def.color;
+  else if (fallback && isFilled(fallback.color)) color = fallback.color;
+
+  const label = resolveCategoryLabel(def, slug, lang);
 
   return {
-    templates,
-    config,
-    templateFor(type) {
-      return templates()[type] ?? WB_TEMPLATES.other;
-    },
-    configFor(type) {
-      return config()[type] ?? WB_CONFIG.other;
-    },
-    isCustomType(type) {
-      return !!getProjectData().customWbTypes?.[type];
-    },
-    colorFor(item) {
-      if (!item) return WB_FALLBACK_COLOR;
-      if (item.color) return item.color;
-      const customDef = getProjectData().customWbTypes?.[item.wbType];
-      if (customDef) return customDef.defaultColor || WB_FALLBACK_COLOR;
-      return WB_DEFAULT_COLORS[item.wbType as BuiltinWbType] ?? WB_FALLBACK_COLOR;
-    },
-    bumpVersion() {
-      customVersion++;
-    },
-    version() {
-      return customVersion;
-    }
+    slug,
+    label: isFilled(label) ? label : slug || '?',
+    icon,
+    color,
+    fields: Array.isArray(def.fields) ? def.fields : [],
+    builtin: Boolean(def.builtin),
+    presetId: isFilled(def.presetId) ? def.presetId : undefined,
+    known,
   };
 }
 
-/** Applique la couleur effective d'une fiche à une mention déjà posée. */
+// ---------------------------------------------------------------------------
+// Couleur des mentions dans le texte
+// ---------------------------------------------------------------------------
+
+/** Opacité du soulignement des mentions (4d en hexadécimal, soit environ 30 %). */
+const MENTION_BORDER_ALPHA = '4d';
+
+/** Couleur semi-transparente utilisée pour le soulignement d'une mention. */
+export function mentionBorderColor(color: string): string {
+  const value = color.trim();
+  if (/^#[0-9a-fA-F]{6}$/.test(value)) return value + MENTION_BORDER_ALPHA;
+  if (/^#[0-9a-fA-F]{8}$/.test(value)) return value.slice(0, 7) + MENTION_BORDER_ALPHA;
+  if (/^#[0-9a-fA-F]{3,4}$/.test(value)) {
+    const r = value.charAt(1);
+    const g = value.charAt(2);
+    const b = value.charAt(3);
+    return '#' + r + r + g + g + b + b + MENTION_BORDER_ALPHA;
+  }
+  return 'color-mix(in srgb, ' + value + ' 30%, transparent)';
+}
+
+/** Applique la couleur d'une fiche à une mention (texte + soulignement). */
 export function applyMentionColorStyle(span: HTMLElement, color: string): void {
-  span.style.color = color;
-  // ~30% d'opacité, cohérent avec les couleurs par défaut du CSS
-  span.style.borderColor = color + '4d';
+  const value = isFilled(color) ? color.trim() : WB_FALLBACK_COLOR;
+  span.style.color = value;
+  span.style.borderColor = mentionBorderColor(value);
+}
+
+/** Retire la couleur posée par applyMentionColorStyle. */
+export function clearMentionColorStyle(span: HTMLElement): void {
+  span.style.removeProperty('color');
+  span.style.removeProperty('border-color');
+}
+
+// ---------------------------------------------------------------------------
+// Registre
+// ---------------------------------------------------------------------------
+
+export function createWbRegistry(
+  getProjectData: WbProjectGetter,
+  getLang?: WbLangGetter,
+): WbRegistry {
+  let version = 0;
+  let categoryCache: CategoryCache | null = null;
+  let relationCache: RelationCache | null = null;
+
+  function currentLang(): WbLang {
+    const value = getLang ? getLang() : null;
+    return value || DEFAULT_LANG;
+  }
+
+  function readProject(): ProjectData | null {
+    return getProjectData() || null;
+  }
+
+  function getCategoryCache(): CategoryCache {
+    const data = readProject();
+    const source = data ? data.wbCategories : undefined;
+    const lang = currentLang();
+
+    if (
+      categoryCache &&
+      categoryCache.version === version &&
+      categoryCache.lang === lang &&
+      categoryCache.source === source
+    ) {
+      return categoryCache;
+    }
+
+    // Filet de sécurité : un projet sans aucune catégorie reçoit les catégories par défaut.
+    const definitions = hasEntries(source) ? source : getDefaultCategories();
+
+    const list: WbCategoryInfo[] = [];
+    const slugs: string[] = [];
+    const record: Record<string, WbCategoryInfo> = {};
+    const bySlug = new Map<string, CategoryEntry>();
+
+    for (const [slug, def] of Object.entries(definitions)) {
+      if (!def || typeof def !== 'object') continue;
+      const info = buildCategoryInfo(slug, def, lang, true);
+      list.push(info);
+      slugs.push(slug);
+      record[slug] = info;
+      bySlug.set(slug, { info, def });
+    }
+
+    categoryCache = {
+      version,
+      lang,
+      source,
+      list,
+      slugs,
+      record,
+      bySlug,
+      orphans: new Map(),
+    };
+    return categoryCache;
+  }
+
+  function entryFor(slug: string | null | undefined): CategoryEntry {
+    const key = typeof slug === 'string' ? slug : '';
+    const cache = getCategoryCache();
+
+    const found = cache.bySlug.get(key);
+    if (found) return found;
+
+    const orphan = cache.orphans.get(key);
+    if (orphan) return orphan;
+
+    // Catégorie absente du projet : on reprend la définition par défaut si elle existe,
+    // sinon une définition minimale avec l'icône et la couleur de secours.
+    const def: WbCategoryDef = defaultCategoryFor(key) || {
+      label: key,
+      icon: WB_FALLBACK_ICON,
+      color: WB_FALLBACK_COLOR,
+      fields: [],
+    };
+    const entry: CategoryEntry = { def, info: buildCategoryInfo(key, def, cache.lang, false) };
+    cache.orphans.set(key, entry);
+    return entry;
+  }
+
+  function getRelationCache(): RelationCache {
+    const data = readProject();
+    const source = data ? data.wbRelationTypes : undefined;
+    const lang = currentLang();
+
+    if (
+      relationCache &&
+      relationCache.version === version &&
+      relationCache.lang === lang &&
+      relationCache.source === source
+    ) {
+      return relationCache;
+    }
+
+    const list = resolveRelationTypes(Array.isArray(source) ? source : [], lang);
+    const byId = new Map<string, ResolvedRelationType>();
+    for (const type of list) {
+      if (!byId.has(type.id)) byId.set(type.id, type);
+    }
+
+    relationCache = { version, lang, source, list, byId };
+    return relationCache;
+  }
+
+  const registry: WbRegistry = {
+    get version() {
+      return version;
+    },
+
+    bumpVersion() {
+      version += 1;
+      categoryCache = null;
+      relationCache = null;
+    },
+
+    currentLang,
+
+    // --- Catégories --------------------------------------------------------
+
+    categories: () => getCategoryCache().list,
+
+    categorySlugs: () => getCategoryCache().slugs,
+
+    hasCategory: (slug) => typeof slug === 'string' && getCategoryCache().bySlug.has(slug),
+
+    categoryFor: (slug) => entryFor(slug).info,
+
+    labelFor: (slug) => entryFor(slug).info.label,
+
+    isBuiltinCategory: (slug) => entryFor(slug).info.builtin,
+
+    cloneCategoryDefinitions() {
+      const data = readProject();
+      const source = data ? data.wbCategories : undefined;
+      return structuredClone(hasEntries(source) ? source : getDefaultCategories());
+    },
+
+    // --- Champs ------------------------------------------------------------
+
+    fieldsFor: (slug) => entryFor(slug).info.fields,
+
+    fieldLabel(slug, field) {
+      if (!field) return '';
+      const label = resolveFieldLabel(entryFor(slug).def, field, currentLang());
+      return isFilled(label) ? label : field.key || '';
+    },
+
+    // --- Apparence ---------------------------------------------------------
+
+    iconFor(target) {
+      if (target && typeof target === 'object') {
+        if (isFilled(target.icon)) return target.icon;
+        return entryFor(target.wbType).info.icon;
+      }
+      return entryFor(target).info.icon;
+    },
+
+    colorFor(target) {
+      if (target && typeof target === 'object') {
+        if (isFilled(target.color)) return target.color;
+        return entryFor(target.wbType).info.color;
+      }
+      return entryFor(target).info.color;
+    },
+
+    // --- Relations ---------------------------------------------------------
+
+    relationTypes: () => getRelationCache().list,
+
+    relationType: (id) => (typeof id === 'string' ? getRelationCache().byId.get(id) : undefined),
+
+    relationLabel(typeId, fromSource) {
+      const type = getRelationCache().byId.get(typeId);
+      return type ? relationLabelFrom(type, fromSource) : typeId;
+    },
+
+    // --- Compatibilité -----------------------------------------------------
+
+    get config() {
+      return getCategoryCache().record;
+    },
+
+    configFor: (slug) => entryFor(slug).info,
+
+    templateFor: (slug) => ({ fields: entryFor(slug).info.fields }),
+
+    isCustomType(slug) {
+      const info = entryFor(slug).info;
+      return info.known && !info.builtin;
+    },
+  };
+
+  return registry;
 }

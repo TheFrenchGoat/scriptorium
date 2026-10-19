@@ -28,6 +28,9 @@ interface FieldDraft {
 
 let fieldIdSeq = 0;
 
+const DEFAULT_ICON = '📁';
+const DEFAULT_COLOR = '#94a3b8';
+
 export function CustomWbTypeModal({
   open,
   controller,
@@ -39,19 +42,22 @@ export function CustomWbTypeModal({
   const { showInfo } = useDialogs();
 
   const [name, setName] = useState('');
-  const [icon, setIcon] = useState('📁');
-  const [color, setColor] = useState('#94a3b8');
+  const [icon, setIcon] = useState(DEFAULT_ICON);
+  const [color, setColor] = useState(DEFAULT_COLOR);
   const [fields, setFields] = useState<FieldDraft[]>([]);
 
   useEffect(() => {
     if (!open) return;
 
     if (editingSlug) {
-      const def = controller.data().customWbTypes?.[editingSlug];
+      // Depuis le format 2, toutes les catégories (intégrées et personnalisées)
+      // sont rangées dans wbCategories. L'ancien champ customWbTypes ne sert
+      // plus qu'à la lecture des projets avant conversion.
+      const def = controller.data().wbCategories?.[editingSlug];
       if (def) {
         setName(def.label);
-        setIcon(def.icon || '📁');
-        setColor(def.defaultColor || '#94a3b8');
+        setIcon(def.icon || DEFAULT_ICON);
+        setColor(def.color || DEFAULT_COLOR);
         setFields(
           def.fields.map((f) => ({ id: fieldIdSeq++, label: f.label, type: f.type, existingKey: f.key }))
         );
@@ -60,8 +66,8 @@ export function CustomWbTypeModal({
     }
 
     setName('');
-    setIcon('📁');
-    setColor('#94a3b8');
+    setIcon(DEFAULT_ICON);
+    setColor(DEFAULT_COLOR);
     setFields([{ id: fieldIdSeq++, label: t('customTypeDefaultFieldLabel'), type: 'textarea' }]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editingSlug]);
@@ -106,8 +112,8 @@ export function CustomWbTypeModal({
     const finalFields = buildCustomTypeFields(rawFields);
     const finalSlug = controller.saveCustomType(editingSlug, {
       label: trimmedName,
-      icon: icon || '📁',
-      defaultColor: color,
+      icon: icon || DEFAULT_ICON,
+      color,
       fields: finalFields
     });
 

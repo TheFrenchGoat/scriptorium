@@ -5,9 +5,19 @@
 // Le contentEditable est volontairement non contrôlé par React.
 // React ne réinjecte donc jamais element.html pendant la saisie, ce qui
 // empêche le curseur de revenir au début après chaque caractère.
+//
+// Surlignage World Building (version 2e-1) :
+// - pendant la saisie, il est lancé après une courte pause (pas à chaque touche) ;
+// - quand le paragraphe n'a pas le focus, il est relancé si le texte ou les
+//   fiches changent (nom, alias, couleur, catégorie) ;
+// - à la sortie du paragraphe, il est appliqué APRÈS le nettoyage du texte
+//   (sinon les répliques de personnage perdraient leur couleur).
+// Le surlignage d'un paragraphe sans focus n'est pas renvoyé au document :
+// cela évite de modifier le scénario à sa simple ouverture.
 
 import React, {
   useCallback,
+  useEffect,
   useLayoutEffect,
   useMemo,
   useRef
@@ -22,17 +32,39 @@ import {
   screenplayHtmlToPlainText
 } from '../../lib/screenplay';
 
+import {
+  highlightWorldBuilding
+} from '../../lib/highlight';
+
 import type {
+  WbRegistry
+} from '../../lib/wb-registry';
+
+import type {
+  ProjectData,
   ScreenplayConventionLanguage,
   ScreenplayElement,
   ScreenplayElementType
 } from '../../../shared/types';
+
+/** Pause après la dernière frappe avant de surligner. */
+const HIGHLIGHT_DELAY_MS =
+  300;
 
 export interface ScreenplayElementEditorProps {
   element: ScreenplayElement;
   conventionLanguage: ScreenplayConventionLanguage;
   enableShotElement: boolean;
   active: boolean;
+
+  /** Données du projet (fiches). Sans elles, pas de surlignage. */
+  projectData?: ProjectData;
+
+  /** Registre des couleurs et catégories. Sans lui, pas de surlignage. */
+  wbRegistry?: WbRegistry;
+
+  /** Change dès qu'une fiche change (nom, alias, couleur, catégorie). */
+  worldSignature?: string;
 
   onFocus: () => void;
 
@@ -276,6 +308,9 @@ export function ScreenplayElementEditor({
   conventionLanguage,
   enableShotElement,
   active,
+  projectData,
+  wbRegistry,
+  worldSignature,
   onFocus,
   onChangeHtml,
   onChangeType,
@@ -290,8 +325,30 @@ export function ScreenplayElementEditor({
   const focusedRef =
     useRef(false);
 
+  // Vrai pendant une saisie composée (accents morts, emoji…).
+  const composingRef =
+    useRef(false);
+
+  const highlightTimerRef =
+    useRef<number | null>(
+      null
+    );
+
   const lastReportedHtmlRef =
     useRef(element.html);
+
+  // Toujours les valeurs les plus récentes, même dans une minuterie.
+  const projectDataRef =
+    useRef(projectData);
+
+  const registryRef =
+    useRef(wbRegistry);
+
+  projectDataRef.current =
+    projectData;
+
+  registryRef.current =
+    wbRegistry;
 
   const availableTypes =
     useMemo(
@@ -301,6 +358,58 @@ export function ScreenplayElementEditor({
         ),
       [enableShotElement]
     );
+
+  /** Surligne le paragraphe. Retourne true si son contenu a changé. */
+  const applyHighlight =
+    useCallback(
+      (
+        editor: HTMLElement
+      ): boolean => {
+        const data =
+          projectDataRef.current;
+
+        const registry =
+          registryRef.current;
+
+        if (
+          !data ||
+          !registry
+        ) {
+          return false;
+        }
+
+        try {
+          return highlightWorldBuilding(
+            editor,
+            data,
+            registry
+          );
+        } catch (error) {
+          console.error(
+            'Scénario : surlignage impossible.',
+            error
+          );
+
+          return false;
+        }
+      },
+      []
+    );
+
+  const cancelHighlightTimer =
+    useCallback((): void => {
+      if (
+        highlightTimerRef.current !==
+        null
+      ) {
+        window.clearTimeout(
+          highlightTimerRef.current
+        );
+
+        highlightTimerRef.current =
+          null;
+      }
+    }, []);
 
   /*
    * Synchronisation impérative du HTML.
@@ -329,10 +438,35 @@ export function ScreenplayElementEditor({
 
     lastReportedHtmlRef.current =
       element.html;
-  }, [
-    element.html,
-    element.id
-  ]);
+  }, [element.html, element.id]);
+
+  /*
+   * Surlignage d'un paragraphe qui n'a pas le focus : à l'ouverture, quand
+   * son texte change de l'extérieur, ou quand une fiche change.
+   * Doit rester déclaré APRÈS la synchronisation ci-dessus.
+   */
+  useLayoutEffect(() => {
+    const editor =
+      editorRef.current;
+
+    if (
+      !editor ||
+      focusedRef.current
+    ) {
+      return;
+    }
+
+    applyHighlight(
+      editor
+    );
+  }, [applyHighlight, element.html, element.id, worldSignature, wbRegistry, projectData]);
+
+  // Nettoyage de la minuterie quand le paragraphe disparaît.
+  useEffect(() => {
+    return () => {
+      cancelHighlightTimer();
+    };
+  }, [cancelHighlightTimer]);
 
   const reportHtml =
     useCallback(
@@ -352,11 +486,49 @@ export function ScreenplayElementEditor({
           html
         );
       },
-      [
-        element.id,
-        onChangeHtml
-      ]
+      [element.id, onChangeHtml]
     );
+
+  // Version la plus récente de reportHtml, utilisée par la minuterie.
+  const reportHtmlRef =
+    useRef(reportHtml);
+
+  reportHtmlRef.current =
+    reportHtml;
+
+  /** Surlignage différé pendant la saisie. */
+  const scheduleHighlight =
+    useCallback((): void => {
+      cancelHighlightTimer();
+
+      highlightTimerRef.current =
+        window.setTimeout(() => {
+          highlightTimerRef.current =
+            null;
+
+          const editor =
+            editorRef.current;
+
+          if (
+            !editor ||
+            focusedRef.current ||
+            composingRef.current
+          ) {
+
+            return;
+          }
+
+          if (
+            applyHighlight(
+              editor
+            )
+          ) {
+            reportHtmlRef.current(
+              editor.innerHTML
+            );
+          }
+        }, HIGHLIGHT_DELAY_MS);
+    }, [applyHighlight, cancelHighlightTimer]);
 
   const commitCurrentContent =
     useCallback((): void => {
@@ -366,6 +538,8 @@ export function ScreenplayElementEditor({
       if (!editor) {
         return;
       }
+
+      cancelHighlightTimer();
 
       const normalizedHtml =
         normalizeElementHtml(
@@ -381,13 +555,15 @@ export function ScreenplayElementEditor({
           normalizedHtml;
       }
 
-      reportHtml(
-        normalizedHtml
+      // Surlignage APRÈS le nettoyage, puis envoi du résultat final.
+      applyHighlight(
+        editor
       );
-    }, [
-      element.type,
-      reportHtml
-    ]);
+
+      reportHtml(
+        editor.innerHTML
+      );
+    }, [applyHighlight, cancelHighlightTimer, element.type, reportHtml]);
 
   const changeType =
     useCallback(
@@ -407,12 +583,7 @@ export function ScreenplayElementEditor({
           nextType
         );
       },
-      [
-        commitCurrentContent,
-        element.id,
-        element.type,
-        onChangeType
-      ]
+      [commitCurrentContent, element.id, element.type, onChangeType]
     );
 
   const splitAtSelection =
@@ -494,6 +665,8 @@ export function ScreenplayElementEditor({
         return;
       }
 
+      cancelHighlightTimer();
+
       const {
         beforeHtml,
         afterHtml
@@ -501,21 +674,27 @@ export function ScreenplayElementEditor({
         range
       );
 
-      const normalizedBefore =
+      // Un nom coupé en deux par Entrée perd sa mention : le surlignage
+      // nettoie les morceaux invalides.
+      editor.innerHTML =
         normalizeElementHtml(
           element.type,
           beforeHtml
         );
 
-      editor.innerHTML =
-        normalizedBefore;
+      applyHighlight(
+        editor
+      );
+
+      const finalBefore =
+        editor.innerHTML;
 
       lastReportedHtmlRef.current =
-        normalizedBefore;
+        finalBefore;
 
       onChangeHtml(
         element.id,
-        normalizedBefore
+        finalBefore
       );
 
       const nextType =
@@ -535,13 +714,7 @@ export function ScreenplayElementEditor({
           afterHtml
         )
       );
-    }, [
-      element.id,
-      element.type,
-      onChangeHtml,
-      onInsertAfter,
-      splitAtSelection
-    ]);
+    }, [applyHighlight, cancelHighlightTimer, element.id, element.type, onChangeHtml, onInsertAfter, splitAtSelection]);
 
   const handlePaste =
     useCallback(
@@ -569,22 +742,24 @@ export function ScreenplayElementEditor({
           reportHtml(
             editor.innerHTML
           );
+
+          scheduleHighlight();
         }
       },
-      [reportHtml]
+      [reportHtml, scheduleHighlight]
     );
+
+  const rootClassName = [
+    'screenplay-element',
+    `screenplay-element-${element.type}`,
+    active
+      ? 'active'
+      : ''
+  ].filter(Boolean).join(' ');
 
   return (
     <div
-      className={[
-        'screenplay-element',
-        `screenplay-element-${element.type}`,
-        active
-          ? 'active'
-          : ''
-      ]
-        .filter(Boolean)
-        .join(' ')}
+      className={rootClassName}
       data-screenplay-element-type={
         element.type
       }
@@ -615,13 +790,27 @@ export function ScreenplayElementEditor({
         }}
         onBlur={() => {
           focusedRef.current = false;
+          composingRef.current = false;
           commitCurrentContent();
+        }}
+        onCompositionStart={() => {
+          composingRef.current = true;
+        }}
+        onCompositionEnd={() => {
+          composingRef.current = false;
+          scheduleHighlight();
         }}
         onInput={(event) => {
           reportHtml(
             event.currentTarget
               .innerHTML
           );
+
+          if (
+            !composingRef.current
+          ) {
+            scheduleHighlight();
+          }
         }}
         onPaste={handlePaste}
         onKeyDown={(event) => {

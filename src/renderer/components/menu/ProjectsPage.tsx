@@ -12,6 +12,11 @@
 //
 // Les anciens projets qui ne possèdent pas encore `projectType` sont
 // automatiquement considérés comme des romans.
+//
+// World Building : au chargement, les projets à l'ancien format sont
+// convertis au format 2. Une sauvegarde de chaque projet qui contenait des
+// fiches est faite avant l'enregistrement du résultat. Les onglets de fiches
+// ouverts sont ensuite reconnectés à leurs identifiants.
 
 import React, {
   useCallback,
@@ -29,6 +34,13 @@ import {
   createScreenplayProject,
   getDefaultSceneHeading
 } from '../../lib/screenplay';
+import { createDefaultCategories } from '../../lib/wb-config';
+import {
+  migrateUiTabs,
+  prepareAllProjects,
+  prepareWorldBuilding
+} from '../../lib/wb-migration';
+import { WB_FORMAT_VERSION } from '../../../shared/types';
 import type {
   ProjectData,
   ProjectType,
@@ -89,6 +101,11 @@ function createNewProjectDraft(
 
 /**
  * Normalise un projet importé ou provenant d'une ancienne version.
+ *
+ * Le World Building n'est pas converti ici : cela se fait avec
+ * prepareWorldBuilding / prepareAllProjects. Un éventuel ancien
+ * `customWbTypes` est conservé tel quel pour que la conversion puisse
+ * le reprendre, mais il n'est plus créé.
  */
 function normalizeProjectData(
   data: ProjectData
@@ -109,8 +126,6 @@ function normalizeProjectData(
       projectType: 'screenplay',
       chapters: data?.chapters || {},
       world: data?.world || {},
-      customWbTypes:
-        data?.customWbTypes || {},
       writingSessions: Array.isArray(
         data?.writingSessions
       )
@@ -130,8 +145,6 @@ function normalizeProjectData(
     projectType: 'novel',
     chapters: data?.chapters || {},
     world: data?.world || {},
-    customWbTypes:
-      data?.customWbTypes || {},
     writingSessions: Array.isArray(
       data?.writingSessions
     )
@@ -141,6 +154,150 @@ function normalizeProjectData(
       ? data.goals
       : []
   };
+}
+
+// ---------------------------------------------------------------------------
+// MIGRATION DU WORLD BUILDING
+// ---------------------------------------------------------------------------
+
+/**
+ * Indique si un projet contient au moins une fiche de World Building.
+ */
+function hasWorldItems(
+  data: ProjectData | null | undefined
+): boolean {
+  return (
+    !!data &&
+    !!data.world &&
+    typeof data.world === 'object' &&
+    Object.keys(data.world).length > 0
+  );
+}
+
+type BackupFunction = (
+  name: string,
+  data: ProjectData
+) => Promise<unknown>;
+
+/**
+ * Récupère window.api.createBackup s'il existe.
+ */
+function getBackupFunction(): BackupFunction | null {
+  const api = window.api as unknown as {
+    createBackup?: unknown;
+  };
+
+  if (typeof api.createBackup !== 'function') {
+    return null;
+  }
+
+  return (api.createBackup as BackupFunction).bind(
+    window.api
+  );
+}
+
+/**
+ * Sauvegarde les versions d'origine des projets convertis.
+ * Retourne false si au moins une sauvegarde nécessaire a échoué.
+ */
+async function backupOriginalProjects(
+  originals: Record<string, ProjectData>
+): Promise<boolean> {
+  const toBackup = Object.entries(originals).filter(
+    ([, original]) => hasWorldItems(original)
+  );
+
+  if (toBackup.length === 0) {
+    return true;
+  }
+
+  const createBackup = getBackupFunction();
+
+  if (!createBackup) {
+    console.warn(
+      'World Building : window.api.createBackup est introuvable, la conversion ne sera pas enregistrée.'
+    );
+
+    return false;
+  }
+
+  let allSucceeded = true;
+
+  for (const [name, original] of toBackup) {
+    try {
+      await createBackup(name, original);
+    } catch (error) {
+      allSucceeded = false;
+
+      console.error(
+        `World Building : impossible de sauvegarder « ${name} » avant la conversion :`,
+        error
+      );
+    }
+  }
+
+  return allSucceeded;
+}
+
+/**
+ * Reconnecte les onglets de fiches enregistrés dans l'état de l'interface.
+ */
+async function migrateStoredUiState(
+  projects: ProjectsMap
+): Promise<void> {
+  let uiState: Awaited<
+    ReturnType<typeof window.api.getUiState>
+  >;
+
+  try {
+    uiState = await window.api.getUiState();
+  } catch (error) {
+    console.error(
+      "World Building : impossible de lire l'état de l'interface :",
+      error
+    );
+
+    return;
+  }
+
+  if (!uiState) {
+    return;
+  }
+
+  let changed = false;
+
+  Object.entries(projects).forEach(
+    ([name, data]) => {
+      const projectUi = uiState[name];
+
+      if (!projectUi) {
+        return;
+      }
+
+      const result = migrateUiTabs(
+        projectUi,
+        data
+      );
+
+      if (result.changed) {
+        uiState[name] = result.ui;
+        changed = true;
+      }
+    }
+  );
+
+  if (!changed) {
+    return;
+  }
+
+  try {
+    await window.api.saveUiState(uiState);
+  } catch (error) {
+    console.error(
+      "World Building : impossible d'enregistrer les onglets reconnectés :",
+      error
+    );
+  }
 }
 
 /**
@@ -285,6 +442,13 @@ export function ProjectsPage({
       null
     );
 
+  /**
+   * Langue courante, lue par le chargement sans le relancer
+   * à chaque changement de langue.
+   */
+  const langRef = useRef(lang);
+  langRef.current = lang;
+
   useEffect(() => {
     void (async () => {
       try {
@@ -306,8 +470,38 @@ export function ProjectsPage({
           }
         );
 
+        // Conversion du World Building au format actuel.
+        const prepared =
+          prepareAllProjects(
+            normalizedProjects,
+            langRef.current
+          );
+
+        if (
+          prepared.changedNames.length > 0
+        ) {
+          const backupsDone =
+            await backupOriginalProjects(
+              prepared.originals
+            );
+
+          if (backupsDone) {
+            await window.api.saveProjects(
+              prepared.projects
+            );
+          } else {
+            console.warn(
+              "World Building : conversion non enregistrée, car une sauvegarde a échoué. Elle sera retentée au prochain démarrage."
+            );
+          }
+        }
+
+        await migrateStoredUiState(
+          prepared.projects
+        );
+
         setProjects(
-          normalizedProjects
+          prepared.projects
         );
       } catch (error) {
         const message =
@@ -475,12 +669,24 @@ export function ProjectsPage({
           chapters: {
             'Chapitre 1': ''
           },
+          wbFormat: WB_FORMAT_VERSION,
           world: {},
-          customWbTypes: {},
+          wbCategories:
+            createDefaultCategories(),
+          wbFolders: [],
+          wbRelationTypes: [],
+          wbRelations: [],
+          wbTimeline: [],
           writingSessions: [],
           goals: []
         };
       }
+
+      // Garantit le format actuel du World Building (utile pour le scénario).
+      newProject = prepareWorldBuilding(
+        newProject,
+        lang
+      ).data;
 
       const next: ProjectsMap = {
         ...projects,
@@ -805,10 +1011,15 @@ export function ProjectsPage({
           name = `${baseName} (${index})`;
         }
 
+        // Normalisation, puis conversion du World Building au format actuel.
+        // Pas de sauvegarde ici : le fichier importé reste intact sur le disque.
         const importedProject =
-          normalizeProjectData(
-            imported.projectData
-          );
+          prepareWorldBuilding(
+            normalizeProjectData(
+              imported.projectData
+            ),
+            lang
+          ).data;
 
         const normalizedImportedProject: ProjectData =
           {
