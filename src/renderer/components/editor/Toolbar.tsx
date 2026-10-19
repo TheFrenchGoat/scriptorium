@@ -1,3 +1,4 @@
+import { SCREENPLAY_HISTORY_EVENT } from './ScreenplayEditor';
 // src/renderer/components/editor/Toolbar.tsx
 //
 // Barre d’outils commune aux romans et aux scénarios.
@@ -1071,7 +1072,19 @@ export function Toolbar({
         title={t('undoTitle')}
         disabled={!isScreenplayMode && !status.canUndo}
         onMouseDown={preventFocusLoss}
-        onClick={() => controller.undo()}
+                onClick={() => {
+          if (isScreenplayMode) {
+            window.dispatchEvent(
+              new CustomEvent(
+                SCREENPLAY_HISTORY_EVENT,
+                { detail: 'undo' }
+              )
+            );
+            return;
+          }
+
+          controller.undo();
+        }}
       >
         ↶
       </button>
@@ -1081,7 +1094,19 @@ export function Toolbar({
         title={t('redoTitle')}
         disabled={!isScreenplayMode && !status.canRedo}
         onMouseDown={preventFocusLoss}
-        onClick={() => controller.redo()}
+                onClick={() => {
+          if (isScreenplayMode) {
+            window.dispatchEvent(
+              new CustomEvent(
+                SCREENPLAY_HISTORY_EVENT,
+                { detail: 'redo' }
+              )
+            );
+            return;
+          }
+
+          controller.redo();
+        }}
       >
         ↷
       </button>
