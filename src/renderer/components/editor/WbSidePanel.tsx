@@ -1,4 +1,4 @@
-import { useState, type MouseEvent, type KeyboardEvent } from 'react';
+import { useEffect, useRef, useState, type MouseEvent, type KeyboardEvent } from 'react';
 import { useI18n } from '../../i18n';
 import type { BuiltinWbType, WbCategoryDef, WbItem } from '../../../shared/types';
 import type { EditorController } from './useEditorController';
@@ -52,6 +52,52 @@ export function toggleWbPanel(): void {
 const FILTER_ALL = '__all__';
 
 /**
+ * Largeur du panneau : valeur par défaut, limites, et clé d'enregistrement.
+ */
+const PANEL_WIDTH_STORAGE_KEY = 'scriptorium.wbPanelWidth';
+const PANEL_WIDTH_DEFAULT = 340;
+const PANEL_WIDTH_MIN = 240;
+const PANEL_WIDTH_MAX_RATIO = 0.6;
+
+/**
+ * Garde la largeur entre 240 px et 60 % de la fenêtre.
+ */
+function clampPanelWidth(width: number): number {
+  const max = Math.max(
+    PANEL_WIDTH_MIN,
+    Math.floor(window.innerWidth * PANEL_WIDTH_MAX_RATIO),
+  );
+  return Math.min(max, Math.max(PANEL_WIDTH_MIN, Math.round(width)));
+}
+
+/**
+ * Lit la largeur enregistrée, ou la largeur par défaut.
+ */
+function readStoredPanelWidth(): number {
+  try {
+    const raw = window.localStorage.getItem(PANEL_WIDTH_STORAGE_KEY);
+    const value = raw ? Number(raw) : NaN;
+    if (Number.isFinite(value)) {
+      return clampPanelWidth(value);
+    }
+  } catch {
+    // Stockage indisponible : largeur par défaut.
+  }
+  return clampPanelWidth(PANEL_WIDTH_DEFAULT);
+}
+
+/**
+ * Enregistre la largeur pour les prochaines ouvertures.
+ */
+function storePanelWidth(width: number): void {
+  try {
+    window.localStorage.setItem(PANEL_WIDTH_STORAGE_KEY, String(width));
+  } catch {
+    // Stockage indisponible : la largeur ne sera simplement pas retenue.
+  }
+}
+
+/**
  * Prépare un texte pour la recherche : sans accents et en minuscules.
  * « Éléa » et « elea » deviennent identiques.
  */
@@ -79,6 +125,82 @@ export function WbSidePanel({
 
   const [query, setQuery] = useState('');
   const [filterType, setFilterType] = useState<string>(FILTER_ALL);
+
+  // -------------------------------------------------------------------------
+  // Largeur réglable du panneau
+  // -------------------------------------------------------------------------
+
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const [panelWidth, setPanelWidth] = useState<number>(readStoredPanelWidth);
+  const [resizing, setResizing] = useState(false);
+  const widthRef = useRef(panelWidth);
+
+  useEffect(() => {
+    widthRef.current = panelWidth;
+  }, [panelWidth]);
+
+  // Pendant le glissement : suivre la souris, puis enregistrer au relâchement.
+  useEffect(() => {
+    if (!resizing) return;
+
+    const finish = (): void => {
+      setResizing(false);
+    };
+
+    const onMove = (event: globalThis.MouseEvent): void => {
+      if ((event.buttons & 1) === 0) {
+        finish();
+        return;
+      }
+      const panel = panelRef.current;
+      if (!panel) return;
+      const right = panel.getBoundingClientRect().right;
+      const next = clampPanelWidth(right - event.clientX);
+      widthRef.current = next;
+      setPanelWidth(next);
+    };
+
+    document.body.classList.add('resizing-panel');
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', finish);
+    window.addEventListener('blur', finish);
+
+    return () => {
+      document.body.classList.remove('resizing-panel');
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', finish);
+      window.removeEventListener('blur', finish);
+      storePanelWidth(widthRef.current);
+    };
+  }, [resizing]);
+
+  // Fenêtre redimensionnée : le panneau ne dépasse jamais 60 %.
+  useEffect(() => {
+    const onWindowResize = (): void => {
+      setPanelWidth((width) => clampPanelWidth(width));
+    };
+    window.addEventListener('resize', onWindowResize);
+    return () => {
+      window.removeEventListener('resize', onWindowResize);
+    };
+  }, []);
+
+  function handleResizeMouseDown(event: MouseEvent<HTMLDivElement>): void {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    setResizing(true);
+  }
+
+  function handleResizeDoubleClick(): void {
+    const next = clampPanelWidth(PANEL_WIDTH_DEFAULT);
+    widthRef.current = next;
+    setPanelWidth(next);
+    storePanelWidth(next);
+  }
+
+  // -------------------------------------------------------------------------
+  // Données
+  // -------------------------------------------------------------------------
 
   const data = controller.data();
   const world = data.world;
@@ -309,10 +431,24 @@ export function WbSidePanel({
 
   return (
     <div
+      ref={panelRef}
       className="wb-side-panel"
       role="complementary"
       aria-label={t('wbPanelTitle')}
+      style={{
+        width: panelWidth,
+        flex: `0 0 ${panelWidth}px`,
+      }}
     >
+      <div
+        className={`wb-side-panel-resize-handle${resizing ? ' dragging' : ''}`}
+        role="separator"
+        aria-orientation="vertical"
+        title={t('wbPanelResizeTitle')}
+        onMouseDown={handleResizeMouseDown}
+        onDoubleClick={handleResizeDoubleClick}
+      />
+
       <div className="wb-side-panel-header">
         <span className="wb-side-panel-title">
           {t('wbPanelTitle')}

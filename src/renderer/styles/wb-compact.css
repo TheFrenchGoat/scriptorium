@@ -209,3 +209,40 @@
   opacity: 0.55;
   border-top: 1px solid rgba(127, 127, 127, 0.25);
 }
+
+/* =========================================================
+   LARGEUR RÉGLABLE DU PANNEAU (lot 3f)
+   Bord gauche à glisser ; double-clic = largeur par défaut.
+   ========================================================= */
+
+.wb-side-panel {
+  position: relative;
+}
+
+.wb-side-panel-resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 6px;
+  z-index: 5;
+  cursor: col-resize;
+  background: transparent;
+  transition: background-color 0.15s ease;
+}
+
+.wb-side-panel-resize-handle:hover,
+.wb-side-panel-resize-handle.dragging {
+  background: rgba(127, 127, 127, 0.35);
+}
+
+.wb-side-panel-resize-handle.dragging {
+  background: rgba(127, 127, 127, 0.55);
+}
+
+/* Pendant le glissement : curseur ↔ partout, pas de sélection de texte */
+body.resizing-panel,
+body.resizing-panel * {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
