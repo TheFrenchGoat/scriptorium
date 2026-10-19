@@ -14,10 +14,19 @@
 // Le nom et les alias sont édités dans un brouillon, enregistré quand la case
 // perd le focus. Si la fiche disparaît avant (changement d'onglet, fermeture
 // du panneau...), le brouillon est enregistré juste avant : rien n'est perdu.
+//
+// Types de champs pris en charge :
+// - 'text'      : ligne simple ;
+// - 'textarea'  : texte long ;
+// - 'number'    : nombre (la case peut rester vide) ;
+// - 'select'    : liste de choix (un choix retiré du type reste affiché) ;
+// - 'reference' : lien vers une autre fiche (valeur = identifiant de la
+//                 fiche), avec un bouton pour l'ouvrir.
 
 import React, { useEffect, useRef, useState } from 'react';
 import { useI18n } from '../../i18n';
 import { EmojiPicker } from '../common/EmojiPicker';
+import { openWbPanel } from './WbSidePanel';
 import type { EditorController } from './useEditorController';
 
 export interface WbSheetProps {
@@ -70,6 +79,12 @@ function flushPendingDrafts(pending: PendingDrafts, renameInFlight: boolean): vo
   }
 }
 
+/** Fiche proposée dans un champ « référence ». */
+interface ReferenceChoice {
+  id: string;
+  label: string;
+}
+
 export function WbSheet({ controller, name, compact = false }: WbSheetProps): React.ReactElement | null {
   const { t } = useI18n();
   const itemId = name;
@@ -118,6 +133,8 @@ export function WbSheet({ controller, name, compact = false }: WbSheetProps): Re
   const chaptersWithMention = controller.chaptersContaining(itemId);
   const scenesWithMention = controller.scenesContaining(itemId);
 
+  type SheetField = (typeof template.fields)[number];
+
   const commitRename = () => {
     const trimmed = nameDraft.trim();
     if (!trimmed || trimmed === currentName) {
@@ -145,6 +162,165 @@ export function WbSheet({ controller, name, compact = false }: WbSheetProps): Re
     // fiche retirés, ou ancienne liste en cas de conflit.
     const fresh = controller.wbItem(itemId);
     setAliasesDraft(fresh ? aliasesToText(fresh.aliases) : '');
+  };
+
+  /**
+   * Libellé d'un champ : nom choisi par l'auteur pour un type personnalisé,
+   * traduction pour un type intégré (ou le nom du champ si aucune
+   * traduction n'existe, par exemple pour un champ issu d'un modèle).
+   */
+  const fieldLabel = (field: SheetField): string => {
+    if (isCustomType) return field.label;
+    const key = `wbField_${field.key}`;
+    const translated = t(key as never);
+    if ((!translated || translated === key) && field.label) return field.label;
+    return translated;
+  };
+
+  /** Fiches proposées dans un champ « référence », triées par nom. */
+  const referenceChoices = (referenceCategory: string | undefined): ReferenceChoice[] => {
+    const world = controller.data().world;
+    return Object.entries(world)
+      .filter(([id, item]) => {
+        if (id === itemId || !item) return false;
+        return !referenceCategory || item.wbType === referenceCategory;
+      })
+      .map(([id, item]) => {
+        const icon = item.icon || registry.categoryFor(item.wbType).icon || '';
+        return { id, label: icon ? `${icon} ${item.name}` : item.name };
+      })
+      .sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' }));
+  };
+
+  /** Ouvre la fiche liée : panneau (clic) ou onglet (Ctrl+clic, clic molette). */
+  const openLinked = (targetId: string, inTab: boolean) => {
+    if (!controller.wbItem(targetId)) return;
+    if (inTab) {
+      controller.openItem(targetId, 'world');
+    } else {
+      openWbPanel(targetId);
+    }
+  };
+
+  /** Case de saisie d'un champ, selon son type. */
+  const renderFieldInput = (field: SheetField, inputId: string): React.ReactElement => {
+    const value = data.content[field.key] || '';
+    const update = (next: string) => controller.updateWbField(itemId, field.key, next);
+
+    if (field.type === 'textarea') {
+      return (
+        <textarea
+          id={inputId}
+          className="wb-textarea"
+          value={value}
+          readOnly={readMode}
+          onChange={(e) => update(e.target.value)}
+        />
+      );
+    }
+
+    if (field.type === 'number') {
+      return (
+        <input
+          type="number"
+          id={inputId}
+          className="wb-input"
+          step="any"
+          value={value}
+          readOnly={readMode}
+          onChange={(e) => update(e.target.value)}
+        />
+      );
+    }
+
+    if (field.type === 'select') {
+      const options = Array.isArray(field.options) ? field.options : [];
+      const isRemoved = value !== '' && !options.includes(value);
+      return (
+        <select
+          id={inputId}
+          className="wb-input"
+          value={value}
+          disabled={readMode}
+          onChange={(e) => update(e.target.value)}
+        >
+          <option value="">{t('wbSelectEmpty')}</option>
+          {options.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+          {isRemoved && (
+            <option value={value}>{t('wbSelectRemovedOption').replace('{value}', value)}</option>
+          )}
+        </select>
+      );
+    }
+
+    if (field.type === 'reference') {
+      const choices = referenceChoices(field.referenceCategory);
+      const linked = value ? controller.wbItem(value) : undefined;
+      const isMissing = value !== '' && !linked;
+      const isOutsideChoices = value !== '' && !!linked && !choices.some((choice) => choice.id === value);
+      return (
+        <div>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <select
+              id={inputId}
+              className="wb-input"
+              style={{ flex: 1, minWidth: 0 }}
+              value={value}
+              disabled={readMode}
+              onChange={(e) => update(e.target.value)}
+            >
+              <option value="">{t('wbReferenceNone')}</option>
+              {choices.map((choice) => (
+                <option key={choice.id} value={choice.id}>
+                  {choice.label}
+                </option>
+              ))}
+              {isOutsideChoices && linked && <option value={value}>{linked.name}</option>}
+              {isMissing && <option value={value}>{t('wbReferenceMissing')}</option>}
+            </select>
+            <button
+              type="button"
+              className="wb-mentioned-chapter-btn"
+              style={{ flexShrink: 0, opacity: linked ? 1 : 0.4, cursor: linked ? 'pointer' : 'default' }}
+              title={t('wbReferenceOpenTitle')}
+              disabled={!linked}
+              onClick={(e) => openLinked(value, e.ctrlKey || e.metaKey)}
+              onMouseDown={(e) => {
+                if (e.button === 1) e.preventDefault();
+              }}
+              onAuxClick={(e) => {
+                if (e.button === 1) {
+                  e.preventDefault();
+                  openLinked(value, true);
+                }
+              }}
+            >
+              ↗
+            </button>
+          </div>
+          {isMissing && (
+            <div style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 4 }}>
+              ⚠ {t('wbReferenceMissing')}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <input
+        type="text"
+        id={inputId}
+        className="wb-input"
+        value={value}
+        readOnly={readMode}
+        onChange={(e) => update(e.target.value)}
+      />
+    );
   };
 
   return (
@@ -223,27 +399,17 @@ export function WbSheet({ controller, name, compact = false }: WbSheetProps): Re
       </div>
 
       <div id={`wbFormFields${idSuffix}`}>
-        {template.fields.map((field) => (
-          <div className="wb-form-group" key={field.key}>
-            <label className="wb-label">{isCustomType ? field.label : t(`wbField_${field.key}` as never)}</label>
-            {field.type === 'textarea' ? (
-              <textarea
-                className="wb-textarea"
-                value={data.content[field.key] || ''}
-                readOnly={readMode}
-                onChange={(e) => controller.updateWbField(itemId, field.key, e.target.value)}
-              />
-            ) : (
-              <input
-                type="text"
-                className="wb-input"
-                value={data.content[field.key] || ''}
-                readOnly={readMode}
-                onChange={(e) => controller.updateWbField(itemId, field.key, e.target.value)}
-              />
-            )}
-          </div>
-        ))}
+        {template.fields.map((field) => {
+          const inputId = `wbField_${field.key}${idSuffix}`;
+          return (
+            <div className="wb-form-group" key={field.key}>
+              <label className="wb-label" htmlFor={inputId}>
+                {fieldLabel(field)}
+              </label>
+              {renderFieldInput(field, inputId)}
+            </div>
+          );
+        })}
       </div>
 
       <div id={`wbMentionsSection${idSuffix}`}>
