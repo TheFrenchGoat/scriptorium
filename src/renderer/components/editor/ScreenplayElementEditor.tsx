@@ -14,6 +14,11 @@
 //   (sinon les répliques de personnage perdraient leur couleur).
 // Le surlignage d'un paragraphe sans focus n'est pas renvoyé au document :
 // cela évite de modifier le scénario à sa simple ouverture.
+//
+// Panneau des fiches (étape 3c) :
+// - un clic simple sur une mention ouvre la fiche dans le panneau latéral ;
+// - rien ne s'ouvre pendant une sélection de texte ;
+// - le Ctrl+clic n'est pas géré ici (comportement inchangé).
 
 import React, {
   useCallback,
@@ -39,6 +44,10 @@ import {
 import type {
   WbRegistry
 } from '../../lib/wb-registry';
+
+import {
+  openWbPanel
+} from './WbSidePanel';
 
 import type {
   ProjectData,
@@ -749,6 +758,68 @@ export function ScreenplayElementEditor({
       [reportHtml, scheduleHighlight]
     );
 
+  /**
+   * Clic simple sur une mention : la fiche s'ouvre dans le panneau latéral.
+   * Le curseur se place normalement (pas de preventDefault).
+   * Le Ctrl+clic (Cmd+clic) n'est pas traité ici.
+   */
+  const handleClick =
+    useCallback(
+      (
+        event:
+          React.MouseEvent<HTMLDivElement>
+      ): void => {
+        if (
+          event.ctrlKey ||
+          event.metaKey
+        ) {
+          return;
+        }
+
+        const target =
+          event.target as HTMLElement;
+
+        const mention =
+          target.closest<HTMLElement>(
+            '.wb-mention'
+          );
+
+        if (!mention) {
+          return;
+        }
+
+        // Pas d'ouverture pendant une sélection de texte.
+        const selection =
+          window.getSelection();
+
+        if (
+          selection &&
+          !selection.isCollapsed
+        ) {
+          return;
+        }
+
+        const itemId =
+          mention.dataset.wbKey;
+
+        const data =
+          projectDataRef.current;
+
+        if (
+          !itemId ||
+          !data ||
+          !data.world[itemId]
+        ) {
+          return;
+        }
+
+        openWbPanel(
+          itemId
+        );
+      },
+      []
+    );
+
   const rootClassName = [
     'screenplay-element',
     `screenplay-element-${element.type}`,
@@ -813,6 +884,7 @@ export function ScreenplayElementEditor({
           }
         }}
         onPaste={handlePaste}
+        onClick={handleClick}
         onKeyDown={(event) => {
           if (
             event.key === 'Tab'
