@@ -10,8 +10,12 @@
 // La propriété `compact` sert à l'affichage dans le panneau latéral : mise en
 // page resserrée, et identifiants HTML suffixés pour ne pas entrer en conflit
 // avec la même fiche ouverte dans un onglet.
+//
+// Le nom et les alias sont édités dans un brouillon, enregistré quand la case
+// perd le focus. Si la fiche disparaît avant (changement d'onglet, fermeture
+// du panneau...), le brouillon est enregistré juste avant : rien n'est perdu.
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useI18n } from '../../i18n';
 import { EmojiPicker } from '../common/EmojiPicker';
 import type { EditorController } from './useEditorController';
@@ -37,6 +41,35 @@ function textToAliases(text: string): string[] {
     .filter((alias) => alias.length > 0);
 }
 
+/** Brouillons non encore enregistrés d'une fiche. */
+interface PendingDrafts {
+  controller: EditorController;
+  itemId: string;
+  nameDraft: string;
+  aliasesDraft: string;
+}
+
+/**
+ * Enregistre le nom et les alias encore en brouillon, si la fiche se ferme
+ * avant que leur case ait perdu le focus.
+ */
+function flushPendingDrafts(pending: PendingDrafts, renameInFlight: boolean): void {
+  const { controller, itemId, nameDraft, aliasesDraft } = pending;
+  const item = controller.wbItem(itemId);
+  if (!item) return;
+
+  // Alias d'abord : ils ne dépendent pas d'un éventuel renommage.
+  const draftAliases = textToAliases(aliasesDraft);
+  if (draftAliases.join(', ') !== aliasesToText(item.aliases)) {
+    controller.setWbAliases(itemId, draftAliases);
+  }
+
+  const trimmed = nameDraft.trim();
+  if (!renameInFlight && trimmed && trimmed !== item.name) {
+    void controller.renameItem(itemId, trimmed, 'world');
+  }
+}
+
 export function WbSheet({ controller, name, compact = false }: WbSheetProps): React.ReactElement | null {
   const { t } = useI18n();
   const itemId = name;
@@ -53,6 +86,24 @@ export function WbSheet({ controller, name, compact = false }: WbSheetProps): Re
   // Identifiants HTML distincts dans le panneau (la même fiche peut être
   // ouverte en même temps dans un onglet).
   const idSuffix = compact ? '_panel' : '';
+
+  // Derniers brouillons affichés, et renommage en cours (évite de lancer
+  // deux fois le même renommage).
+  const pendingRef = useRef<PendingDrafts>({ controller, itemId, nameDraft, aliasesDraft });
+  const renameInFlightRef = useRef(false);
+
+  // Mis à jour après chaque affichage : au moment où la fiche se ferme,
+  // la référence contient encore les brouillons de cette fiche.
+  useEffect(() => {
+    pendingRef.current = { controller, itemId, nameDraft, aliasesDraft };
+  });
+
+  // Fiche fermée ou remplacée par une autre : on enregistre les brouillons.
+  useEffect(() => {
+    return () => {
+      flushPendingDrafts(pendingRef.current, renameInFlightRef.current);
+    };
+  }, [itemId]);
 
   useEffect(() => setNameDraft(currentName), [itemId, currentName]);
   useEffect(() => setAliasesDraft(currentAliases), [itemId, currentAliases]);
@@ -73,9 +124,16 @@ export function WbSheet({ controller, name, compact = false }: WbSheetProps): Re
       setNameDraft(currentName);
       return;
     }
-    void controller.renameItem(itemId, trimmed, 'world').then((ok) => {
-      if (!ok) setNameDraft(currentName);
-    });
+    if (renameInFlightRef.current) return;
+    renameInFlightRef.current = true;
+    void controller
+      .renameItem(itemId, trimmed, 'world')
+      .then((ok) => {
+        if (!ok) setNameDraft(currentName);
+      })
+      .finally(() => {
+        renameInFlightRef.current = false;
+      });
   };
 
   const commitAliases = () => {
