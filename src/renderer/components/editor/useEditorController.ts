@@ -68,6 +68,7 @@ import {
 } from '../../lib/screenplay';
 import { createStatusStore, type StatusStore } from './editor-status';
 import { openWbPanel } from './WbSidePanel';
+import { WB_OPEN_TAB_EVENT, type WbOpenTabEventDetail } from './ScreenplayElementEditor';
 import type { InfoAction } from '../common/Dialogs';
 import type {
   EditorPrefs,
@@ -1391,6 +1392,28 @@ export function useEditorController({
 
     return unsubscribe;
   }, [refreshGrammarStatus, s, updateGrammarStatus]);
+
+  /**
+   * Ctrl+clic sur une mention dans une scène : ScreenplayElementEditor
+   * envoie un signal, et la fiche s'ouvre ici dans un onglet.
+   */
+  useEffect(() => {
+    const handleOpenTab = (event: Event): void => {
+      const itemId = (event as CustomEvent<WbOpenTabEventDetail>).detail?.itemId;
+
+      if (!itemId || !stateRef.current.projectData.world[itemId]) {
+        return;
+      }
+
+      api.current?.openItem(itemId, 'world');
+    };
+
+    window.addEventListener(WB_OPEN_TAB_EVENT, handleOpenTab);
+
+    return () => {
+      window.removeEventListener(WB_OPEN_TAB_EVENT, handleOpenTab);
+    };
+  }, []);
 
   useEffect(() => {
     return () => {

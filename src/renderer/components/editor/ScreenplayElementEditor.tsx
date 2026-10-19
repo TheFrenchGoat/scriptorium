@@ -18,7 +18,8 @@
 // Panneau des fiches (étape 3c) :
 // - un clic simple sur une mention ouvre la fiche dans le panneau latéral ;
 // - rien ne s'ouvre pendant une sélection de texte ;
-// - le Ctrl+clic n'est pas géré ici (comportement inchangé).
+// - un Ctrl+clic (Cmd+clic) envoie l'événement WB_OPEN_TAB_EVENT, que le
+//   contrôleur de l'éditeur écoute pour ouvrir la fiche dans un onglet.
 
 import React, {
   useCallback,
@@ -59,6 +60,14 @@ import type {
 /** Pause après la dernière frappe avant de surligner. */
 const HIGHLIGHT_DELAY_MS =
   300;
+
+/** Événement : ouvrir une fiche dans un onglet (Ctrl+clic dans une scène). */
+export const WB_OPEN_TAB_EVENT =
+  'scriptorium:wb-open-tab';
+
+export interface WbOpenTabEventDetail {
+  itemId: string;
+}
 
 export interface ScreenplayElementEditorProps {
   element: ScreenplayElement;
@@ -759,9 +768,13 @@ export function ScreenplayElementEditor({
     );
 
   /**
-   * Clic simple sur une mention : la fiche s'ouvre dans le panneau latéral.
-   * Le curseur se place normalement (pas de preventDefault).
-   * Le Ctrl+clic (Cmd+clic) n'est pas traité ici.
+   * Clic sur une mention.
+   *
+   * - Clic simple : la fiche s'ouvre dans le panneau latéral, et le curseur
+   *   se place normalement (pas de preventDefault). Rien ne s'ouvre pendant
+   *   une sélection de texte.
+   * - Ctrl+clic (Cmd+clic) : demande l'ouverture de la fiche dans un onglet
+   *   via l'événement WB_OPEN_TAB_EVENT.
    */
   const handleClick =
     useCallback(
@@ -769,13 +782,6 @@ export function ScreenplayElementEditor({
         event:
           React.MouseEvent<HTMLDivElement>
       ): void => {
-        if (
-          event.ctrlKey ||
-          event.metaKey
-        ) {
-          return;
-        }
-
         const target =
           event.target as HTMLElement;
 
@@ -785,6 +791,48 @@ export function ScreenplayElementEditor({
           );
 
         if (!mention) {
+          return;
+        }
+
+        const itemId =
+          mention.dataset.wbKey;
+
+        const data =
+          projectDataRef.current;
+
+        const itemExists =
+          Boolean(
+            itemId &&
+            data &&
+            data.world[itemId]
+          );
+
+        const withModifier =
+          event.ctrlKey ||
+          event.metaKey;
+
+        if (withModifier) {
+          event.preventDefault();
+          event.stopPropagation();
+
+          if (
+            !itemId ||
+            !itemExists
+          ) {
+            return;
+          }
+
+          window.dispatchEvent(
+            new CustomEvent<WbOpenTabEventDetail>(
+              WB_OPEN_TAB_EVENT,
+              {
+                detail: {
+                  itemId
+                }
+              }
+            )
+          );
+
           return;
         }
 
@@ -799,16 +847,9 @@ export function ScreenplayElementEditor({
           return;
         }
 
-        const itemId =
-          mention.dataset.wbKey;
-
-        const data =
-          projectDataRef.current;
-
         if (
           !itemId ||
-          !data ||
-          !data.world[itemId]
+          !itemExists
         ) {
           return;
         }
