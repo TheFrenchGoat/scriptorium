@@ -6,7 +6,7 @@ import { Modal } from '../../common/Modal';
 import { EmojiPicker } from '../../common/EmojiPicker';
 import { buildCustomTypeFields } from '../useEditorController';
 import type { EditorController } from '../useEditorController';
-import type { WbFieldType } from '../../../../shared/types';
+import type { BuiltinWbType, WbCategoryDef, WbFieldType } from '../../../../shared/types';
 
 export interface CustomWbTypeModalProps {
   open: boolean;
@@ -24,12 +24,43 @@ interface FieldDraft {
   label: string;
   type: WbFieldType;
   existingKey?: string;
+  /** Choix d'une liste de choix, un par ligne (type 'select'). */
+  optionsText: string;
+  /** Type des fiches proposées (type 'reference') ; chaîne vide = toutes. */
+  referenceCategory: string;
+}
+
+/** Champ transmis à buildCustomTypeFields. */
+interface RawField {
+  label: string;
+  type: WbFieldType;
+  existingKey?: string;
+  options?: string[];
+  referenceCategory?: string;
 }
 
 let fieldIdSeq = 0;
 
 const DEFAULT_ICON = '📁';
 const DEFAULT_COLOR = '#94a3b8';
+
+/**
+ * Découpe le texte saisi en choix : un par ligne, sans lignes vides ni
+ * doublons (majuscules et minuscules confondues).
+ */
+function textToOptions(text: string): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const line of text.split('\n')) {
+    const option = line.trim();
+    if (!option) continue;
+    const lower = option.toLocaleLowerCase();
+    if (seen.has(lower)) continue;
+    seen.add(lower);
+    result.push(option);
+  }
+  return result;
+}
 
 export function CustomWbTypeModal({
   open,
@@ -59,7 +90,14 @@ export function CustomWbTypeModal({
         setIcon(def.icon || DEFAULT_ICON);
         setColor(def.color || DEFAULT_COLOR);
         setFields(
-          def.fields.map((f) => ({ id: fieldIdSeq++, label: f.label, type: f.type, existingKey: f.key }))
+          def.fields.map((f) => ({
+            id: fieldIdSeq++,
+            label: f.label,
+            type: f.type,
+            existingKey: f.key,
+            optionsText: (f.options ?? []).join('\n'),
+            referenceCategory: f.referenceCategory ?? ''
+          }))
         );
         return;
       }
@@ -68,11 +106,46 @@ export function CustomWbTypeModal({
     setName('');
     setIcon(DEFAULT_ICON);
     setColor(DEFAULT_COLOR);
-    setFields([{ id: fieldIdSeq++, label: t('customTypeDefaultFieldLabel'), type: 'textarea' }]);
+    setFields([
+      {
+        id: fieldIdSeq++,
+        label: t('customTypeDefaultFieldLabel'),
+        type: 'textarea',
+        optionsText: '',
+        referenceCategory: ''
+      }
+    ]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editingSlug]);
 
-  const addField = () => setFields((prev) => [...prev, { id: fieldIdSeq++, label: '', type: 'text' }]);
+  // Types de fiches proposés pour un champ Référence.
+  const builtinLabels: Record<BuiltinWbType, string> = {
+    character: t('wbLabel_character'),
+    place: t('wbLabel_place'),
+    object: t('wbLabel_object'),
+    other: t('wbLabel_other')
+  };
+
+  function categoryDisplayLabel(slug: string, def: WbCategoryDef | undefined): string {
+    if (def && def.label && def.label.trim()) return def.label;
+    const builtin =
+      def?.builtin ??
+      (Object.prototype.hasOwnProperty.call(builtinLabels, slug) ? (slug as BuiltinWbType) : undefined);
+    if (builtin) return builtinLabels[builtin];
+    return slug;
+  }
+
+  const categoryChoices = Object.entries(controller.data().wbCategories ?? {}).map(([slug, def]) => ({
+    slug,
+    icon: def.icon,
+    label: categoryDisplayLabel(slug, def)
+  }));
+
+  const addField = () =>
+    setFields((prev) => [
+      ...prev,
+      { id: fieldIdSeq++, label: '', type: 'text', optionsText: '', referenceCategory: '' }
+    ]);
   const removeField = (id: number) => setFields((prev) => prev.filter((f) => f.id !== id));
   const updateField = (id: number, patch: Partial<FieldDraft>) =>
     setFields((prev) => prev.map((f) => (f.id === id ? { ...f, ...patch } : f)));
@@ -84,8 +157,17 @@ export function CustomWbTypeModal({
       return;
     }
 
-    const rawFields = fields
-      .map((f) => ({ label: f.label.trim(), type: f.type, existingKey: f.existingKey }))
+    const rawFields: RawField[] = fields
+      .map((f): RawField => {
+        const base: RawField = { label: f.label.trim(), type: f.type, existingKey: f.existingKey };
+        if (f.type === 'select') {
+          return { ...base, options: textToOptions(f.optionsText) };
+        }
+        if (f.type === 'reference' && f.referenceCategory) {
+          return { ...base, referenceCategory: f.referenceCategory };
+        }
+        return base;
+      })
       .filter((f) => f.label);
 
     if (rawFields.length === 0) {
@@ -108,6 +190,13 @@ export function CustomWbTypeModal({
       return;
     }
 
+    // Une liste de choix doit proposer au moins un choix.
+    const emptySelect = rawFields.find((f) => f.type === 'select' && (f.options?.length ?? 0) === 0);
+    if (emptySelect) {
+      showInfo(t('customTypeOptionsRequired', { label: emptySelect.label }));
+      return;
+    }
+
     const wasEditing = !!editingSlug;
     const finalFields = buildCustomTypeFields(rawFields);
     const finalSlug = controller.saveCustomType(editingSlug, {
@@ -121,6 +210,19 @@ export function CustomWbTypeModal({
     // À la création (pas à la modification), enchaîne directement sur la
     // création d'une première fiche de ce nouveau type.
     if (!wasEditing) onCreated(finalSlug);
+  };
+
+  const subSettingStyle: React.CSSProperties = {
+    margin: '6px 0 12px 12px',
+    paddingLeft: 10,
+    borderLeft: '2px solid var(--border)'
+  };
+
+  const subLabelStyle: React.CSSProperties = {
+    display: 'block',
+    fontSize: 12,
+    color: 'var(--text-muted)',
+    marginBottom: 4
   };
 
   return (
@@ -175,30 +277,72 @@ export function CustomWbTypeModal({
         <p className="custom-type-fields-hint">{t('customTypeFieldsHint')}</p>
         <div className="custom-type-fields-list">
           {fields.map((field) => (
-            <div className="custom-type-field-row" key={field.id}>
-              <input
-                type="text"
-                className="custom-type-field-label"
-                placeholder={t('customTypeFieldLabelPlaceholder')}
-                value={field.label}
-                onChange={(e) => updateField(field.id, { label: e.target.value })}
-              />
-              <select
-                className="custom-type-field-type"
-                value={field.type}
-                onChange={(e) => updateField(field.id, { type: e.target.value as WbFieldType })}
-              >
-                <option value="text">{t('customTypeFieldTypeText')}</option>
-                <option value="textarea">{t('customTypeFieldTypeTextarea')}</option>
-              </select>
-              <button
-                type="button"
-                className="btn-remove-field"
-                title={t('customTypeRemoveFieldTitle')}
-                onClick={() => removeField(field.id)}
-              >
-                ✕
-              </button>
+            <div key={field.id}>
+              <div className="custom-type-field-row">
+                <input
+                  type="text"
+                  className="custom-type-field-label"
+                  placeholder={t('customTypeFieldLabelPlaceholder')}
+                  value={field.label}
+                  onChange={(e) => updateField(field.id, { label: e.target.value })}
+                />
+                <select
+                  className="custom-type-field-type"
+                  value={field.type}
+                  onChange={(e) => updateField(field.id, { type: e.target.value as WbFieldType })}
+                >
+                  <option value="text">{t('customTypeFieldTypeText')}</option>
+                  <option value="textarea">{t('customTypeFieldTypeTextarea')}</option>
+                  <option value="number">{t('customTypeFieldTypeNumber')}</option>
+                  <option value="select">{t('customTypeFieldTypeSelect')}</option>
+                  <option value="reference">{t('customTypeFieldTypeReference')}</option>
+                </select>
+                <button
+                  type="button"
+                  className="btn-remove-field"
+                  title={t('customTypeRemoveFieldTitle')}
+                  onClick={() => removeField(field.id)}
+                >
+                  ✕
+                </button>
+              </div>
+
+              {field.type === 'select' && (
+                <div style={subSettingStyle}>
+                  <label style={subLabelStyle}>{t('customTypeOptionsLabel')}</label>
+                  <textarea
+                    value={field.optionsText}
+                    placeholder={t('customTypeOptionsPlaceholder')}
+                    rows={4}
+                    onChange={(e) => updateField(field.id, { optionsText: e.target.value })}
+                    style={{
+                      width: '100%',
+                      boxSizing: 'border-box',
+                      resize: 'vertical',
+                      fontFamily: 'inherit',
+                      fontSize: 13
+                    }}
+                  />
+                </div>
+              )}
+
+              {field.type === 'reference' && (
+                <div style={subSettingStyle}>
+                  <label style={subLabelStyle}>{t('customTypeReferenceLabel')}</label>
+                  <select
+                    value={field.referenceCategory}
+                    onChange={(e) => updateField(field.id, { referenceCategory: e.target.value })}
+                    style={{ width: '100%' }}
+                  >
+                    <option value="">{t('customTypeReferenceAll')}</option>
+                    {categoryChoices.map((choice) => (
+                      <option key={choice.slug} value={choice.slug}>
+                        {(choice.icon ? choice.icon + ' ' : '') + choice.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
           ))}
         </div>

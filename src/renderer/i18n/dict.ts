@@ -279,6 +279,10 @@ export const fr = {
     'Nom du champ',
   customTypeFieldTypeText: 'Ligne simple',
   customTypeFieldTypeTextarea: 'Texte long',
+  customTypeFieldTypeNumber: 'Nombre',
+  customTypeFieldTypeSelect: 'Liste de choix',
+  customTypeFieldTypeReference:
+    'Référence à une fiche',
   customTypeRemoveFieldTitle:
     'Retirer ce champ',
   customTypeDefaultFieldLabel: 'Description',
@@ -298,6 +302,14 @@ export const fr = {
     'Impossible de supprimer "{label}" : {count} fiche(s) utilisent encore ce type. Supprimez-les ou changez leur type d\'abord.',
   customTypeConfirmDelete:
     'Supprimer définitivement le type "{label}" ? Cette action est irréversible.',
+  customTypeOptionsLabel:
+    'Choix proposés (un par ligne)',
+  customTypeOptionsPlaceholder:
+    'ex :\nAllié\nNeutre\nEnnemi',
+  customTypeOptionsRequired:
+    'La liste de choix "{label}" doit proposer au moins un choix.',
+  customTypeReferenceLabel: 'Fiches proposées',
+  customTypeReferenceAll: 'Toutes les fiches',
 
   wbIconInputTitle:
     'Icône de la fiche (change dans la sidebar et les onglets)',
@@ -321,6 +333,14 @@ export const fr = {
     'Autres noms sous lesquels cette fiche apparaît dans le texte, séparés par des virgules. Ils sont surlignés comme le nom.',
   wbAliasConflict:
     'L’alias "{alias}" est déjà utilisé par la fiche "{name}". Choisissez-en un autre.',
+
+  wbSelectEmpty: '—',
+  wbSelectRemovedOption:
+    '{value} (choix retiré)',
+  wbReferenceNone: '— Aucune —',
+  wbReferenceMissing: 'Fiche introuvable',
+  wbReferenceOpenTitle:
+    'Ouvrir la fiche liée (Ctrl+clic : dans un onglet)',
 
   // -------------------------------------------------------------------------
   // CHAMPS WORLD BUILDING
@@ -1036,6 +1056,10 @@ export const en: Record<TranslationKey, string> = {
     'Field name',
   customTypeFieldTypeText: 'Single line',
   customTypeFieldTypeTextarea: 'Long text',
+  customTypeFieldTypeNumber: 'Number',
+  customTypeFieldTypeSelect: 'Choice list',
+  customTypeFieldTypeReference:
+    'Link to a sheet',
   customTypeRemoveFieldTitle:
     'Remove this field',
   customTypeDefaultFieldLabel: 'Description',
@@ -1055,6 +1079,14 @@ export const en: Record<TranslationKey, string> = {
     'Cannot delete "{label}": {count} sheet(s) still use this type. Delete them or change their type first.',
   customTypeConfirmDelete:
     'Permanently delete the "{label}" type? This cannot be undone.',
+  customTypeOptionsLabel:
+    'Choices (one per line)',
+  customTypeOptionsPlaceholder:
+    'e.g.\nAlly\nNeutral\nEnemy',
+  customTypeOptionsRequired:
+    'The choice list "{label}" must offer at least one choice.',
+  customTypeReferenceLabel: 'Available sheets',
+  customTypeReferenceAll: 'All sheets',
 
   wbIconInputTitle:
     'Sheet icon (updates in the sidebar and tabs)',
@@ -1078,6 +1110,14 @@ export const en: Record<TranslationKey, string> = {
     'Other names this sheet goes by in the text, separated by commas. They are highlighted just like the name.',
   wbAliasConflict:
     'The alias "{alias}" is already used by the sheet "{name}". Please choose another one.',
+
+  wbSelectEmpty: '—',
+  wbSelectRemovedOption:
+    '{value} (removed choice)',
+  wbReferenceNone: '— None —',
+  wbReferenceMissing: 'Sheet not found',
+  wbReferenceOpenTitle:
+    'Open linked sheet (Ctrl+click: in a tab)',
 
   // -------------------------------------------------------------------------
   // WORLD BUILDING FIELDS
