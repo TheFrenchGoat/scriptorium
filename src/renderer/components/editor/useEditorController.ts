@@ -30,6 +30,7 @@ import {
   renameWorldMentionsAcrossChapters,
   syncMentionColors
 } from '../../lib/highlight';
+import { transformScenesHtml } from '../../lib/mention-index';
 import {
   applyGrammarMatches,
   clearGrammarMarks,
@@ -2140,6 +2141,22 @@ export function useEditorController({
 
           resyncChapters(changedChapters, open?.name ?? null);
 
+          // Les mentions de la fiche deviennent du texte simple dans les scènes.
+          if (isScreenplayData(s.projectData)) {
+            const nextScenes = transformScenesHtml(
+              s.projectData.screenplay.scenes,
+              (container) => removeMentionsIn(container, key)
+            );
+
+            if (nextScenes) {
+              s.projectData.screenplay = {
+                ...s.projectData.screenplay,
+                scenes: nextScenes
+              };
+              s.projects[projectName] = s.projectData;
+              scheduleScreenplaySave();
+            }
+          }
           mentionIndex.removeItem(key);
           registry.bumpVersion();
         }
@@ -2250,13 +2267,17 @@ export function useEditorController({
         }
 
         const affectedChapters = mentionIndex.chaptersContaining(key);
+        const affectedScenes = isScreenplayData(s.projectData)
+          ? mentionIndex.scenesContaining(key, s.projectData.screenplay.scenes)
+          : [];
+        const affectedCount = affectedChapters.length + affectedScenes.length;
 
-        if (affectedChapters.length > 0) {
+        if (affectedCount > 0) {
           const proceed = await showConfirm(
-            t('renameWbMentionsWarning', {
+              t(isScreenplayData(s.projectData) ? 'renameWbMentionsWarningScenes' : 'renameWbMentionsWarning', { 
               oldName,
               newName: trimmed,
-              count: affectedChapters.length
+              count: affectedCount
             })
           );
 
@@ -2301,6 +2322,24 @@ export function useEditorController({
         }
 
         resyncChapters(changedChapters, open?.name ?? null);
+
+
+        // Met à jour les mentions de la fiche dans les paragraphes des scènes.
+        if (isScreenplayData(s.projectData)) {
+          const nextScenes = transformScenesHtml(
+            s.projectData.screenplay.scenes,
+            (container) => renameMentionsIn(container, key, oldName, trimmed)
+          );
+
+          if (nextScenes) {
+            s.projectData.screenplay = {
+              ...s.projectData.screenplay,
+              scenes: nextScenes
+            };
+            s.projects[projectName] = s.projectData;
+            scheduleScreenplaySave();
+          }
+        }
 
         if (!isScreenplayData(s.projectData)) {
           invalidateProjectWordCache(s.projectData);

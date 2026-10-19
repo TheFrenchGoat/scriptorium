@@ -500,3 +500,71 @@ export function createMentionIndex(getProjectData: () => ProjectData): MentionIn
 
   return api;
 }
+
+/**
+ * Applique une transformation des mentions à chaque paragraphe des scènes.
+ *
+ * Chaque paragraphe est placé dans un élément invisible, transformé
+ * (renommage ou retrait des mentions), puis relu. Seuls les paragraphes
+ * et les scènes réellement modifiés sont recréés.
+ *
+ * Renvoie les nouvelles scènes, ou null si rien n'a changé.
+ */
+export function transformScenesHtml(
+  scenes: readonly ScreenplayScene[],
+  transform: (container: HTMLElement) => void
+): ScreenplayScene[] | null {
+  if (typeof document === 'undefined') {
+    return null;
+  }
+
+  const container = document.createElement('div');
+  let anyChange = false;
+
+  const nextScenes = scenes.map((scene: ScreenplayScene) => {
+    const elements: readonly ScreenplayElement[] = Array.isArray(scene.elements)
+      ? scene.elements
+      : [];
+
+    let sceneChanged = false;
+
+    const nextElements = elements.map((element: ScreenplayElement) => {
+      const html = typeof element.html === 'string' ? element.html : '';
+
+      // Sans balise, il ne peut pas y avoir de mention.
+      if (!html.includes('<')) {
+        return element;
+      }
+
+      container.innerHTML = html;
+
+      // On compare avec le HTML relu par le navigateur, pour ne pas
+      // confondre une simple différence d'écriture avec un vrai changement.
+      const before = container.innerHTML;
+
+      transform(container);
+
+      const after = container.innerHTML;
+
+      if (after === before) {
+        return element;
+      }
+
+      sceneChanged = true;
+
+      return { ...element, html: after };
+    });
+
+    if (!sceneChanged) {
+      return scene;
+    }
+
+    anyChange = true;
+
+    return { ...scene, elements: nextElements };
+  });
+
+  container.innerHTML = '';
+
+  return anyChange ? nextScenes : null;
+}

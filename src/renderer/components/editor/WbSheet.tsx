@@ -179,7 +179,7 @@ export function WbSheet({ controller, name }: WbSheetProps): React.ReactElement 
         <div className="wb-form-group">
           <label className="wb-label">{t('wbMentionedInLabel')}</label>
           {chaptersWithMention.length === 0 && scenesWithMention.length === 0 ? (
-            <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>{t('wbMentionedInNone')}</div>
+            <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>{t(controller.isScreenplayProject() ? 'wbMentionedInNoneScenes' : 'wbMentionedInNone')}</div>
           ) : (
             <div className="wb-mentioned-chapters">
               {chaptersWithMention.map((chapName) => (

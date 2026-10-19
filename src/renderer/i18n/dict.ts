@@ -22,6 +22,8 @@ export const fr = {
   nameRequired: 'Le nom est obligatoire',
   renameWbMentionsWarning:
     'Renommer "{oldName}" en "{newName}" remplacera aussi ce nom partout où il apparaît dans le texte de {count} chapitre(s). Continuer ?',
+  renameWbMentionsWarningScenes:
+    'Renommer "{oldName}" en "{newName}" remplacera aussi ce nom partout où il apparaît dans le texte de {count} scène(s). Continuer ?',
 
   // -------------------------------------------------------------------------
   // PAGE PROJETS
@@ -306,6 +308,8 @@ export const fr = {
   wbMentionedInLabel: '📖 Mentionné dans',
   wbMentionedInNone:
     'Pas encore mentionné dans un chapitre.',
+  wbMentionedInNoneScenes:
+    'Pas encore mentionné dans une scène.',
   wbReadModeTitle:
     'Basculer en mode lecture (fige la fiche contre les modifications accidentelles)',
   wbReadModeLabel: 'Mode lecture',
@@ -745,6 +749,8 @@ export const en: Record<TranslationKey, string> = {
   nameRequired: 'Name is required',
   renameWbMentionsWarning:
     'Renaming "{oldName}" to "{newName}" will also replace this name everywhere it appears in the text of {count} chapter(s). Continue?',
+  renameWbMentionsWarningScenes:
+    'Renaming "{oldName}" to "{newName}" will also replace this name everywhere it appears in the text of {count} scene(s). Continue?',
 
   // -------------------------------------------------------------------------
   // PROJECTS PAGE
@@ -1036,6 +1042,8 @@ export const en: Record<TranslationKey, string> = {
   wbMentionedInLabel: '📖 Mentioned in',
   wbMentionedInNone:
     'Not mentioned in any chapter yet.',
+  wbMentionedInNoneScenes:
+    'Not mentioned in any scene yet.',
   wbReadModeTitle:
     'Switch to read mode (locks the sheet against accidental edits)',
   wbReadModeLabel: 'Read mode',
