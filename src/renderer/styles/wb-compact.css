@@ -71,3 +71,141 @@
 .wb-container-compact #wbMentionsSection_panel button {
   font-size: 12px;
 }
+
+/* =========================================================
+   LISTE DES FICHES DANS LE PANNEAU (lot 3e)
+   Recherche, filtre par type, liste cliquable.
+   ========================================================= */
+
+.wb-side-panel-list-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px 8px;
+}
+
+.wb-side-panel-search,
+.wb-side-panel-filter {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 7px 9px;
+  font-size: 13px;
+  font-family: inherit;
+  color: inherit;
+  background: rgba(127, 127, 127, 0.08);
+  border: 1px solid rgba(127, 127, 127, 0.35);
+  border-radius: 6px;
+  outline: none;
+}
+
+.wb-side-panel-search:focus,
+.wb-side-panel-filter:focus {
+  border-color: rgba(127, 127, 127, 0.8);
+  background: rgba(127, 127, 127, 0.14);
+}
+
+.wb-side-panel-filter {
+  cursor: pointer;
+}
+
+/* Options du menu déroulant : toujours lisibles, quel que soit le thème */
+.wb-side-panel-filter option {
+  color: #222222;
+  background: #ffffff;
+}
+
+.wb-side-panel-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wb-side-panel-filter-row .wb-side-panel-filter {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.wb-side-panel-count {
+  flex-shrink: 0;
+  font-size: 12px;
+  opacity: 0.65;
+  white-space: nowrap;
+}
+
+/* Liste */
+.wb-side-panel-list {
+  list-style: none;
+  margin: 0;
+  padding: 2px 8px 8px;
+}
+
+.wb-side-panel-list li {
+  margin: 0 0 2px;
+  padding: 0;
+}
+
+.wb-side-panel-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  font-family: inherit;
+  font-size: 13.5px;
+  color: inherit;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-left: 3px solid transparent;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.wb-side-panel-item:hover {
+  background: rgba(127, 127, 127, 0.14);
+}
+
+.wb-side-panel-item:focus-visible {
+  outline: 2px solid rgba(127, 127, 127, 0.7);
+  outline-offset: -2px;
+}
+
+.wb-side-panel-item-icon {
+  flex-shrink: 0;
+  width: 22px;
+  font-size: 17px;
+  text-align: center;
+  line-height: 1;
+}
+
+.wb-side-panel-item-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.wb-side-panel-item-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.wb-side-panel-item-type {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11.5px;
+  opacity: 0.6;
+}
+
+/* Petite aide sous la liste */
+.wb-side-panel-hint {
+  margin: 6px 12px 14px;
+  padding-top: 10px;
+  font-size: 12px;
+  line-height: 1.45;
+  opacity: 0.55;
+  border-top: 1px solid rgba(127, 127, 127, 0.25);
+}
