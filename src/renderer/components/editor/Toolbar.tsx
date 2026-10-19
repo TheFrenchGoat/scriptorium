@@ -1,4 +1,3 @@
-import { SCREENPLAY_HISTORY_EVENT } from './ScreenplayEditor';
 // src/renderer/components/editor/Toolbar.tsx
 //
 // Barre d’outils commune aux romans et aux scénarios.
@@ -16,6 +15,8 @@ import { SCREENPLAY_HISTORY_EVENT } from './ScreenplayEditor';
 // - gras, italique, souligné ;
 // - couleur ;
 // - caractères spéciaux.
+//
+// Dans les deux modes : bouton d’ouverture du panneau latéral des fiches.
 //
 // Les réglages de police, de taille et d’alignement sont volontairement
 // masqués en mode scénario afin de préserver sa mise en page normalisée.
@@ -39,6 +40,8 @@ import {
 } from '../../lib/text-color';
 import { Dropdown, DropdownItem } from '../common/Dropdown';
 import { TextColorControl } from './TextColorControl';
+import { SCREENPLAY_HISTORY_EVENT } from './ScreenplayEditor';
+import { toggleWbPanel } from './WbSidePanel';
 import { useEditorStatus } from './editor-status';
 import type { EditorController } from './useEditorController';
 import type {
@@ -717,13 +720,7 @@ export function Toolbar({
       refreshFormatting();
       document.dispatchEvent(new Event('selectionchange'));
     },
-    [
-      controller,
-      isScreenplayMode,
-      notifyScreenplayInput,
-      refreshFormatting,
-      rememberCurrentSelection
-    ]
+    [controller, isScreenplayMode, notifyScreenplayInput, refreshFormatting, rememberCurrentSelection]
   );
 
   const runCommand = useCallback(
@@ -740,13 +737,7 @@ export function Toolbar({
 
       scheduleRefresh();
     },
-    [
-      controller,
-      isScreenplayMode,
-      notifyScreenplayInput,
-      restoreSavedSelection,
-      scheduleRefresh
-    ]
+    [controller, isScreenplayMode, notifyScreenplayInput, restoreSavedSelection, scheduleRefresh]
   );
 
   // -----------------------------------------------------------------------
@@ -919,14 +910,7 @@ export function Toolbar({
         refreshFormatting();
       });
     },
-    [
-      controller,
-      isScreenplayMode,
-      refreshFormatting,
-      rememberCurrentSelection,
-      restoreSavedSelection,
-      screenplay
-    ]
+    [controller, isScreenplayMode, refreshFormatting, rememberCurrentSelection, restoreSavedSelection, screenplay]
   );
 
   // -----------------------------------------------------------------------
@@ -987,14 +971,7 @@ export function Toolbar({
         finalizeCustomFormatting(root);
       }
     },
-    [
-      controller,
-      finalizeCustomFormatting,
-      isScreenplayMode,
-      notifyScreenplayInput,
-      restoreSavedSelection,
-      scheduleRefresh
-    ]
+    [controller, finalizeCustomFormatting, isScreenplayMode, notifyScreenplayInput, restoreSavedSelection, scheduleRefresh]
   );
 
   /** Rend au texte sélectionné la couleur du thème. */
@@ -1072,7 +1049,7 @@ export function Toolbar({
         title={t('undoTitle')}
         disabled={!isScreenplayMode && !status.canUndo}
         onMouseDown={preventFocusLoss}
-                onClick={() => {
+        onClick={() => {
           if (isScreenplayMode) {
             window.dispatchEvent(
               new CustomEvent(
@@ -1094,7 +1071,7 @@ export function Toolbar({
         title={t('redoTitle')}
         disabled={!isScreenplayMode && !status.canRedo}
         onMouseDown={preventFocusLoss}
-                onClick={() => {
+        onClick={() => {
           if (isScreenplayMode) {
             window.dispatchEvent(
               new CustomEvent(
@@ -1416,6 +1393,18 @@ export function Toolbar({
 
       <button type="button" title={t('replaceBtnTitle')} onClick={onOpenReplace}>
         {t('replaceBtn')}
+      </button>
+
+      <span className="toolbar-separator" aria-hidden="true" />
+
+      <button
+        type="button"
+        className="toolbar-wb-panel-button"
+        title={t('wbPanelToggleTitle')}
+        onMouseDown={preventFocusLoss}
+        onClick={() => toggleWbPanel()}
+      >
+        {t('wbPanelToggleBtn')}
       </button>
     </div>
   );

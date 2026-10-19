@@ -956,3 +956,105 @@ mark.grammar-error:hover { background: rgba(59, 130, 246, 0.12); }
   margin: 0 !important;
 }
 
+/* ============================================================
+   PANNEAU LATÉRAL DES FICHES (lot 3)
+   ============================================================ */
+
+.wb-side-panel {
+  flex-shrink: 0;
+  width: 340px;
+  min-width: 240px;
+  max-width: 60vw;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid rgba(127, 127, 127, 0.3);
+  background: inherit;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.wb-side-panel-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(127, 127, 127, 0.3);
+}
+
+.wb-side-panel-title {
+  font-weight: 600;
+  font-size: 0.95em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wb-side-panel-close {
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 1em;
+  line-height: 1;
+  padding: 4px 6px;
+  border-radius: 4px;
+  opacity: 0.7;
+}
+
+.wb-side-panel-close:hover {
+  opacity: 1;
+  background: rgba(127, 127, 127, 0.15);
+}
+
+.wb-side-panel-actions {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 6px 10px;
+  border-bottom: 1px solid rgba(127, 127, 127, 0.2);
+}
+
+.wb-side-panel-action-btn {
+  border: 1px solid rgba(127, 127, 127, 0.35);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 0.85em;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.wb-side-panel-action-btn:hover {
+  background: rgba(127, 127, 127, 0.15);
+}
+
+.wb-side-panel-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* La fiche s'adapte à la largeur du panneau */
+.wb-side-panel-body > * {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.wb-side-panel-empty {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px 16px;
+  font-size: 0.9em;
+  opacity: 0.65;
+}

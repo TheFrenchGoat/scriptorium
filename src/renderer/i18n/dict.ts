@@ -304,7 +304,7 @@ export const fr = {
   wbIconCustomPlaceholder: 'Autre…',
   wbIconCustomApply: 'OK',
   wbColorLabel:
-    'Couleur de surlignage dans les chapitres',
+    'Couleur de surlignage dans le texte',
   wbMentionedInLabel: '📖 Mentionné dans',
   wbMentionedInNone:
     'Pas encore mentionné dans un chapitre.',
@@ -343,6 +343,29 @@ export const fr = {
   wbField_inhabitants: 'Habitants / Faune',
   wbField_owner: 'Propriétaire',
   wbField_power: 'Pouvoir / Utilité',
+
+  // -------------------------------------------------------------------------
+  // PANNEAU DES FICHES
+  // -------------------------------------------------------------------------
+
+  wbPanelTitle: 'Fiches',
+  wbPanelToggleBtn: '🗂 Fiches',
+  wbPanelToggleTitle:
+    'Afficher ou masquer le panneau des fiches',
+  wbPanelClose: 'Fermer le panneau',
+  wbPanelEmpty:
+    'Cliquez sur un nom surligné dans le texte pour afficher sa fiche ici. Ctrl+clic l’ouvre dans un onglet.',
+  wbPanelOpenInTab: '↗ Ouvrir en onglet',
+  wbPanelBackToList: '← Toutes les fiches',
+  wbPanelSearchPlaceholder:
+    'Rechercher une fiche (nom ou alias)…',
+  wbPanelFilterAll: 'Tous les types',
+  wbPanelNoResults:
+    'Aucune fiche ne correspond à la recherche.',
+  wbPanelNoSheets:
+    'Aucune fiche pour le moment.',
+  wbPanelResizeTitle:
+    'Glisser pour changer la largeur du panneau',
 
   // -------------------------------------------------------------------------
   // BARRE DE STATUT
@@ -1038,7 +1061,7 @@ export const en: Record<TranslationKey, string> = {
   wbIconCustomPlaceholder: 'Other…',
   wbIconCustomApply: 'OK',
   wbColorLabel:
-    'Highlight color in chapters',
+    'Highlight color in the text',
   wbMentionedInLabel: '📖 Mentioned in',
   wbMentionedInNone:
     'Not mentioned in any chapter yet.',
@@ -1078,6 +1101,28 @@ export const en: Record<TranslationKey, string> = {
     'Inhabitants / Wildlife',
   wbField_owner: 'Owner',
   wbField_power: 'Power / Purpose',
+
+  // -------------------------------------------------------------------------
+  // SHEETS PANEL
+  // -------------------------------------------------------------------------
+
+  wbPanelTitle: 'Sheets',
+  wbPanelToggleBtn: '🗂 Sheets',
+  wbPanelToggleTitle:
+    'Show or hide the sheets panel',
+  wbPanelClose: 'Close the panel',
+  wbPanelEmpty:
+    'Click a highlighted name in the text to show its sheet here. Ctrl+click opens it in a tab.',
+  wbPanelOpenInTab: '↗ Open in a tab',
+  wbPanelBackToList: '← All sheets',
+  wbPanelSearchPlaceholder:
+    'Search a sheet (name or alias)…',
+  wbPanelFilterAll: 'All types',
+  wbPanelNoResults:
+    'No sheet matches your search.',
+  wbPanelNoSheets: 'No sheets yet.',
+  wbPanelResizeTitle:
+    'Drag to change the panel width',
 
   // -------------------------------------------------------------------------
   // STATUS BAR

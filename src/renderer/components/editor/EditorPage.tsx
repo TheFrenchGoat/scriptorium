@@ -6,6 +6,7 @@
 // - les projets roman avec ChapterEditor ;
 // - les projets scénario avec ScreenplayEditor ;
 // - les fiches World Building communes aux deux modes ;
+// - le panneau latéral des fiches ;
 // - les raccourcis clavier ;
 // - le zoom de la feuille ;
 // - le redimensionnement de la barre latérale ;
@@ -34,6 +35,12 @@ import { StatusBar } from './StatusBar';
 import { ChapterEditor } from './ChapterEditor';
 import { ScreenplayEditor } from './ScreenplayEditor';
 import { WbSheet } from './WbSheet';
+import {
+  WbSidePanel,
+  WB_PANEL_EVENT,
+  type WbPanelEventDetail
+} from './WbSidePanel';
+
 import { GrammarPopup } from './GrammarPopup';
 
 import {
@@ -275,6 +282,21 @@ export function EditorPage({
     null
   );
 
+  // Panneau latéral des fiches : ouvert ou non, et fiche affichée.
+  const [
+    wbPanelOpen,
+    setWbPanelOpen
+  ] = useState<boolean>(
+    false
+  );
+
+  const [
+    wbPanelItemId,
+    setWbPanelItemId
+  ] = useState<string | null>(
+    null
+  );
+
   const editorContainerRef =
     useRef<HTMLDivElement | null>(
       null
@@ -331,12 +353,66 @@ export function EditorPage({
           null
         );
       },
-      [
-        controller,
-        onRenamed,
-        renameProjectValue
-      ]
+      [controller, onRenamed, renameProjectValue]
     );
+
+  // -----------------------------------------------------------------------
+  // PANNEAU LATÉRAL DES FICHES
+  // -----------------------------------------------------------------------
+
+  useEffect(() => {
+    const onWbPanelEvent = (
+      event: Event
+    ): void => {
+      const detail =
+        (
+          event as CustomEvent<WbPanelEventDetail>
+        ).detail;
+
+      if (!detail) {
+        return;
+      }
+
+      if (
+        detail.action === 'close'
+      ) {
+        setWbPanelOpen(false);
+        return;
+      }
+
+      if (
+        detail.action === 'toggle'
+      ) {
+        setWbPanelOpen(
+          (open) => !open
+        );
+        return;
+      }
+
+      // action === 'open'
+      if (
+        detail.itemId !== undefined
+      ) {
+        setWbPanelItemId(
+          detail.itemId
+        );
+      }
+
+      setWbPanelOpen(true);
+    };
+
+    window.addEventListener(
+      WB_PANEL_EVENT,
+      onWbPanelEvent
+    );
+
+    return () => {
+      window.removeEventListener(
+        WB_PANEL_EVENT,
+        onWbPanelEvent
+      );
+    };
+  }, []);
 
   // -----------------------------------------------------------------------
   // REDIMENSIONNEMENT DE LA BARRE LATÉRALE
@@ -1378,6 +1454,25 @@ export function EditorPage({
             }}
           />
         </main>
+
+        {wbPanelOpen && (
+          <WbSidePanel
+            controller={controller}
+            itemId={wbPanelItemId}
+            onClose={() => {
+              setWbPanelOpen(
+                false
+              );
+            }}
+            onSelectItem={(
+              itemId
+            ) => {
+              setWbPanelItemId(
+                itemId
+              );
+            }}
+          />
+        )}
       </div>
 
       <HelpModal
