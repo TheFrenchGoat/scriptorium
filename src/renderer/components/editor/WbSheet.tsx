@@ -52,6 +52,7 @@ export function WbSheet({ controller, name }: WbSheetProps): React.ReactElement 
   const isCustomType = registry.isCustomType(data.wbType);
   const color = registry.colorFor(data);
   const chaptersWithMention = controller.chaptersContaining(itemId);
+  const scenesWithMention = controller.scenesContaining(itemId);
 
   const commitRename = () => {
     const trimmed = nameDraft.trim();
@@ -174,10 +175,10 @@ export function WbSheet({ controller, name }: WbSheetProps): React.ReactElement 
         ))}
       </div>
 
-      <div id="wbMentionsSection">
+            <div id="wbMentionsSection">
         <div className="wb-form-group">
           <label className="wb-label">{t('wbMentionedInLabel')}</label>
-          {chaptersWithMention.length === 0 ? (
+          {chaptersWithMention.length === 0 && scenesWithMention.length === 0 ? (
             <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>{t('wbMentionedInNone')}</div>
           ) : (
             <div className="wb-mentioned-chapters">
@@ -189,6 +190,16 @@ export function WbSheet({ controller, name }: WbSheetProps): React.ReactElement 
                   onClick={() => controller.openItem(chapName, 'chapter')}
                 >
                   📖 {chapName}
+                </button>
+              ))}
+              {scenesWithMention.map((scene) => (
+                <button
+                  key={scene.id}
+                  type="button"
+                  className="wb-mentioned-chapter-btn"
+                  onClick={() => controller.openItem(scene.id, 'scene')}
+                >
+                  🎬 {scene.title}
                 </button>
               ))}
             </div>
