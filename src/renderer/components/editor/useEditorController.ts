@@ -67,6 +67,7 @@ import {
   type CreateScreenplaySceneOptions
 } from '../../lib/screenplay';
 import { createStatusStore, type StatusStore } from './editor-status';
+import { openWbPanel } from './WbSidePanel';
 import type { InfoAction } from '../common/Dialogs';
 import type {
   EditorPrefs,
@@ -721,16 +722,7 @@ export function useEditorController({
         setSaveStatus('error');
       }
     },
-    [
-      cancelPendingChapterSave,
-      enqueuePersistence,
-      maybeCreateBackup,
-      persistUiState,
-      projectName,
-      recordWritingStats,
-      s,
-      setSaveStatus
-    ]
+    [cancelPendingChapterSave, enqueuePersistence, maybeCreateBackup, persistUiState, projectName, recordWritingStats, s, setSaveStatus]
   );
 
   const scheduleChapterSave = useCallback(
@@ -773,18 +765,7 @@ export function useEditorController({
       console.error('Échec de la sauvegarde complète :', error);
       setSaveStatus('error');
     }
-  }, [
-    cancelAllPendingChapterSaves,
-    cancelPendingScreenplaySave,
-    cancelPendingWbSave,
-    enqueuePersistence,
-    maybeCreateBackup,
-    persistUiState,
-    projectName,
-    recordWritingStats,
-    s,
-    setSaveStatus
-  ]);
+  }, [cancelAllPendingChapterSaves, cancelPendingScreenplaySave, cancelPendingWbSave, enqueuePersistence, maybeCreateBackup, persistUiState, projectName, recordWritingStats, s, setSaveStatus]);
 
   saveAllRef.current = saveAll;
 
@@ -835,14 +816,7 @@ export function useEditorController({
       console.error("Échec de la sauvegarde de l'état de l'éditeur :", error);
       setSaveStatus('error');
     }
-  }, [
-    enqueuePersistence,
-    persistUiState,
-    s,
-    saveAll,
-    saveChapterSnapshot,
-    setSaveStatus
-  ]);
+  }, [enqueuePersistence, persistUiState, s, saveAll, saveChapterSnapshot, setSaveStatus]);
 
   const updateGrammarStatus = useCallback((): void => {
     status.set({
@@ -1603,6 +1577,15 @@ export function useEditorController({
         })();
       },
 
+      /**
+       * Clic dans le texte d'un chapitre.
+       *
+       * - Clic simple sur une mention : la fiche s'ouvre dans le panneau
+       *   latéral, et le curseur se place normalement dans le texte. Rien
+       *   ne s'ouvre si l'utilisateur est en train de sélectionner du texte.
+       * - Ctrl+clic (Cmd+clic sur Mac) : la fiche s'ouvre dans un onglet.
+       * - Mention d'une fiche disparue : message, puis nettoyage du texte.
+       */
       handleEditorClick(event) {
         const target = event.target as HTMLElement;
         const mention = target.closest<HTMLElement>('.wb-mention');
@@ -1611,35 +1594,37 @@ export function useEditorController({
           return;
         }
 
-        if (!event.ctrlKey && !event.metaKey) {
+        const itemId = mention.dataset.wbKey;
+        const itemExists = Boolean(itemId && s.projectData.world[itemId]);
+        const withModifier = event.ctrlKey || event.metaKey;
+
+        if (!withModifier) {
+          const selection = window.getSelection();
+
+          if (selection && !selection.isCollapsed) {
+            return;
+          }
+
+          if (itemId && itemExists) {
+            openWbPanel(itemId);
+            return;
+          }
+
+          showInfo(t('itemNotFound'));
+          cleanMentionsInEditor();
           return;
         }
 
         event.preventDefault();
         event.stopPropagation();
 
-        const itemId = mention.dataset.wbKey;
-
-        if (itemId && s.projectData.world[itemId]) {
+        if (itemId && itemExists) {
           ctrl.openItem(itemId, 'world');
           return;
         }
 
         showInfo(t('itemNotFound'));
-
-        const editor = s.editorEl;
-
-        if (!editor) {
-          return;
-        }
-
-        const cleaned = withPreservedSelection(editor, () =>
-          cleanInvalidMentions(editor, s.projectData.world)
-        );
-
-        if (cleaned) {
-          ctrl.handleInput();
-        }
+        cleanMentionsInEditor();
       },
 
       openItem(key, type) {
@@ -2040,15 +2025,15 @@ export function useEditorController({
           let nextScenes = currentScenes.filter((scene) => scene.id !== key);
 
           if (nextScenes.length === 0) {
-            nextScenes = [
-              createScreenplayScene({
-                interiorExterior: 'INT.',
-                time:
-                  s.projectData.screenplay.settings.conventionLanguage === 'en'
-                    ? 'DAY'
-                    : 'JOUR'
-              })
-            ];
+            const replacementScene = createScreenplayScene({
+              interiorExterior: 'INT.',
+              time:
+                s.projectData.screenplay.settings.conventionLanguage === 'en'
+                  ? 'DAY'
+                  : 'JOUR'
+            });
+
+            nextScenes = [replacementScene];
           }
 
           s.projectData.screenplay = {
@@ -2072,10 +2057,7 @@ export function useEditorController({
                 (tab) => tab.type === 'scene' && tab.name === nextScene.id
               )
             ) {
-              s.openTabs = [
-                ...s.openTabs,
-                { name: nextScene.id, type: 'scene' }
-              ];
+              s.openTabs = [...s.openTabs, { name: nextScene.id, type: 'scene' }];
             }
           }
 
@@ -2274,7 +2256,7 @@ export function useEditorController({
 
         if (affectedCount > 0) {
           const proceed = await showConfirm(
-              t(isScreenplayData(s.projectData) ? 'renameWbMentionsWarningScenes' : 'renameWbMentionsWarning', { 
+            t(isScreenplayData(s.projectData) ? 'renameWbMentionsWarningScenes' : 'renameWbMentionsWarning', {
               oldName,
               newName: trimmed,
               count: affectedCount
@@ -2322,7 +2304,6 @@ export function useEditorController({
         }
 
         resyncChapters(changedChapters, open?.name ?? null);
-
 
         // Met à jour les mentions de la fiche dans les paragraphes des scènes.
         if (isScreenplayData(s.projectData)) {
@@ -2429,7 +2410,7 @@ export function useEditorController({
         void saveAll();
       },
 
-            updateWbField(itemId, fieldKey, value) {
+      updateWbField(itemId, fieldKey, value) {
         const item = s.projectData.world[itemId];
 
         if (!item) {
@@ -2488,7 +2469,7 @@ export function useEditorController({
         bump();
       },
 
-            setWbAliases(itemId, aliases) {
+      setWbAliases(itemId, aliases) {
         const item = s.projectData.world[itemId];
 
         if (!item) {
@@ -2580,7 +2561,7 @@ export function useEditorController({
         return true;
       },
 
-toggleReadMode() {
+      toggleReadMode() {
         if (s.activeType !== 'world' || !s.activeTab) {
           return;
         }
@@ -2621,16 +2602,13 @@ toggleReadMode() {
             return [];
           }
 
-          return [
-            {
-              id: sceneId,
-              title: getSceneDisplayTitle(
-                screenplay.scenes[index],
-                index,
-                screenplay.settings.conventionLanguage
-              )
-            }
-          ];
+          const title = getSceneDisplayTitle(
+            screenplay.scenes[index],
+            index,
+            screenplay.settings.conventionLanguage
+          );
+
+          return [{ id: sceneId, title }];
         });
       },
 
@@ -3174,9 +3152,7 @@ toggleReadMode() {
           const result = await window.api.showSaveDialog({
             title: 'Exporter le projet complet',
             defaultPath: `${projectName}.scriptorium`,
-            filters: [
-              { name: 'Projet Scriptorium', extensions: ['scriptorium'] }
-            ]
+            filters: [{ name: 'Projet Scriptorium', extensions: ['scriptorium'] }]
           });
 
           if (result.canceled || !result.filePath) {
@@ -3335,6 +3311,26 @@ toggleReadMode() {
       }
 
       return { name: s.activeTab, editor: s.editorEl };
+    }
+
+    /**
+     * Retire du chapitre affiché les mentions de fiches qui n'existent plus,
+     * puis enregistre le changement comme une frappe normale.
+     */
+    function cleanMentionsInEditor(): void {
+      const editor = s.editorEl;
+
+      if (!editor) {
+        return;
+      }
+
+      const cleaned = withPreservedSelection(editor, () =>
+        cleanInvalidMentions(editor, s.projectData.world)
+      );
+
+      if (cleaned) {
+        ctrl.handleInput();
+      }
     }
 
     /**
