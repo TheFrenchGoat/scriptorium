@@ -1,6 +1,9 @@
 // src/renderer/components/editor/StatusBar.tsx
 //
 // Barre de statut commune aux projets roman et scénario.
+//
+// Le minuteur et les sessions d’écriture (Timer.tsx) sont affichés dans la
+// barre d’outils (Toolbar.tsx).
 
 import React, {
   memo,
@@ -35,10 +38,6 @@ import type {
 } from './useEditorController';
 
 import {
-  Timer
-} from './Timer';
-
-import {
   MusicPlayer
 } from './MusicPlayer';
 
@@ -52,9 +51,6 @@ export interface StatusBarProps {
    */
   onOpenGrammarSetup?: () => void;
 }
-
-const MemoTimer =
-  memo(Timer);
 
 const MemoMusicPlayer =
   memo(MusicPlayer);
@@ -323,10 +319,7 @@ export function StatusBar({
         null
       );
     }
-  }, [
-    activeType,
-    isScreenplay
-  ]);
+  }, [activeType, isScreenplay]);
 
   /*
    * Le calcul du total inclut les en-têtes de scène. Cela évite par exemple
@@ -378,14 +371,7 @@ export function StatusBar({
             )
         }
       );
-    }, [
-      status.chars,
-      status.selectionActive,
-      status.sheetMode,
-      status.words,
-      t,
-      totalWords
-    ]);
+    }, [status.chars, status.selectionActive, status.sheetMode, status.words, t, totalWords]);
 
   const saveStatusText =
     useMemo((): string => {
@@ -416,11 +402,7 @@ export function StatusBar({
                 'saveStatusSaved'
               );
       }
-    }, [
-      status.saveState,
-      status.savedAt,
-      t
-    ]);
+    }, [status.saveState, status.savedAt, t]);
 
   const saveStatusClassName =
     status.saveState ===
@@ -498,13 +480,7 @@ export function StatusBar({
         className:
           'error'
       };
-    }, [
-      status.grammarEnabled,
-      status.grammarMessage,
-      status.grammarReady,
-      status.grammarStarting,
-      t
-    ]);
+    }, [status.grammarEnabled, status.grammarMessage, status.grammarReady, status.grammarStarting, t]);
 
   const positionText =
     screenplayPosition
@@ -599,14 +575,6 @@ export function StatusBar({
             </button>
           </>
         )}
-      </div>
-
-      <div className="status-timer-anchor">
-        <MemoTimer
-          controller={
-            controller
-          }
-        />
       </div>
 
       <MemoMusicPlayer />

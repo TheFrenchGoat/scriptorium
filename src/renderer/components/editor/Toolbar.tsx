@@ -16,7 +16,8 @@
 // - couleur ;
 // - caractères spéciaux.
 //
-// Dans les deux modes : bouton d’ouverture du panneau latéral des fiches.
+// Dans les deux modes : minuteur et session d’écriture (composant Timer),
+// placés en fin de barre. Leurs styles sont dans toolbar-timer.css.
 //
 // Les réglages de police, de taille et d’alignement sont volontairement
 // masqués en mode scénario afin de préserver sa mise en page normalisée.
@@ -41,13 +42,14 @@ import {
 import { Dropdown, DropdownItem } from '../common/Dropdown';
 import { TextColorControl } from './TextColorControl';
 import { SCREENPLAY_HISTORY_EVENT } from './ScreenplayEditor';
-import { toggleWbPanel } from './WbSidePanel';
+import { Timer } from './Timer';
 import { useEditorStatus } from './editor-status';
 import type { EditorController } from './useEditorController';
 import type {
   ScreenplayElementType,
   ScreenplayParagraphType
 } from '../../../shared/types';
+import './toolbar-timer.css';
 
 export interface ToolbarProps {
   controller: EditorController;
@@ -80,6 +82,12 @@ interface InlineStyleOptions {
   skipWorldBuilding?: boolean;
   attributes?: Record<string, string>;
 }
+
+/**
+ * La barre d’outils se redessine à chaque déplacement du curseur : le
+ * minuteur est mémorisé pour ne pas être redessiné inutilement.
+ */
+const MemoTimer = React.memo(Timer);
 
 const FONTS: FontChoice[] = [
   { label: 'Roboto', css: "'Roboto', sans-serif" },
@@ -1397,15 +1405,9 @@ export function Toolbar({
 
       <span className="toolbar-separator" aria-hidden="true" />
 
-      <button
-        type="button"
-        className="toolbar-wb-panel-button"
-        title={t('wbPanelToggleTitle')}
-        onMouseDown={preventFocusLoss}
-        onClick={() => toggleWbPanel()}
-      >
-        {t('wbPanelToggleBtn')}
-      </button>
+      <div className="toolbar-timer-anchor">
+        <MemoTimer controller={controller} />
+      </div>
     </div>
   );
 }
