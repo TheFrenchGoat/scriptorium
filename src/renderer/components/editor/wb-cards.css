@@ -1,0 +1,441 @@
+/* src/renderer/components/editor/wb-cards.css
+   Vue en cartes des fiches World Building (WbCardsView.tsx).
+   Affichée par-dessus la zone d'écriture ; couleurs du thème uniquement. */
+
+/* ------------------------------------------------------------------------
+   Conteneur
+   ------------------------------------------------------------------------ */
+
+.wb-cards-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--bg-app);
+  color: var(--text-main);
+  font-family: var(--ui-font-family);
+  font-size: var(--ui-font-size);
+}
+
+/* ------------------------------------------------------------------------
+   En-tête : titre, compteur, fermeture
+   ------------------------------------------------------------------------ */
+
+.wb-cards-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px 8px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-panel);
+  flex-shrink: 0;
+}
+
+.wb-cards-title {
+  margin: 0;
+  font-size: 1.15em;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.wb-cards-count {
+  color: var(--text-muted);
+  font-size: 0.9em;
+}
+
+.wb-cards-close {
+  margin-left: auto;
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 1em;
+  cursor: pointer;
+}
+
+.wb-cards-close:hover {
+  background: var(--bg-hover);
+  color: var(--text-main);
+  border-color: var(--border);
+}
+
+/* ------------------------------------------------------------------------
+   Barre d'outils : recherche, filtre, tri, regroupement, taille
+   ------------------------------------------------------------------------ */
+
+.wb-cards-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 8px 16px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-panel);
+  flex-shrink: 0;
+}
+
+.wb-cards-search {
+  flex: 1 1 220px;
+  min-width: 160px;
+  max-width: 360px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-input);
+  color: var(--text-main);
+  font: inherit;
+}
+
+.wb-cards-search:focus,
+.wb-cards-select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.wb-cards-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.wb-cards-control-label {
+  color: var(--text-muted);
+  font-size: 0.9em;
+}
+
+.wb-cards-select {
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-input);
+  color: var(--text-main);
+  font: inherit;
+  cursor: pointer;
+}
+
+.wb-cards-select option {
+  background: var(--bg-panel);
+  color: var(--text-main);
+}
+
+.wb-cards-check {
+  cursor: pointer;
+  user-select: none;
+}
+
+.wb-cards-check input {
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.wb-cards-btn {
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-input);
+  color: var(--text-main);
+  font: inherit;
+  cursor: pointer;
+}
+
+.wb-cards-btn:hover {
+  background: var(--bg-hover);
+  border-color: var(--accent);
+}
+
+.wb-cards-reverse {
+  padding: 4px 8px;
+  line-height: 1;
+}
+
+.wb-cards-reverse.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg-panel);
+}
+
+/* ------------------------------------------------------------------------
+   Corps : grille, groupes, messages
+   ------------------------------------------------------------------------ */
+
+.wb-cards-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.wb-cards-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin: 48px auto;
+  max-width: 420px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.wb-cards-message p {
+  margin: 0;
+}
+
+.wb-cards-group {
+  margin-bottom: 24px;
+}
+
+.wb-cards-group:last-child {
+  margin-bottom: 0;
+}
+
+.wb-cards-group-title {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 0 10px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+  font-size: 1em;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.wb-cards-group-count {
+  margin-left: auto;
+  font-weight: normal;
+  font-size: 0.85em;
+  color: var(--text-muted);
+}
+
+.wb-cards-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+
+.wb-cards-grid.size-small {
+  gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+}
+
+.wb-cards-grid.size-large {
+  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+
+.wb-cards-cell {
+  display: flex;
+  min-width: 0;
+}
+
+/* ------------------------------------------------------------------------
+   Carte
+   ------------------------------------------------------------------------ */
+
+.wb-card {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 12px 10px 16px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-panel);
+  color: var(--text-main);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  transition: border-color 0.12s ease, transform 0.12s ease, background 0.12s ease;
+}
+
+.wb-card:hover {
+  border-color: var(--wb-card-color, var(--accent));
+  background: var(--bg-hover);
+  transform: translateY(-1px);
+}
+
+.wb-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.wb-card.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.size-small .wb-card {
+  gap: 4px;
+  padding: 8px 8px 8px 12px;
+}
+
+/* Bande de couleur à gauche */
+.wb-card-band {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 5px;
+  background: var(--wb-card-color, var(--accent));
+}
+
+/* Portrait */
+.wb-card-portrait {
+  display: block;
+  margin: -12px -12px 0 -16px;
+  height: 120px;
+  overflow: hidden;
+  background: var(--bg-input);
+  border-bottom: 1px solid var(--border);
+}
+
+.size-large .wb-card-portrait {
+  height: 180px;
+}
+
+.wb-card-portrait img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Icône, nom et type */
+.wb-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.wb-card-icon {
+  flex-shrink: 0;
+  font-size: 1.4em;
+  line-height: 1;
+}
+
+.size-small .wb-card-icon {
+  font-size: 1.15em;
+}
+
+.size-large .wb-card-icon {
+  font-size: 1.7em;
+}
+
+.wb-card-titles {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.wb-card-name {
+  font-weight: 600;
+  font-size: 1.05em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.size-large .wb-card-name {
+  font-size: 1.15em;
+}
+
+.wb-card-type {
+  color: var(--text-muted);
+  font-size: 0.82em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Alias */
+.wb-card-aliases {
+  color: var(--text-muted);
+  font-size: 0.85em;
+  font-style: italic;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Extrait des champs */
+.wb-card-excerpt {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.wb-card-excerpt-empty {
+  color: var(--text-muted);
+  font-size: 0.85em;
+  font-style: italic;
+}
+
+.wb-card-field {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.wb-card-field-label {
+  color: var(--text-muted);
+  font-size: 0.75em;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.wb-card-field-value {
+  font-size: 0.9em;
+  line-height: 1.35;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow-wrap: anywhere;
+}
+
+.size-small .wb-card-field-value {
+  -webkit-line-clamp: 1;
+}
+
+.size-large .wb-card-field-value {
+  -webkit-line-clamp: 4;
+}
+
+/* Pied : champs remplis */
+.wb-card-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: auto;
+}
+
+.wb-card-filled {
+  padding: 1px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-muted);
+  font-size: 0.75em;
+}
+
+.wb-card-filled.complete {
+  border-color: var(--accent);
+  color: var(--accent);
+}
