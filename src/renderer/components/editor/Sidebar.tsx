@@ -16,7 +16,9 @@
 // `data.world`) ; leur nom affiché provient de `item.name`.
 //
 // L’en-tête World Building contient aussi le bouton « ▦ Cartes », qui ouvre
-// ou ferme la vue en cartes des fiches (WbCardsView).
+// ou ferme la vue en cartes des fiches (WbCardsView), et le bouton
+// « 🕸 Relations », qui ouvre ou ferme la vue des relations (graphe et arbre
+// généalogique, WbRelationsView). Ouvrir l’une de ces vues ferme l’autre.
 
 import React, {
   useEffect,
@@ -43,12 +45,32 @@ import {
 } from './WbSidePanel';
 
 import { toggleWbCards } from './WbCardsView';
+import { toggleWbRelations } from './WbRelationsView';
 
 import type {
   ItemType,
   ScreenplayInteriorExterior,
   WbType
 } from '../../../shared/types';
+
+// ---------------------------------------------------------------------------
+// STYLE DES BOUTONS DE VUE (CARTES, RELATIONS)
+// ---------------------------------------------------------------------------
+
+const WB_VIEW_BTN_STYLE: React.CSSProperties = {
+  flex: '0 0 auto',
+  marginRight: 4,
+  padding: '2px 8px',
+  border: '1px solid var(--border)',
+  borderRadius: 'var(--radius)',
+  background: 'var(--bg-input)',
+  color: 'var(--text-main)',
+  font: 'inherit',
+  fontSize: '0.85em',
+  lineHeight: 1.4,
+  cursor: 'pointer',
+  whiteSpace: 'nowrap'
+};
 
 // ---------------------------------------------------------------------------
 // PROPRIÉTÉS
@@ -1130,22 +1152,26 @@ export function Sidebar({
                 setWbMenuOpen(false);
                 toggleWbCards();
               }}
-              style={{
-                flex: '0 0 auto',
-                marginRight: 4,
-                padding: '2px 8px',
-                border: '1px solid var(--border)',
-                borderRadius: 'var(--radius)',
-                background: 'var(--bg-input)',
-                color: 'var(--text-main)',
-                font: 'inherit',
-                fontSize: '0.85em',
-                lineHeight: 1.4,
-                cursor: 'pointer',
-                whiteSpace: 'nowrap'
-              }}
+              style={WB_VIEW_BTN_STYLE}
             >
               {t('wbCardsBtn')}
+            </button>
+
+            {/* Vue des relations (graphe et arbre généalogique) */}
+            <button
+              id="btnWbRelations"
+              type="button"
+              className="wb-rel-open-btn"
+              title={t('wbRelBtnTitle')}
+              aria-label={t('wbRelBtnTitle')}
+              onClick={(event) => {
+                event.stopPropagation();
+                setWbMenuOpen(false);
+                toggleWbRelations();
+              }}
+              style={WB_VIEW_BTN_STYLE}
+            >
+              {t('wbRelBtn')}
             </button>
 
             <div

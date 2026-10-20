@@ -426,6 +426,72 @@ export const fr = {
   wbCardsGroupCount: '{count} fiche(s)',
 
   // -------------------------------------------------------------------------
+  // VUE RELATIONS
+  // -------------------------------------------------------------------------
+
+  wbRelBtn: '🕸 Relations',
+  wbRelBtnTitle:
+    'Afficher le graphe des relations et l’arbre généalogique',
+  wbRelTitle: 'Relations',
+  wbRelClose: 'Fermer la vue des relations (Échap)',
+  wbRelTabGraph: 'Graphe',
+  wbRelTabTree: 'Arbre généalogique',
+  wbRelAdd: '+ Relation',
+  wbRelAddTitle: 'Créer une relation entre deux fiches',
+  wbRelModalAddTitle: 'Nouvelle relation',
+  wbRelModalEditTitle: 'Modifier la relation',
+  wbRelSourceLabel: 'Fiche de départ',
+  wbRelTypeLabel: 'Type de relation',
+  wbRelTargetLabel: 'Fiche liée',
+  wbRelNoteLabel: 'Note (facultative)',
+  wbRelNotePlaceholder:
+    'ex : se sont rencontrés pendant la guerre',
+  wbRelSwap: '⇅ Inverser',
+  wbRelSwapTitle:
+    'Échanger la fiche de départ et la fiche liée',
+  wbRelPreview: '« {source} » → {label} → « {target} »',
+  wbRelSelectItem: '— Choisir une fiche —',
+  wbRelSelectRequired:
+    'Choisissez les deux fiches à relier.',
+  wbRelSameItem:
+    'Une fiche ne peut pas être reliée à elle-même.',
+  wbRelDuplicate:
+    'Cette relation existe déjà entre ces deux fiches.',
+  wbRelEdit: '✏️ Modifier',
+  wbRelDelete: '🗑 Supprimer',
+  wbRelConfirmDelete:
+    'Supprimer la relation entre "{source}" et "{target}" ?',
+  wbRelEmpty:
+    'Aucune relation pour le moment. Cliquez sur « + Relation » pour relier deux fiches.',
+  wbRelNoSheets:
+    'Il faut au moins deux fiches pour créer une relation.',
+  wbRelNoMatch:
+    'Aucune relation ne correspond aux filtres.',
+  wbRelFilterTypeLabel: 'Fiches',
+  wbRelFilterKindLabel: 'Relations',
+  wbRelFilterAll: 'Toutes',
+  wbRelShowIsolated:
+    'Afficher les fiches sans relation',
+  wbRelResetLayout: '↻ Réorganiser',
+  wbRelResetLayoutTitle:
+    'Recalculer la disposition (oublie les positions déplacées à la main)',
+  wbRelZoomIn: 'Zoom avant',
+  wbRelZoomOut: 'Zoom arrière',
+  wbRelFit: 'Tout afficher',
+  wbRelGraphHint:
+    'Clic : ouvrir la fiche • Ctrl+clic : onglet • Clic droit sur un lien : modifier • Molette : zoom • Glisser le fond : se déplacer',
+  wbRelTreeRootLabel: 'Personne de départ',
+  wbRelTreeEmpty:
+    'Choisissez une personne pour afficher son arbre.',
+  wbRelTreeNoFamily:
+    'Aucun lien familial (parent, conjoint, frère ou sœur) pour le moment.',
+  wbRelTreeHint:
+    'Clic : ouvrir la fiche • Double-clic : centrer l’arbre sur cette personne',
+  wbRelCount: '{count} relation(s)',
+  wbRelEdgeTitle:
+    'Clic droit : modifier ou supprimer',
+
+  // -------------------------------------------------------------------------
   // BARRE DE STATUT
   // -------------------------------------------------------------------------
 
@@ -1239,6 +1305,72 @@ export const en: Record<TranslationKey, string> = {
   wbCardsCardTitle:
     'Click: open on the left • Ctrl+click: open in a tab',
   wbCardsGroupCount: '{count} sheet(s)',
+
+  // -------------------------------------------------------------------------
+  // RELATIONS VIEW
+  // -------------------------------------------------------------------------
+
+  wbRelBtn: '🕸 Relations',
+  wbRelBtnTitle:
+    'Show the relationship graph and family tree',
+  wbRelTitle: 'Relationships',
+  wbRelClose: 'Close the relationships view (Esc)',
+  wbRelTabGraph: 'Graph',
+  wbRelTabTree: 'Family tree',
+  wbRelAdd: '+ Relationship',
+  wbRelAddTitle: 'Create a relationship between two sheets',
+  wbRelModalAddTitle: 'New relationship',
+  wbRelModalEditTitle: 'Edit relationship',
+  wbRelSourceLabel: 'From sheet',
+  wbRelTypeLabel: 'Relationship type',
+  wbRelTargetLabel: 'Linked sheet',
+  wbRelNoteLabel: 'Note (optional)',
+  wbRelNotePlaceholder:
+    'e.g. met during the war',
+  wbRelSwap: '⇅ Swap',
+  wbRelSwapTitle:
+    'Swap the starting sheet and the linked sheet',
+  wbRelPreview: '“{source}” → {label} → “{target}”',
+  wbRelSelectItem: '— Choose a sheet —',
+  wbRelSelectRequired:
+    'Choose both sheets to link.',
+  wbRelSameItem:
+    'A sheet cannot be linked to itself.',
+  wbRelDuplicate:
+    'This relationship already exists between these two sheets.',
+  wbRelEdit: '✏️ Edit',
+  wbRelDelete: '🗑 Delete',
+  wbRelConfirmDelete:
+    'Delete the relationship between "{source}" and "{target}"?',
+  wbRelEmpty:
+    'No relationships yet. Click "+ Relationship" to link two sheets.',
+  wbRelNoSheets:
+    'You need at least two sheets to create a relationship.',
+  wbRelNoMatch:
+    'No relationship matches the filters.',
+  wbRelFilterTypeLabel: 'Sheets',
+  wbRelFilterKindLabel: 'Relationships',
+  wbRelFilterAll: 'All',
+  wbRelShowIsolated:
+    'Show sheets without relationships',
+  wbRelResetLayout: '↻ Rearrange',
+  wbRelResetLayoutTitle:
+    'Recompute the layout (forgets manually moved positions)',
+  wbRelZoomIn: 'Zoom in',
+  wbRelZoomOut: 'Zoom out',
+  wbRelFit: 'Fit to view',
+  wbRelGraphHint:
+    'Click: open the sheet • Ctrl+click: tab • Right-click a link: edit • Wheel: zoom • Drag the background: pan',
+  wbRelTreeRootLabel: 'Starting person',
+  wbRelTreeEmpty:
+    'Choose a person to display their tree.',
+  wbRelTreeNoFamily:
+    'No family links (parent, spouse, sibling) yet.',
+  wbRelTreeHint:
+    'Click: open the sheet • Double-click: center the tree on this person',
+  wbRelCount: '{count} relationship(s)',
+  wbRelEdgeTitle:
+    'Right-click: edit or delete',
 
   // -------------------------------------------------------------------------
   // STATUS BAR

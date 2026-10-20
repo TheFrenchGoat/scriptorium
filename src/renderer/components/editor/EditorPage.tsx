@@ -17,6 +17,11 @@
 // La vue en cartes des fiches (WbCardsView.tsx) s'affiche par-dessus la zone
 // d'écriture ; elle s'ouvre avec le bouton « ▦ Cartes » de la barre latérale.
 //
+// La vue des relations (WbRelationsView.tsx : graphe des liens et arbre
+// généalogique) s'affiche elle aussi par-dessus la zone d'écriture ; elle
+// s'ouvre avec le bouton « 🕸 Relations » de la barre latérale. Ouvrir l'une
+// de ces deux vues ferme l'autre.
+//
 // L'aperçu d'une fiche au survol d'un nom surligné (WbHoverPreview.tsx)
 // s'affiche par-dessus toute la fenêtre ; il ne modifie pas le texte.
 
@@ -44,6 +49,7 @@ import { ChapterEditor } from './ChapterEditor';
 import { ScreenplayEditor } from './ScreenplayEditor';
 import { WbSheet } from './WbSheet';
 import { WbCardsView } from './WbCardsView';
+import { WbRelationsView } from './WbRelationsView';
 import { WbHoverPreview } from './WbHoverPreview';
 
 import { GrammarPopup } from './GrammarPopup';
@@ -1239,8 +1245,9 @@ export function EditorPage({
         />
 
         {/*
-          position: relative : la vue en cartes (WbCardsView) recouvre
-          uniquement cette zone, pas la barre latérale.
+          position: relative : la vue en cartes (WbCardsView) et la vue des
+          relations (WbRelationsView) recouvrent uniquement cette zone, pas
+          la barre latérale.
         */}
         <main
           className="editor-area"
@@ -1386,6 +1393,11 @@ export function EditorPage({
 
           {/* Vue en cartes des fiches (par-dessus la zone d'écriture) */}
           <WbCardsView
+            controller={controller}
+          />
+
+          {/* Vue des relations : graphe et arbre généalogique */}
+          <WbRelationsView
             controller={controller}
           />
         </main>
