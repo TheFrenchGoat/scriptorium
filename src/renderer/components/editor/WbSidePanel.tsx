@@ -1,12 +1,28 @@
-import { useEffect, useRef, useState, type MouseEvent, type KeyboardEvent } from 'react';
+// src/renderer/components/editor/WbSidePanel.tsx
+// Contenu de la section des fiches World Building, dans la colonne de gauche.
+//
+// - Accueil : liste des fiches, avec recherche (sans accents ni majuscules),
+//   filtre par type, compteur, création, renommage, suppression et
+//   glisser-déposer pour changer l'ordre.
+// - Fiche sélectionnée : affichage compact de la fiche, avec un retour à la
+//   liste et un bouton pour l'ouvrir dans un onglet.
+//
+// Clic sur une fiche : affichage dans la section.
+// Ctrl+clic ou clic molette : ouverture dans un onglet.
+//
+// N'importe quel composant peut demander l'affichage d'une fiche avec
+// `openWbPanel(id)` (nom surligné dans le texte, champ « référence »...).
+// La barre latérale écoute ces demandes avec `useWbPanelListener`.
+
+import { useEffect, useRef, useState, type DragEvent, type KeyboardEvent, type MouseEvent } from 'react';
 import { useI18n } from '../../i18n';
-import type { BuiltinWbType, WbCategoryDef, WbItem } from '../../../shared/types';
+import type { BuiltinWbType, WbCategoryDef, WbItem, WbType } from '../../../shared/types';
 import type { EditorController } from './useEditorController';
 import { WbSheet } from './WbSheet';
 import '../../styles/wb-compact.css';
 
 /**
- * Événement window qui pilote le panneau latéral des fiches.
+ * Événement window qui pilote l'affichage des fiches.
  * N'importe quel composant (barre d'outils, chapitres, scénario)
  * peut l'envoyer sans dépendre de EditorPage.
  */
@@ -47,55 +63,35 @@ export function toggleWbPanel(): void {
 }
 
 /**
+ * Écoute les demandes d'affichage de fiche (openWbPanel, closeWbPanel,
+ * toggleWbPanel). La fonction reçue peut changer à chaque affichage :
+ * c'est toujours la dernière version qui est appelée.
+ */
+export function useWbPanelListener(handler: (detail: WbPanelEventDetail) => void): void {
+  const handlerRef = useRef(handler);
+
+  useEffect(() => {
+    handlerRef.current = handler;
+  });
+
+  useEffect(() => {
+    const listener = (event: Event): void => {
+      const detail = (event as CustomEvent<WbPanelEventDetail>).detail;
+      if (detail) {
+        handlerRef.current(detail);
+      }
+    };
+    window.addEventListener(WB_PANEL_EVENT, listener);
+    return () => {
+      window.removeEventListener(WB_PANEL_EVENT, listener);
+    };
+  }, []);
+}
+
+/**
  * Valeur du filtre qui affiche tous les types.
  */
 const FILTER_ALL = '__all__';
-
-/**
- * Largeur du panneau : valeur par défaut, limites, et clé d'enregistrement.
- */
-const PANEL_WIDTH_STORAGE_KEY = 'scriptorium.wbPanelWidth';
-const PANEL_WIDTH_DEFAULT = 340;
-const PANEL_WIDTH_MIN = 240;
-const PANEL_WIDTH_MAX_RATIO = 0.6;
-
-/**
- * Garde la largeur entre 240 px et 60 % de la fenêtre.
- */
-function clampPanelWidth(width: number): number {
-  const max = Math.max(
-    PANEL_WIDTH_MIN,
-    Math.floor(window.innerWidth * PANEL_WIDTH_MAX_RATIO),
-  );
-  return Math.min(max, Math.max(PANEL_WIDTH_MIN, Math.round(width)));
-}
-
-/**
- * Lit la largeur enregistrée, ou la largeur par défaut.
- */
-function readStoredPanelWidth(): number {
-  try {
-    const raw = window.localStorage.getItem(PANEL_WIDTH_STORAGE_KEY);
-    const value = raw ? Number(raw) : NaN;
-    if (Number.isFinite(value)) {
-      return clampPanelWidth(value);
-    }
-  } catch {
-    // Stockage indisponible : largeur par défaut.
-  }
-  return clampPanelWidth(PANEL_WIDTH_DEFAULT);
-}
-
-/**
- * Enregistre la largeur pour les prochaines ouvertures.
- */
-function storePanelWidth(width: number): void {
-  try {
-    window.localStorage.setItem(PANEL_WIDTH_STORAGE_KEY, String(width));
-  } catch {
-    // Stockage indisponible : la largeur ne sera simplement pas retenue.
-  }
-}
 
 /**
  * Prépare un texte pour la recherche : sans accents et en minuscules.
@@ -110,101 +106,49 @@ function normalizeForSearch(value: string): string {
 
 interface WbSidePanelProps {
   controller: EditorController;
+  /** Fiche affichée, ou null pour la liste. */
   itemId: string | null;
-  onClose: () => void;
   onSelectItem: (itemId: string | null) => void;
+  /**
+   * Création d'une fiche : type choisi dans le filtre, ou null pour
+   * laisser l'auteur choisir le type.
+   */
+  onCreateItem?: (wbType: WbType | null) => void;
+  /** Renommage d'une fiche (fenêtre de renommage de la barre latérale). */
+  onRenameItem?: (itemId: string) => void;
+  /**
+   * Ancien bouton ✕ du panneau de droite. N'est plus utilisé : conservé
+   * seulement le temps de la transition.
+   */
+  onClose?: () => void;
 }
 
 export function WbSidePanel({
   controller,
   itemId,
-  onClose,
   onSelectItem,
+  onCreateItem,
+  onRenameItem,
 }: WbSidePanelProps) {
   const { t } = useI18n();
 
   const [query, setQuery] = useState('');
   const [filterType, setFilterType] = useState<string>(FILTER_ALL);
 
-  // -------------------------------------------------------------------------
-  // Largeur réglable du panneau
-  // -------------------------------------------------------------------------
-
-  const panelRef = useRef<HTMLDivElement | null>(null);
-  const [panelWidth, setPanelWidth] = useState<number>(readStoredPanelWidth);
-  const [resizing, setResizing] = useState(false);
-  const widthRef = useRef(panelWidth);
-
-  useEffect(() => {
-    widthRef.current = panelWidth;
-  }, [panelWidth]);
-
-  // Pendant le glissement : suivre la souris, puis enregistrer au relâchement.
-  useEffect(() => {
-    if (!resizing) return;
-
-    const finish = (): void => {
-      setResizing(false);
-    };
-
-    const onMove = (event: globalThis.MouseEvent): void => {
-      if ((event.buttons & 1) === 0) {
-        finish();
-        return;
-      }
-      const panel = panelRef.current;
-      if (!panel) return;
-      const right = panel.getBoundingClientRect().right;
-      const next = clampPanelWidth(right - event.clientX);
-      widthRef.current = next;
-      setPanelWidth(next);
-    };
-
-    document.body.classList.add('resizing-panel');
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', finish);
-    window.addEventListener('blur', finish);
-
-    return () => {
-      document.body.classList.remove('resizing-panel');
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', finish);
-      window.removeEventListener('blur', finish);
-      storePanelWidth(widthRef.current);
-    };
-  }, [resizing]);
-
-  // Fenêtre redimensionnée : le panneau ne dépasse jamais 60 %.
-  useEffect(() => {
-    const onWindowResize = (): void => {
-      setPanelWidth((width) => clampPanelWidth(width));
-    };
-    window.addEventListener('resize', onWindowResize);
-    return () => {
-      window.removeEventListener('resize', onWindowResize);
-    };
-  }, []);
-
-  function handleResizeMouseDown(event: MouseEvent<HTMLDivElement>): void {
-    if (event.button !== 0) return;
-    event.preventDefault();
-    setResizing(true);
-  }
-
-  function handleResizeDoubleClick(): void {
-    const next = clampPanelWidth(PANEL_WIDTH_DEFAULT);
-    widthRef.current = next;
-    setPanelWidth(next);
-    storePanelWidth(next);
-  }
+  // Glisser-déposer : fiche déplacée et fiche survolée.
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
 
   // -------------------------------------------------------------------------
   // Données
   // -------------------------------------------------------------------------
 
   const data = controller.data();
-  const world = data.world;
-  const currentId = itemId && world?.[itemId] ? itemId : null;
+  const world = data.world ?? {};
+  const currentId = itemId && world[itemId] ? itemId : null;
+
+  const activeTab = controller.activeTab();
+  const activeType = controller.activeType();
 
   const categories: Record<string, WbCategoryDef> = data.wbCategories ?? {};
 
@@ -251,11 +195,14 @@ export function WbSidePanel({
   // Liste des fiches (aucune fiche sélectionnée)
   // -------------------------------------------------------------------------
 
-  const allItems: WbItem[] = Object.values(world ?? {});
+  /** Identifiants des fiches, dans l'ordre du projet. */
+  const orderedIds: string[] = Object.keys(world).filter((id) => Boolean(world[id]));
+  const allCount = orderedIds.length;
 
   const typeSlugs: string[] = Object.keys(categories);
-  for (const item of allItems) {
-    if (item.wbType && !typeSlugs.includes(item.wbType)) {
+  for (const id of orderedIds) {
+    const item = world[id];
+    if (item && item.wbType && !typeSlugs.includes(item.wbType)) {
       typeSlugs.push(item.wbType);
     }
   }
@@ -266,6 +213,9 @@ export function WbSidePanel({
       : FILTER_ALL;
 
   const needle = normalizeForSearch(query.trim());
+
+  /** L'ordre ne peut être changé que sur la liste complète. */
+  const canReorder = !needle && activeFilter === FILTER_ALL;
 
   /**
    * Alias qui correspond à la recherche, si le nom lui-même ne correspond pas.
@@ -290,17 +240,11 @@ export function WbSidePanel({
     return aliases.some((alias) => normalizeForSearch(alias).includes(needle));
   }
 
-  const visibleItems = allItems
-    .filter(
-      (item) =>
-        (activeFilter === FILTER_ALL || item.wbType === activeFilter) &&
-        matchesSearch(item),
-    )
-    .sort((a, b) =>
-      a.name.localeCompare(b.name, undefined, {
-        sensitivity: 'base',
-      }),
-    );
+  const visibleIds = orderedIds.filter((id) => {
+    const item = world[id];
+    if (!item) return false;
+    return (activeFilter === FILTER_ALL || item.wbType === activeFilter) && matchesSearch(item);
+  });
 
   function handleItemClick(
     event: MouseEvent<HTMLButtonElement>,
@@ -329,6 +273,23 @@ export function WbSidePanel({
     );
   }
 
+  function handleDelete(id: string): void {
+    void controller.deleteItem(
+      id,
+      'world',
+    );
+  }
+
+  function handleItemKeyDown(
+    event: KeyboardEvent<HTMLButtonElement>,
+    id: string,
+  ): void {
+    if (event.key === 'Delete') {
+      event.preventDefault();
+      handleDelete(id);
+    }
+  }
+
   function handleSearchKeyDown(event: KeyboardEvent<HTMLInputElement>): void {
     if (event.key === 'Escape' && query) {
       event.preventDefault();
@@ -337,18 +298,91 @@ export function WbSidePanel({
     }
   }
 
+  function handleCreate(): void {
+    if (!onCreateItem) return;
+    onCreateItem(activeFilter === FILTER_ALL ? null : (activeFilter as WbType));
+  }
+
+  // -------------------------------------------------------------------------
+  // Glisser-déposer
+  // -------------------------------------------------------------------------
+
+  function resetDrag(): void {
+    setDraggedId(null);
+    setDragOverId(null);
+  }
+
+  function handleDragStart(event: DragEvent<HTMLLIElement>, id: string): void {
+    if (!canReorder) {
+      event.preventDefault();
+      return;
+    }
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', id);
+    setDraggedId(id);
+  }
+
+  function handleDragOver(event: DragEvent<HTMLLIElement>, id: string): void {
+    if (!canReorder || !draggedId) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    if (dragOverId !== id) {
+      setDragOverId(id);
+    }
+  }
+
+  function handleDrop(event: DragEvent<HTMLLIElement>, targetId: string): void {
+    event.preventDefault();
+    const fromId = draggedId;
+    resetDrag();
+    if (!canReorder || !fromId || fromId === targetId) return;
+
+    const order = Object.keys(world);
+    const fromIndex = order.indexOf(fromId);
+    const toIndex = order.indexOf(targetId);
+    if (fromIndex < 0 || toIndex < 0) return;
+
+    order.splice(fromIndex, 1);
+    order.splice(toIndex, 0, fromId);
+    controller.reorderSidebar('world', order);
+  }
+
+  // -------------------------------------------------------------------------
+  // Affichage de la liste
+  // -------------------------------------------------------------------------
+
+  function renderCreateButton() {
+    if (!onCreateItem) return null;
+    return (
+      <button
+        type="button"
+        className="wb-side-panel-create-btn"
+        title={t('addWBTitle')}
+        onClick={handleCreate}
+      >
+        + {t('addWBTitle')}
+      </button>
+    );
+  }
+
   function renderList() {
-    if (allItems.length === 0) {
+    if (allCount === 0) {
       return (
-        <div className="wb-side-panel-empty">
-          {t('wbPanelNoSheets')}
-        </div>
+        <>
+          <div className="wb-side-panel-list-tools">
+            {renderCreateButton()}
+          </div>
+          <div className="wb-side-panel-empty">
+            {t('wbPanelNoSheets')}
+          </div>
+        </>
       );
     }
 
     return (
       <>
         <div className="wb-side-panel-list-tools">
+          {renderCreateButton()}
           <input
             type="search"
             className="wb-side-panel-search"
@@ -378,28 +412,49 @@ export function WbSidePanel({
               ))}
             </select>
             <span className="wb-side-panel-count">
-              {visibleItems.length} / {allItems.length}
+              {visibleIds.length} / {allCount}
             </span>
           </div>
         </div>
 
-        {visibleItems.length === 0 ? (
+        {visibleIds.length === 0 ? (
           <div className="wb-side-panel-empty">
             {t('wbPanelNoResults')}
           </div>
         ) : (
           <ul className="wb-side-panel-list">
-            {visibleItems.map((item) => {
+            {visibleIds.map((id) => {
+              const item = world[id];
+              if (!item) return null;
               const alias = matchedAlias(item);
+              const isCurrent = activeTab === id && activeType === 'world';
+              const rowClass =
+                'wb-side-panel-row' +
+                (isCurrent ? ' current' : '') +
+                (dragOverId === id && draggedId !== id ? ' drag-over' : '') +
+                (draggedId === id ? ' dragging' : '');
               return (
-                <li key={item.id}>
+                <li
+                  key={id}
+                  className={rowClass}
+                  draggable={canReorder}
+                  style={{ display: 'flex', alignItems: 'stretch', gap: 4 }}
+                  onDragStart={(event) => handleDragStart(event, id)}
+                  onDragEnd={resetDrag}
+                  onDragOver={(event) => handleDragOver(event, id)}
+                  onDragLeave={() => {
+                    if (dragOverId === id) setDragOverId(null);
+                  }}
+                  onDrop={(event) => handleDrop(event, id)}
+                >
                   <button
                     type="button"
                     className="wb-side-panel-item"
-                    style={{ borderLeftColor: itemColor(item) }}
+                    style={{ borderLeftColor: itemColor(item), flex: '1 1 auto', minWidth: 0 }}
                     title={item.name}
-                    onClick={(event) => handleItemClick(event, item.id)}
-                    onAuxClick={(event) => handleItemAuxClick(event, item.id)}
+                    onClick={(event) => handleItemClick(event, id)}
+                    onAuxClick={(event) => handleItemAuxClick(event, id)}
+                    onKeyDown={(event) => handleItemKeyDown(event, id)}
                     onMouseDown={(event) => {
                       if (event.button === 1) event.preventDefault();
                     }}
@@ -416,6 +471,37 @@ export function WbSidePanel({
                       </span>
                     </span>
                   </button>
+                  <span
+                    className="wb-side-panel-row-actions"
+                    style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}
+                  >
+                    {onRenameItem && (
+                      <button
+                        type="button"
+                        className="wb-side-panel-row-btn"
+                        title={t('renameItemTitle')}
+                        aria-label={t('renameItemTitle')}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onRenameItem(id);
+                        }}
+                      >
+                        ✏️
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="wb-side-panel-row-btn"
+                      title={t('deleteItemTitle')}
+                      aria-label={t('deleteItemTitle')}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        handleDelete(id);
+                      }}
+                    >
+                      🗑
+                    </button>
+                  </span>
                 </li>
               );
             })}
@@ -429,41 +515,25 @@ export function WbSidePanel({
     );
   }
 
+  const bodyStyle = {
+    flex: '1 1 auto',
+    minHeight: 0,
+    overflowY: 'auto' as const,
+  };
+
   return (
     <div
-      ref={panelRef}
-      className="wb-side-panel"
-      role="complementary"
+      className="wb-section"
+      role="region"
       aria-label={t('wbPanelTitle')}
       style={{
-        width: panelWidth,
-        flex: `0 0 ${panelWidth}px`,
+        display: 'flex',
+        flexDirection: 'column',
+        flex: '1 1 auto',
+        minHeight: 0,
+        overflow: 'hidden',
       }}
     >
-      <div
-        className={`wb-side-panel-resize-handle${resizing ? ' dragging' : ''}`}
-        role="separator"
-        aria-orientation="vertical"
-        title={t('wbPanelResizeTitle')}
-        onMouseDown={handleResizeMouseDown}
-        onDoubleClick={handleResizeDoubleClick}
-      />
-
-      <div className="wb-side-panel-header">
-        <span className="wb-side-panel-title">
-          {t('wbPanelTitle')}
-        </span>
-        <button
-          type="button"
-          className="wb-side-panel-close"
-          title={t('wbPanelClose')}
-          aria-label={t('wbPanelClose')}
-          onClick={onClose}
-        >
-          ✕
-        </button>
-      </div>
-
       {currentId ? (
         <>
           <div className="wb-side-panel-actions">
@@ -482,7 +552,10 @@ export function WbSidePanel({
               {t('wbPanelOpenInTab')}
             </button>
           </div>
-          <div className="wb-side-panel-body">
+          <div
+            className="wb-side-panel-body"
+            style={bodyStyle}
+          >
             <WbSheet
               key={currentId}
               controller={controller}
@@ -492,7 +565,10 @@ export function WbSidePanel({
           </div>
         </>
       ) : (
-        <div className="wb-side-panel-body">
+        <div
+          className="wb-side-panel-body"
+          style={bodyStyle}
+        >
           {renderList()}
         </div>
       )}

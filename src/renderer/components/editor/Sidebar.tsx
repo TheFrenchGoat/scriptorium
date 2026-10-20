@@ -9,6 +9,9 @@
 // les opérations. Leur numéro visible est recalculé depuis leur ordre actuel.
 //
 // La seconde section contient les fiches World Building dans les deux modes.
+// Elle affiche le panneau des fiches (recherche, filtre, compteur, création,
+// liste réordonnable) ; un clic sur une fiche l’affiche en version compacte
+// directement dans la section.
 // Les fiches sont identifiées par leur identifiant stable (clé de
 // `data.world`) ; leur nom affiché provient de `item.name`.
 
@@ -30,6 +33,11 @@ import {
 import type {
   EditorController
 } from './useEditorController';
+
+import {
+  WbSidePanel,
+  useWbPanelListener
+} from './WbSidePanel';
 
 import type {
   ItemType,
@@ -119,12 +127,6 @@ export function Sidebar({
   const chapterNames =
     Object.keys(data.chapters);
 
-  /**
-   * Identifiants des fiches, dans l’ordre d’affichage.
-   */
-  const wbIds =
-    Object.keys(data.world);
-
   const registry =
     controller.registry;
 
@@ -195,11 +197,12 @@ export function Sidebar({
   );
 
   /**
-   * Identifiant de la fiche en cours de déplacement.
+   * Identifiant de la fiche affichée en version compacte dans la section
+   * World Building. `null` : la liste des fiches est affichée.
    */
   const [
-    draggedWb,
-    setDraggedWb
+    selectedWbId,
+    setSelectedWbId
   ] = useState<string | null>(
     null
   );
@@ -273,10 +276,51 @@ export function Sidebar({
           screenplayLanguage
         )
       );
-    }, [
-      scenes,
-      screenplayLanguage
-    ]);
+    }, [scenes, screenplayLanguage]);
+
+  // -----------------------------------------------------------------------
+  // PANNEAU DES FICHES : ÉVÉNEMENTS EXTERNES
+  // -----------------------------------------------------------------------
+
+  /*
+   * openWbPanel(id), closeWbPanel() et toggleWbPanel() peuvent être appelés
+   * depuis n’importe quel endroit de l’application (clic sur un nom
+   * surligné, champ référence d’une fiche, raccourci…).
+   */
+  useWbPanelListener((detail) => {
+    if (detail.action === 'open') {
+      setWorldCollapsed(false);
+
+      setSelectedWbId(
+        detail.itemId ?? null
+      );
+
+      return;
+    }
+
+    if (detail.action === 'close') {
+      setSelectedWbId(null);
+      return;
+    }
+
+    if (detail.action === 'toggle') {
+      setWorldCollapsed(
+        (collapsed) => !collapsed
+      );
+    }
+  });
+
+  /*
+   * Si la fiche affichée est supprimée, on revient à la liste.
+   */
+  useEffect(() => {
+    if (
+      selectedWbId !== null &&
+      !data.world[selectedWbId]
+    ) {
+      setSelectedWbId(null);
+    }
+  }, [selectedWbId, data.world]);
 
   // -----------------------------------------------------------------------
   // MENU WORLD BUILDING
@@ -353,10 +397,7 @@ export function Sidebar({
           ? '0 0 auto'
           : '';
     }
-  }, [
-    primarySectionCollapsed,
-    worldCollapsed
-  ]);
+  }, [primarySectionCollapsed, worldCollapsed]);
 
   useEffect(() => {
     if (worldCollapsed) {
@@ -545,8 +586,39 @@ export function Sidebar({
 
       if (createdId) {
         setNewWbState(null);
+
+        /*
+         * La nouvelle fiche s’affiche directement dans la section.
+         */
+        setWorldCollapsed(false);
+        setSelectedWbId(createdId);
       }
     };
+
+  /**
+   * Bouton « + Ajouter élément » du panneau des fiches.
+   *
+   * Si un type est filtré, la fenêtre de création s’ouvre directement pour
+   * ce type ; sinon, le menu des types s’ouvre.
+   */
+  const handlePanelCreateItem = (
+    type: WbType | null
+  ): void => {
+    if (type) {
+      openNewWbModal(type);
+      return;
+    }
+
+    setWorldCollapsed(false);
+
+    /*
+     * Le délai évite que le clic en cours ne referme aussitôt le menu
+     * (écouteur de clic extérieur).
+     */
+    window.setTimeout(() => {
+      setWbMenuOpen(true);
+    }, 0);
+  };
 
   useEffect(() => {
     if (
@@ -616,6 +688,26 @@ export function Sidebar({
           }
         });
     };
+
+  /**
+   * Bouton ✏️ d’une ligne du panneau des fiches.
+   */
+  const handlePanelRenameItem = (
+    itemId: string
+  ): void => {
+    const item =
+      data.world[itemId];
+
+    if (!item) {
+      return;
+    }
+
+    openRename({
+      oldName: itemId,
+      type: 'world',
+      value: item.name
+    });
+  };
 
   // -----------------------------------------------------------------------
   // LIBELLÉS WORLD BUILDING
@@ -699,58 +791,6 @@ export function Sidebar({
     }
 
     setDraggedPrimaryItem(null);
-  };
-
-  // -----------------------------------------------------------------------
-  // RÉORDONNANCEMENT WORLD BUILDING
-  // -----------------------------------------------------------------------
-
-  const handleWbDrop = (
-    targetId: string
-  ): void => {
-    if (
-      !draggedWb ||
-      draggedWb === targetId
-    ) {
-      setDraggedWb(null);
-      return;
-    }
-
-    const order =
-      wbIds.slice();
-
-    const from =
-      order.indexOf(
-        draggedWb
-      );
-
-    const to =
-      order.indexOf(
-        targetId
-      );
-
-    if (
-      from < 0 ||
-      to < 0
-    ) {
-      setDraggedWb(null);
-      return;
-    }
-
-    order.splice(from, 1);
-
-    order.splice(
-      to,
-      0,
-      draggedWb
-    );
-
-    controller.reorderSidebar(
-      'world',
-      order
-    );
-
-    setDraggedWb(null);
   };
 
   const sectionsResizeDisabled =
@@ -1051,7 +1091,7 @@ export function Sidebar({
               aria-expanded={
                 !worldCollapsed
               }
-              aria-controls="wbList"
+              aria-controls="wbSectionBody"
               onClick={() => {
                 setWorldCollapsed(
                   (collapsed) =>
@@ -1268,76 +1308,30 @@ export function Sidebar({
           </div>
 
           {!worldCollapsed && (
-            <ul
-              id="wbList"
-              className="item-list"
+            <div
+              id="wbSectionBody"
+              className="wb-section-body"
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                flex: '1 1 auto',
+                minHeight: 0
+              }}
             >
-              {wbIds.map((id) => {
-                const item =
-                  data.world[id];
-
-                if (!item) {
-                  return null;
+              <WbSidePanel
+                controller={controller}
+                itemId={selectedWbId}
+                onSelectItem={
+                  setSelectedWbId
                 }
-
-                const icon =
-                  item.icon ||
-                  registry.categoryFor(
-                    item.wbType
-                  ).icon;
-
-                return (
-                  <SidebarItem
-                    key={id}
-                    name={item.name}
-                    type="world"
-                    icon={icon}
-                    current={
-                      activeTab ===
-                        id &&
-                      activeType ===
-                        'world'
-                    }
-                    onOpen={() => {
-                      controller.openItem(
-                        id,
-                        'world'
-                      );
-                    }}
-                    onRename={() => {
-                      openRename({
-                        oldName: id,
-                        type: 'world',
-                        value:
-                          item.name
-                      });
-                    }}
-                    onDelete={() => {
-                      void controller.deleteItem(
-                        id,
-                        'world'
-                      );
-                    }}
-                    draggable
-                    onDragStart={() => {
-                      setDraggedWb(
-                        id
-                      );
-                    }}
-                    onDragEnd={() => {
-                      setDraggedWb(
-                        null
-                      );
-                    }}
-                    onDropOn={() => {
-                      handleWbDrop(
-                        id
-                      );
-                    }}
-                  />
-                );
-              })}
-            </ul>
+                onCreateItem={
+                  handlePanelCreateItem
+                }
+                onRenameItem={
+                  handlePanelRenameItem
+                }
+              />
+            </div>
           )}
         </div>
       </aside>

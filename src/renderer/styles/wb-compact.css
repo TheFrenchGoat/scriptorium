@@ -1,56 +1,56 @@
 /* =========================================================
-   FICHE COMPACTE DANS LE PANNEAU LATÉRAL (lot 3d)
+   FICHE COMPACTE DANS LA SECTION WORLD BUILDING
    Toutes les règles commencent par .wb-container-compact :
-   elles ne touchent que la fiche affichée dans le panneau,
-   jamais celle ouverte dans un onglet.
+   elles ne touchent que la fiche affichée dans la section
+   de gauche, jamais celle ouverte dans un onglet.
    ========================================================= */
 
 .wb-container.wb-container-compact {
   max-width: none;
   margin: 0;
-  padding: 12px 12px 40px;
+  padding: 10px 8px 24px;
 }
 
 /* En-tête : icône, nom, couleur, mode lecture */
 .wb-container-compact .wb-header {
   flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 14px;
+  gap: 6px;
+  margin-bottom: 12px;
 }
 
 .wb-container-compact .wb-icon-btn {
-  width: 40px;
-  height: 40px;
-  font-size: 20px;
+  width: 36px;
+  height: 36px;
+  font-size: 18px;
   flex-shrink: 0;
 }
 
 .wb-container-compact .wb-header .wb-title-input {
-  flex: 1 1 140px;
+  flex: 1 1 100px;
   min-width: 0;
-  font-size: 17px;
+  font-size: 16px;
   text-align: left;
 }
 
 .wb-container-compact .wb-color-label input {
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
 }
 
 .wb-container-compact .wb-readmode-btn {
-  padding: 5px 9px;
+  padding: 4px 8px;
   font-size: 12px;
 }
 
-/* Sélecteur d'icône : ne déborde pas du panneau */
+/* Sélecteur d'icône : ne déborde pas de la colonne */
 .wb-container-compact .wb-icon-picker {
-  width: 220px;
+  width: 200px;
   max-width: calc(100vw - 32px);
 }
 
 /* Champs */
 .wb-container-compact .wb-form-group {
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .wb-container-compact .wb-label {
@@ -59,12 +59,12 @@
 
 .wb-container-compact .wb-input,
 .wb-container-compact .wb-textarea {
-  padding: 7px 9px;
-  font-size: 13.5px;
+  padding: 6px 8px;
+  font-size: 13px;
 }
 
 .wb-container-compact .wb-textarea {
-  min-height: 80px;
+  min-height: 70px;
 }
 
 /* Mentions : boutons un peu plus petits */
@@ -73,22 +73,36 @@
 }
 
 /* =========================================================
-   LISTE DES FICHES DANS LE PANNEAU (lot 3e)
-   Recherche, filtre par type, liste cliquable.
+   SECTION WORLD BUILDING (barre latérale de gauche)
+   Conteneur du panneau : liste ou fiche compacte.
+   ========================================================= */
+
+.wb-section {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* =========================================================
+   LISTE DES FICHES
+   Recherche, filtre par type, compteur, liste cliquable.
    ========================================================= */
 
 .wb-side-panel-list-tools {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 10px 12px 8px;
+  gap: 6px;
+  padding: 8px 8px 6px;
 }
 
 .wb-side-panel-search,
 .wb-side-panel-filter {
   width: 100%;
   box-sizing: border-box;
-  padding: 7px 9px;
+  padding: 6px 8px;
   font-size: 13px;
   font-family: inherit;
   color: inherit;
@@ -117,7 +131,7 @@
 .wb-side-panel-filter-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .wb-side-panel-filter-row .wb-side-panel-filter {
@@ -132,11 +146,38 @@
   white-space: nowrap;
 }
 
+/* Bouton « + Ajouter élément » */
+.wb-side-panel-create-btn {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  font-family: inherit;
+  font-size: 13px;
+  color: inherit;
+  text-align: center;
+  background: transparent;
+  border: 1px dashed rgba(127, 127, 127, 0.5);
+  border-radius: 6px;
+  cursor: pointer;
+  opacity: 0.85;
+}
+
+.wb-side-panel-create-btn:hover {
+  background: rgba(127, 127, 127, 0.12);
+  border-color: rgba(127, 127, 127, 0.8);
+  opacity: 1;
+}
+
+.wb-side-panel-create-btn:focus-visible {
+  outline: 2px solid rgba(127, 127, 127, 0.7);
+  outline-offset: 1px;
+}
+
 /* Liste */
 .wb-side-panel-list {
   list-style: none;
   margin: 0;
-  padding: 2px 8px 8px;
+  padding: 2px 4px 8px;
 }
 
 .wb-side-panel-list li {
@@ -144,15 +185,94 @@
   padding: 0;
 }
 
+/* Ligne : bouton de la fiche + actions ✏️ 🗑 */
+.wb-side-panel-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border-radius: 5px;
+}
+
+.wb-side-panel-row:hover {
+  background: rgba(127, 127, 127, 0.1);
+}
+
+.wb-side-panel-row .wb-side-panel-item {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Fiche ouverte dans l'onglet actif */
+.wb-side-panel-row.current {
+  background: rgba(127, 127, 127, 0.18);
+}
+
+.wb-side-panel-row.current .wb-side-panel-item-name {
+  font-weight: 700;
+}
+
+/* Glisser-déposer */
+.wb-side-panel-row.dragging {
+  opacity: 0.45;
+}
+
+.wb-side-panel-row.drag-over {
+  box-shadow: inset 0 2px 0 rgba(127, 127, 127, 0.9);
+}
+
+.wb-side-panel-row[draggable="true"] {
+  cursor: grab;
+}
+
+/* Actions de ligne : visibles au survol ou au clavier */
+.wb-side-panel-row-actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 1px;
+  padding-right: 3px;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.wb-side-panel-row:hover .wb-side-panel-row-actions,
+.wb-side-panel-row:focus-within .wb-side-panel-row-actions {
+  opacity: 1;
+}
+
+.wb-side-panel-row-btn {
+  padding: 2px 4px;
+  font-size: 12px;
+  line-height: 1;
+  color: inherit;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 0.75;
+}
+
+.wb-side-panel-row-btn:hover {
+  background: rgba(127, 127, 127, 0.2);
+  opacity: 1;
+}
+
+.wb-side-panel-row-btn:focus-visible {
+  outline: 2px solid rgba(127, 127, 127, 0.7);
+  outline-offset: -1px;
+  opacity: 1;
+}
+
+/* Bouton principal d'une fiche */
 .wb-side-panel-item {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 8px;
   width: 100%;
   box-sizing: border-box;
-  padding: 6px 8px;
+  padding: 5px 6px;
   font-family: inherit;
-  font-size: 13.5px;
+  font-size: 13px;
   color: inherit;
   text-align: left;
   background: transparent;
@@ -163,7 +283,7 @@
 }
 
 .wb-side-panel-item:hover {
-  background: rgba(127, 127, 127, 0.14);
+  background: rgba(127, 127, 127, 0.08);
 }
 
 .wb-side-panel-item:focus-visible {
@@ -173,8 +293,8 @@
 
 .wb-side-panel-item-icon {
   flex-shrink: 0;
-  width: 22px;
-  font-size: 17px;
+  width: 20px;
+  font-size: 16px;
   text-align: center;
   line-height: 1;
 }
@@ -196,51 +316,27 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 11.5px;
+  font-size: 11px;
   opacity: 0.6;
 }
 
 /* Petite aide sous la liste */
 .wb-side-panel-hint {
-  margin: 6px 12px 14px;
-  padding-top: 10px;
-  font-size: 12px;
+  margin: 6px 8px 12px;
+  padding-top: 8px;
+  font-size: 11.5px;
   line-height: 1.45;
   opacity: 0.55;
   border-top: 1px solid rgba(127, 127, 127, 0.25);
 }
 
 /* =========================================================
-   LARGEUR RÉGLABLE DU PANNEAU (lot 3f)
-   Bord gauche à glisser ; double-clic = largeur par défaut.
+   REDIMENSIONNEMENT (barre latérale, sections)
+   La classe est posée sur <body> par EditorPage pendant
+   le glissement d'une poignée.
    ========================================================= */
 
-.wb-side-panel {
-  position: relative;
-}
-
-.wb-side-panel-resize-handle {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  width: 6px;
-  z-index: 5;
-  cursor: col-resize;
-  background: transparent;
-  transition: background-color 0.15s ease;
-}
-
-.wb-side-panel-resize-handle:hover,
-.wb-side-panel-resize-handle.dragging {
-  background: rgba(127, 127, 127, 0.35);
-}
-
-.wb-side-panel-resize-handle.dragging {
-  background: rgba(127, 127, 127, 0.55);
-}
-
-/* Pendant le glissement : curseur ↔ partout, pas de sélection de texte */
+/* Pendant le glissement : pas de sélection de texte */
 body.resizing-panel,
 body.resizing-panel * {
   cursor: col-resize !important;
