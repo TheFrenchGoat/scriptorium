@@ -409,15 +409,18 @@
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   overflow-wrap: anywhere;
 }
 
 .size-small .wb-card-field-value {
   -webkit-line-clamp: 1;
+  line-clamp: 1;
 }
 
 .size-large .wb-card-field-value {
   -webkit-line-clamp: 4;
+  line-clamp: 4;
 }
 
 /* Pied : champs remplis */

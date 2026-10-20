@@ -13,6 +13,9 @@
 //
 // Le panneau des fiches est intégré à la section World Building de la barre
 // latérale (voir Sidebar.tsx et WbSidePanel.tsx).
+//
+// La vue en cartes des fiches (WbCardsView.tsx) s'affiche par-dessus la zone
+// d'écriture ; elle s'ouvre avec le bouton « ▦ Cartes » de la barre latérale.
 
 import React, {
   useCallback,
@@ -37,6 +40,7 @@ import { StatusBar } from './StatusBar';
 import { ChapterEditor } from './ChapterEditor';
 import { ScreenplayEditor } from './ScreenplayEditor';
 import { WbSheet } from './WbSheet';
+import { WbCardsView } from './WbCardsView';
 
 import { GrammarPopup } from './GrammarPopup';
 
@@ -1230,7 +1234,16 @@ export function EditorPage({
           id="sidebarResizeHandle"
         />
 
-        <main className="editor-area">
+        {/*
+          position: relative : la vue en cartes (WbCardsView) recouvre
+          uniquement cette zone, pas la barre latérale.
+        */}
+        <main
+          className="editor-area"
+          style={{
+            position: 'relative'
+          }}
+        >
           <TabsBar
             controller={controller}
           />
@@ -1365,6 +1378,11 @@ export function EditorPage({
                 'grammarSetup'
               );
             }}
+          />
+
+          {/* Vue en cartes des fiches (par-dessus la zone d'écriture) */}
+          <WbCardsView
+            controller={controller}
           />
         </main>
       </div>

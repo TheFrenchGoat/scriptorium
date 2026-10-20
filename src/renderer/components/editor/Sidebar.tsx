@@ -14,6 +14,9 @@
 // directement dans la section.
 // Les fiches sont identifiées par leur identifiant stable (clé de
 // `data.world`) ; leur nom affiché provient de `item.name`.
+//
+// L’en-tête World Building contient aussi le bouton « ▦ Cartes », qui ouvre
+// ou ferme la vue en cartes des fiches (WbCardsView).
 
 import React, {
   useEffect,
@@ -38,6 +41,8 @@ import {
   WbSidePanel,
   useWbPanelListener
 } from './WbSidePanel';
+
+import { toggleWbCards } from './WbCardsView';
 
 import type {
   ItemType,
@@ -1111,6 +1116,36 @@ export function Sidebar({
               <span className="sidebar-section-title">
                 {worldHeader}
               </span>
+            </button>
+
+            {/* Vue en cartes des fiches */}
+            <button
+              id="btnWbCards"
+              type="button"
+              className="wb-cards-open-btn"
+              title={t('wbCardsBtnTitle')}
+              aria-label={t('wbCardsBtnTitle')}
+              onClick={(event) => {
+                event.stopPropagation();
+                setWbMenuOpen(false);
+                toggleWbCards();
+              }}
+              style={{
+                flex: '0 0 auto',
+                marginRight: 4,
+                padding: '2px 8px',
+                border: '1px solid var(--border)',
+                borderRadius: 'var(--radius)',
+                background: 'var(--bg-input)',
+                color: 'var(--text-main)',
+                font: 'inherit',
+                fontSize: '0.85em',
+                lineHeight: 1.4,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              {t('wbCardsBtn')}
             </button>
 
             <div
