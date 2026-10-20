@@ -15,10 +15,13 @@
 // Les fiches sont identifiées par leur identifiant stable (clé de
 // `data.world`) ; leur nom affiché provient de `item.name`.
 //
-// L’en-tête World Building contient aussi le bouton « ▦ Cartes », qui ouvre
-// ou ferme la vue en cartes des fiches (WbCardsView), et le bouton
-// « 🕸 Relations », qui ouvre ou ferme la vue des relations (graphe et arbre
-// généalogique, WbRelationsView). Ouvrir l’une de ces vues ferme l’autre.
+// L’en-tête World Building contient aussi le bouton « 🧭 Atelier », qui
+// ouvre ou ferme l’atelier (WbWorkspace) : vue en cartes, vue des relations
+// et, plus tard, frise chronologique, réunies en onglets. Le bouton reste
+// en surbrillance tant que l’atelier est ouvert.
+//
+// Le menu « + » des fiches est exclusif : il se ferme dès qu’un autre menu
+// déroulant s’ouvre ailleurs dans l’application.
 
 import React, {
   useEffect,
@@ -35,6 +38,13 @@ import {
   getSceneDisplayTitle
 } from '../../lib/screenplay';
 
+import {
+  isWbWorkspaceOpen,
+  toggleWbWorkspace,
+  useExclusiveDropdown,
+  useWbWorkspaceState
+} from '../../lib/wb-workspace';
+
 import type {
   EditorController
 } from './useEditorController';
@@ -44,9 +54,6 @@ import {
   useWbPanelListener
 } from './WbSidePanel';
 
-import { toggleWbCards } from './WbCardsView';
-import { toggleWbRelations } from './WbRelationsView';
-
 import type {
   ItemType,
   ScreenplayInteriorExterior,
@@ -54,7 +61,7 @@ import type {
 } from '../../../shared/types';
 
 // ---------------------------------------------------------------------------
-// STYLE DES BOUTONS DE VUE (CARTES, RELATIONS)
+// STYLE DU BOUTON DE L’ATELIER
 // ---------------------------------------------------------------------------
 
 const WB_VIEW_BTN_STYLE: React.CSSProperties = {
@@ -70,6 +77,15 @@ const WB_VIEW_BTN_STYLE: React.CSSProperties = {
   lineHeight: 1.4,
   cursor: 'pointer',
   whiteSpace: 'nowrap'
+};
+
+/**
+ * Complément de style quand l’atelier est ouvert.
+ */
+const WB_VIEW_BTN_ACTIVE_STYLE: React.CSSProperties = {
+  background: 'var(--accent)',
+  borderColor: 'var(--accent)',
+  color: '#fff'
 };
 
 // ---------------------------------------------------------------------------
@@ -181,6 +197,16 @@ export function Sidebar({
     wbMenuOpen,
     setWbMenuOpen
   ] = useState(false);
+
+  /**
+   * L’atelier est-il ouvert ? (surbrillance du bouton « 🧭 Atelier »)
+   */
+  const [
+    workspaceOpen,
+    setWorkspaceOpen
+  ] = useState<boolean>(
+    isWbWorkspaceOpen
+  );
 
   const [
     newChapterName,
@@ -306,6 +332,20 @@ export function Sidebar({
     }, [scenes, screenplayLanguage]);
 
   // -----------------------------------------------------------------------
+  // ATELIER : ÉTAT DU BOUTON
+  // -----------------------------------------------------------------------
+
+  /*
+   * L’atelier signale chaque ouverture, fermeture ou changement d’onglet ;
+   * on relit simplement son état pour mettre le bouton à jour.
+   */
+  useWbWorkspaceState(() => {
+    setWorkspaceOpen(
+      isWbWorkspaceOpen()
+    );
+  });
+
+  // -----------------------------------------------------------------------
   // PANNEAU DES FICHES : ÉVÉNEMENTS EXTERNES
   // -----------------------------------------------------------------------
 
@@ -352,6 +392,16 @@ export function Sidebar({
   // -----------------------------------------------------------------------
   // MENU WORLD BUILDING
   // -----------------------------------------------------------------------
+
+  /*
+   * Un seul menu déroulant ouvert à la fois dans toute l’application.
+   */
+  useExclusiveDropdown(
+    wbMenuOpen,
+    () => {
+      setWbMenuOpen(false);
+    }
+  );
 
   useEffect(() => {
     if (!wbMenuOpen) {
@@ -845,6 +895,15 @@ export function Sidebar({
         : 'Titre de travail facultatif'
       : t('newNamePlaceholder');
 
+  const workspaceBtnStyle:
+    React.CSSProperties =
+    workspaceOpen
+      ? {
+          ...WB_VIEW_BTN_STYLE,
+          ...WB_VIEW_BTN_ACTIVE_STYLE
+        }
+      : WB_VIEW_BTN_STYLE;
+
   // -----------------------------------------------------------------------
   // AFFICHAGE
   // -----------------------------------------------------------------------
@@ -1140,38 +1199,24 @@ export function Sidebar({
               </span>
             </button>
 
-            {/* Vue en cartes des fiches */}
+            {/* Atelier : cartes, relations (et bientôt frise) en onglets */}
             <button
-              id="btnWbCards"
+              id="btnWbWorkspace"
               type="button"
-              className="wb-cards-open-btn"
-              title={t('wbCardsBtnTitle')}
-              aria-label={t('wbCardsBtnTitle')}
+              className="wb-ws-open-btn"
+              title={t('wbWsBtnTitle')}
+              aria-label={t('wbWsBtnTitle')}
+              aria-pressed={
+                workspaceOpen
+              }
               onClick={(event) => {
                 event.stopPropagation();
                 setWbMenuOpen(false);
-                toggleWbCards();
+                toggleWbWorkspace();
               }}
-              style={WB_VIEW_BTN_STYLE}
+              style={workspaceBtnStyle}
             >
-              {t('wbCardsBtn')}
-            </button>
-
-            {/* Vue des relations (graphe et arbre généalogique) */}
-            <button
-              id="btnWbRelations"
-              type="button"
-              className="wb-rel-open-btn"
-              title={t('wbRelBtnTitle')}
-              aria-label={t('wbRelBtnTitle')}
-              onClick={(event) => {
-                event.stopPropagation();
-                setWbMenuOpen(false);
-                toggleWbRelations();
-              }}
-              style={WB_VIEW_BTN_STYLE}
-            >
-              {t('wbRelBtn')}
+              {t('wbWsBtn')}
             </button>
 
             <div

@@ -10,6 +10,9 @@
 // Clic sur une fiche : affichage dans la section.
 // Ctrl+clic ou clic molette : ouverture dans un onglet.
 //
+// Ouvrir une fiche dans un onglet ferme aussi l'atelier (cartes, relations),
+// même si cette fiche était déjà l'onglet actif : l'onglet doit être visible.
+//
 // N'importe quel composant peut demander l'affichage d'une fiche avec
 // `openWbPanel(id)` (nom surligné dans le texte, champ « référence »...).
 // La barre latérale écoute ces demandes avec `useWbPanelListener`.
@@ -19,6 +22,7 @@ import { useI18n } from '../../i18n';
 import type { BuiltinWbType, WbCategoryDef, WbItem, WbType } from '../../../shared/types';
 import type { EditorController } from './useEditorController';
 import { WbSheet } from './WbSheet';
+import { closeWbWorkspace } from '../../lib/wb-workspace';
 import '../../styles/wb-compact.css';
 
 /**
@@ -183,12 +187,22 @@ export function WbSidePanel({
     return item.color || categories[item.wbType]?.color || 'transparent';
   }
 
-  function handleOpenInTab(): void {
-    if (!currentId) return;
+  /**
+   * Ouvre une fiche dans un onglet et ferme l'atelier. La fermeture est
+   * explicite : si la fiche était déjà l'onglet actif, le document affiché
+   * ne change pas et l'atelier ne se fermerait pas tout seul.
+   */
+  function openInTab(id: string): void {
     controller.openItem(
-      currentId,
+      id,
       'world',
     );
+    closeWbWorkspace();
+  }
+
+  function handleOpenInTab(): void {
+    if (!currentId) return;
+    openInTab(currentId);
   }
 
   // -------------------------------------------------------------------------
@@ -252,10 +266,7 @@ export function WbSidePanel({
   ): void {
     if (event.ctrlKey || event.metaKey) {
       event.preventDefault();
-      controller.openItem(
-        id,
-        'world',
-      );
+      openInTab(id);
       return;
     }
     onSelectItem(id);
@@ -267,10 +278,7 @@ export function WbSidePanel({
   ): void {
     if (event.button !== 1) return;
     event.preventDefault();
-    controller.openItem(
-      id,
-      'world',
-    );
+    openInTab(id);
   }
 
   function handleDelete(id: string): void {

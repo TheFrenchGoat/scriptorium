@@ -14,13 +14,12 @@
 // Le panneau des fiches est intégré à la section World Building de la barre
 // latérale (voir Sidebar.tsx et WbSidePanel.tsx).
 //
-// La vue en cartes des fiches (WbCardsView.tsx) s'affiche par-dessus la zone
-// d'écriture ; elle s'ouvre avec le bouton « ▦ Cartes » de la barre latérale.
-//
-// La vue des relations (WbRelationsView.tsx : graphe des liens et arbre
-// généalogique) s'affiche elle aussi par-dessus la zone d'écriture ; elle
-// s'ouvre avec le bouton « 🕸 Relations » de la barre latérale. Ouvrir l'une
-// de ces deux vues ferme l'autre.
+// L'atelier (WbWorkspace.tsx) s'affiche par-dessus la zone d'écriture : il
+// réunit en onglets la vue en cartes des fiches (WbCardsView.tsx) et la vue
+// des relations (WbRelationsView.tsx : graphe des liens et arbre
+// généalogique) ; la frise chronologique y viendra plus tard. Il s'ouvre avec
+// le bouton « 🧭 Atelier » de la barre latérale et se ferme tout seul dès
+// qu'un autre onglet d'écriture devient actif.
 //
 // L'aperçu d'une fiche au survol d'un nom surligné (WbHoverPreview.tsx)
 // s'affiche par-dessus toute la fenêtre ; il ne modifie pas le texte.
@@ -50,6 +49,7 @@ import { ScreenplayEditor } from './ScreenplayEditor';
 import { WbSheet } from './WbSheet';
 import { WbCardsView } from './WbCardsView';
 import { WbRelationsView } from './WbRelationsView';
+import { WbWorkspace } from './WbWorkspace';
 import { WbHoverPreview } from './WbHoverPreview';
 
 import { GrammarPopup } from './GrammarPopup';
@@ -994,6 +994,17 @@ export function EditorPage({
   const activeType =
     controller.activeType();
 
+  /**
+   * Document affiché (type et identifiant). L'atelier se ferme quand il
+   * change, pour que l'onglet ouvert ne reste pas caché derrière lui.
+   */
+  const activeDocKey =
+    activeTab
+      ? String(activeType) +
+        ':' +
+        activeTab
+      : null;
+
   const data =
     controller.data();
 
@@ -1245,9 +1256,8 @@ export function EditorPage({
         />
 
         {/*
-          position: relative : la vue en cartes (WbCardsView) et la vue des
-          relations (WbRelationsView) recouvrent uniquement cette zone, pas
-          la barre latérale.
+          position: relative : l'atelier (WbWorkspace : cartes, relations)
+          recouvre uniquement cette zone, pas la barre latérale.
         */}
         <main
           className="editor-area"
@@ -1391,14 +1401,23 @@ export function EditorPage({
             }}
           />
 
-          {/* Vue en cartes des fiches (par-dessus la zone d'écriture) */}
-          <WbCardsView
-            controller={controller}
-          />
-
-          {/* Vue des relations : graphe et arbre généalogique */}
-          <WbRelationsView
-            controller={controller}
+          {/* Atelier : cartes et relations en onglets (par-dessus la zone d'écriture) */}
+          <WbWorkspace
+            views={{
+              cards: (
+                <WbCardsView
+                  controller={controller}
+                />
+              ),
+              relations: (
+                <WbRelationsView
+                  controller={controller}
+                />
+              )
+            }}
+            activeDocKey={
+              activeDocKey
+            }
           />
         </main>
       </div>

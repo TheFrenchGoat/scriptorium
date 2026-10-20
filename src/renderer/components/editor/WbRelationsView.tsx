@@ -1,6 +1,6 @@
 // src/renderer/components/editor/WbRelationsView.tsx
-// Vue des relations entre fiches World Building, affichée par-dessus la zone
-// d'écriture (comme la vue en cartes).
+// Vue des relations entre fiches World Building, affichée dans l'onglet
+// « Relations » de l'atelier (WbWorkspace), par-dessus la zone d'écriture.
 //
 // Onglet « Graphe » :
 // - un rond par fiche (icône, nom, couleur) et un trait par relation ;
@@ -9,7 +9,7 @@
 // - molette : zoom ; glisser le fond : déplacement ;
 // - filtres par type de fiche et par genre de relation ;
 // - clic sur un rond : fiche à gauche et mise en évidence de ses liens ;
-//   Ctrl+clic : ouverture dans un onglet ;
+//   Ctrl+clic : ouverture dans un onglet (l'atelier se ferme) ;
 // - clic ou clic droit sur un trait : modifier ou supprimer la relation.
 //
 // Onglet « Arbre généalogique » :
@@ -18,20 +18,22 @@
 // - double-clic sur une personne : l'arbre se recentre sur elle.
 //
 // Les relations sont enregistrées dans le projet (wbRelations).
+// L'ouverture, la fermeture et la touche Échap sont gérées par l'atelier.
 // N'importe quel composant peut ouvrir la vue avec `openWbRelations()`.
 
 import { Fragment, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { useI18n } from '../../i18n';
 import type { LanguageCode, WbCategoryDef, WbItem, WbRelation, WbRelationKind } from '../../../shared/types';
 import { pickText, relationLabelFrom, resolveCategoryLabel, resolveRelationTypes, WB_FALLBACK_ICON, WB_RELATION_KIND_LABELS, type ResolvedRelationType, type WbTreeRole } from '../../lib/wb-config';
+import { closeWbWorkspace, openWbWorkspace, toggleWbWorkspace, useExclusiveDropdown } from '../../lib/wb-workspace';
 import { Modal } from '../common/Modal';
 import type { EditorController } from './useEditorController';
 import { openWbPanel } from './WbSidePanel';
-import { closeWbCards, WB_CARDS_EVENT, type WbCardsEventDetail } from './WbCardsView';
 import './wb-relations.css';
 
 /**
- * Événement window qui pilote l'ouverture de la vue des relations.
+ * Événement window émis à chaque demande d'ouverture ou de fermeture de la
+ * vue des relations (gardé pour compatibilité ; l'atelier fait le travail).
  */
 export const WB_RELATIONS_EVENT = 'scriptorium:wb-relations';
 
@@ -47,6 +49,13 @@ export function dispatchWbRelationsEvent(detail: WbRelationsEventDetail): void {
       detail,
     }),
   );
+  if (detail.action === 'open') {
+    openWbWorkspace('relations');
+  } else if (detail.action === 'close') {
+    closeWbWorkspace();
+  } else {
+    toggleWbWorkspace('relations');
+  }
 }
 
 export function openWbRelations(): void {
@@ -708,6 +717,7 @@ interface RelSelectProps {
  * Menu déroulant dessiné par l'application.
  * Clic ou Entrée : ouvre la liste. Flèches : déplacent la surbrillance.
  * Entrée : valide. Échap : ferme la liste seulement.
+ * Un seul menu déroulant ouvert à la fois dans toute l'application.
  */
 function RelSelect({ value, options, onChange, ariaLabel, placeholder }: RelSelectProps) {
   const [open, setOpen] = useState(false);
@@ -715,6 +725,8 @@ function RelSelect({ value, options, onChange, ariaLabel, placeholder }: RelSele
 
   const rootRef = useRef<HTMLDivElement | null>(null);
   const listRef = useRef<HTMLUListElement | null>(null);
+
+  useExclusiveDropdown(open, () => setOpen(false));
 
   const selectedIndex = options.findIndex((option) => option.value === value);
   const selected = selectedIndex >= 0 ? options[selectedIndex] : undefined;
@@ -882,7 +894,6 @@ export function WbRelationsView({ controller }: WbRelationsViewProps) {
   /** Langue de l'interface, déduite d'une traduction connue. */
   const lang: LanguageCode = t('cancel') === 'Cancel' ? 'en' : 'fr';
 
-  const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<Tab>('graph');
   const [filterType, setFilterType] = useState<string>(FILTER_ALL);
   const [filterKind, setFilterKind] = useState<string>(FILTER_ALL);
@@ -897,12 +908,18 @@ export function WbRelationsView({ controller }: WbRelationsViewProps) {
   const [svgEl, setSvgEl] = useState<SVGSVGElement | null>(null);
   const [, setVersion] = useState(0);
 
-  const positionsRef = useRef<Record<string, Point>>({});
+  // Les positions sont lues une seule fois, au montage (l'atelier démonte
+  // la vue à sa fermeture : elles sont donc relues à chaque ouverture).
+  const [initialPositions] = useState<Record<string, Point>>(readPositions);
+  const positionsRef = useRef<Record<string, Point>>(initialPositions);
   const dragRef = useRef<DragState | null>(null);
-  const fitPendingRef = useRef(false);
+  const fitPendingRef = useRef(true);
   const boundsRef = useRef<Bounds | null>(null);
   const lastTapRef = useRef<{ id: string; time: number } | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
+
+  // Le menu contextuel compte comme un menu déroulant : un seul ouvert.
+  useExclusiveDropdown(menu !== null, () => setMenu(null));
 
   function redraw(): void {
     setVersion((previous) => previous + 1);
@@ -926,60 +943,24 @@ export function WbRelationsView({ controller }: WbRelationsViewProps) {
   }
 
   // -------------------------------------------------------------------------
-  // Ouverture et fermeture
+  // Clavier, molette, clics en dehors
   // -------------------------------------------------------------------------
 
+  // Échap ferme le menu contextuel. Écouteur en phase de capture : il passe
+  // avant celui de l'atelier, qui ignore ensuite la touche (defaultPrevented).
   useEffect(() => {
-    const listener = (event: Event): void => {
-      const detail = (event as CustomEvent<WbRelationsEventDetail>).detail;
-      if (!detail) return;
-      if (detail.action === 'close') {
-        setOpen(false);
-        return;
-      }
-      // Les positions sont relues avant l'affichage pour ne pas les écraser.
-      positionsRef.current = readPositions();
-      fitPendingRef.current = true;
-      if (detail.action === 'open') setOpen(true);
-      else setOpen((previous) => !previous);
-    };
-    // L'ouverture de la vue en cartes ferme la vue des relations.
-    const cardsListener = (event: Event): void => {
-      const detail = (event as CustomEvent<WbCardsEventDetail>).detail;
-      if (detail && detail.action !== 'close') setOpen(false);
-    };
-    window.addEventListener(WB_RELATIONS_EVENT, listener);
-    window.addEventListener(WB_CARDS_EVENT, cardsListener);
-    return () => {
-      window.removeEventListener(WB_RELATIONS_EVENT, listener);
-      window.removeEventListener(WB_CARDS_EVENT, cardsListener);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!open) {
-      setMenu(null);
-      return;
-    }
-    closeWbCards();
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
+    if (!menu) return;
     const onKeyDown = (event: globalThis.KeyboardEvent): void => {
       if (event.key !== 'Escape' || event.defaultPrevented) return;
       if (isAnyModalOpen()) return;
-      if (menu) {
-        setMenu(null);
-        return;
-      }
-      setOpen(false);
+      event.preventDefault();
+      setMenu(null);
     };
-    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keydown', onKeyDown, true);
     return () => {
-      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keydown', onKeyDown, true);
     };
-  }, [open, menu]);
+  }, [menu]);
 
   // Molette : zoom autour du curseur (écouteur non passif pour bloquer le
   // défilement de la page d'écriture derrière).
@@ -1013,14 +994,15 @@ export function WbRelationsView({ controller }: WbRelationsViewProps) {
     };
   }, [menu]);
 
-  // Cadrage automatique demandé (ouverture, changement d'onglet...).
+  // Cadrage automatique demandé (ouverture, changement d'onglet...). La
+  // demande reste en attente tant que le graphe n'est pas visible.
   useEffect(() => {
     if (!fitPendingRef.current || !svgEl || !boundsRef.current) return;
+    const rect = svgEl.getBoundingClientRect();
+    if (rect.width < 10 || rect.height < 10) return;
     fitPendingRef.current = false;
     fitView();
   });
-
-  if (!open) return null;
 
   // -------------------------------------------------------------------------
   // Données
@@ -1370,7 +1352,7 @@ export function WbRelationsView({ controller }: WbRelationsViewProps) {
   function handleNodeTap(id: string, ctrl: boolean): void {
     if (ctrl) {
       controller.openItem(id, 'world');
-      setOpen(false);
+      closeWbWorkspace();
       return;
     }
     const now = Date.now();
@@ -1672,11 +1654,7 @@ export function WbRelationsView({ controller }: WbRelationsViewProps) {
   const countText = fill(t('wbRelCount'), { count: allRelations.length });
 
   return (
-    <div
-      className="wb-rel-overlay"
-      role="dialog"
-      aria-label={t('wbRelTitle')}
-    >
+    <div className="wb-rel-overlay">
       <div className="wb-rel-header">
         <h2 className="wb-rel-title">{t('wbRelTitle')}</h2>
         <span className="wb-rel-count">{countText}</span>
@@ -1710,16 +1688,6 @@ export function WbRelationsView({ controller }: WbRelationsViewProps) {
           onClick={() => openAdd()}
         >
           {t('wbRelAdd')}
-        </button>
-
-        <button
-          type="button"
-          className="wb-rel-close"
-          title={t('wbRelClose')}
-          aria-label={t('wbRelClose')}
-          onClick={() => setOpen(false)}
-        >
-          ✕
         </button>
       </div>
 

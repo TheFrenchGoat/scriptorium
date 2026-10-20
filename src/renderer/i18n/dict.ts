@@ -492,6 +492,20 @@ export const fr = {
     'Clic droit : modifier ou supprimer',
 
   // -------------------------------------------------------------------------
+  // ESPACE ATELIER
+  // -------------------------------------------------------------------------
+
+  wbWsBtn: '🧭 Atelier',
+  wbWsBtnTitle:
+    'Ouvrir l’atelier World Building (cartes, relations, frise)',
+  wbWsTitle: 'Atelier',
+  wbWsClose: 'Fermer l’atelier (Échap)',
+  wbWsTabsLabel: 'Vues de l’atelier',
+  wbWsTabCards: '▦ Cartes',
+  wbWsTabRelations: '🕸 Relations',
+  wbWsTabTimeline: '⏳ Frise',
+
+  // -------------------------------------------------------------------------
   // BARRE DE STATUT
   // -------------------------------------------------------------------------
 
@@ -1371,6 +1385,20 @@ export const en: Record<TranslationKey, string> = {
   wbRelCount: '{count} relationship(s)',
   wbRelEdgeTitle:
     'Right-click: edit or delete',
+
+  // -------------------------------------------------------------------------
+  // WORKSPACE
+  // -------------------------------------------------------------------------
+
+  wbWsBtn: '🧭 Workshop',
+  wbWsBtnTitle:
+    'Open the World Building workshop (cards, relationships, timeline)',
+  wbWsTitle: 'Workshop',
+  wbWsClose: 'Close the workshop (Esc)',
+  wbWsTabsLabel: 'Workshop views',
+  wbWsTabCards: '▦ Cards',
+  wbWsTabRelations: '🕸 Relationships',
+  wbWsTabTimeline: '⏳ Timeline',
 
   // -------------------------------------------------------------------------
   // STATUS BAR

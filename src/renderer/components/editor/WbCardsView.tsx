@@ -1,5 +1,6 @@
 // src/renderer/components/editor/WbCardsView.tsx
-// Vue en cartes des fiches World Building, affichée par-dessus la zone d'écriture.
+// Vue en cartes des fiches World Building, affichée dans l'onglet « Cartes »
+// de l'atelier (WbWorkspace).
 //
 // - Recherche (nom, alias, contenu ; sans accents ni majuscules).
 // - Filtre par type, tri par nom, type ou date de modification (inversable).
@@ -8,23 +9,32 @@
 //
 // Clic sur une carte : la fiche s'affiche dans la section de gauche,
 // les cartes restent ouvertes.
-// Ctrl+clic ou clic molette : ouverture dans un onglet et fermeture des cartes.
-// Échap ou ✕ : fermeture.
+// Ctrl+clic ou clic molette : ouverture dans un onglet et fermeture de l'atelier.
+// L'atelier gère lui-même Échap et le bouton ✕.
 //
 // Les menus déroulants (CardsSelect) sont dessinés par l'application pour
-// suivre les couleurs du thème ; ils se pilotent aussi au clavier.
+// suivre les couleurs du thème ; ils se pilotent aussi au clavier, et un seul
+// peut être ouvert à la fois dans toute l'application.
 //
-// N'importe quel composant peut ouvrir la vue avec `openWbCards()`.
+// N'importe quel composant peut ouvrir l'atelier sur les cartes avec `openWbCards()`.
 
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent } from 'react';
 import { useI18n } from '../../i18n';
 import type { BuiltinWbType, WbCategoryDef, WbField, WbItem } from '../../../shared/types';
 import type { EditorController } from './useEditorController';
 import { openWbPanel } from './WbSidePanel';
+import {
+  closeWbWorkspace,
+  openWbWorkspace,
+  toggleWbWorkspace,
+  useExclusiveDropdown
+} from '../../lib/wb-workspace';
 import './wb-cards.css';
 
 /**
- * Événement window qui pilote l'ouverture de la vue en cartes.
+ * Ancien événement de la vue en cartes. Il est toujours émis (pour les
+ * fichiers qui l'écoutent éventuellement), mais c'est l'atelier qui
+ * ouvre et ferme désormais la vue.
  */
 export const WB_CARDS_EVENT = 'scriptorium:wb-cards';
 
@@ -40,6 +50,9 @@ export function dispatchWbCardsEvent(detail: WbCardsEventDetail): void {
       detail,
     }),
   );
+  if (detail.action === 'open') openWbWorkspace('cards');
+  else if (detail.action === 'close') closeWbWorkspace();
+  else toggleWbWorkspace('cards');
 }
 
 export function openWbCards(): void {
@@ -68,6 +81,26 @@ const EXCERPT_LIMITS: Record<CardSize, { count: number; length: number }> = {
   small: { count: 1, length: 60 },
   medium: { count: 3, length: 120 },
   large: { count: 3, length: 240 },
+};
+
+/**
+ * Réglages gardés en mémoire pendant la session : la vue est démontée
+ * à la fermeture de l'atelier, mais on retrouve sa recherche et ses filtres.
+ */
+interface CardsMemory {
+  query: string;
+  filterType: string;
+  sortMode: SortMode;
+  reversed: boolean;
+  grouped: boolean;
+}
+
+const cardsMemory: CardsMemory = {
+  query: '',
+  filterType: FILTER_ALL,
+  sortMode: 'name',
+  reversed: false,
+  grouped: false,
 };
 
 function readStoredSize(): CardSize {
@@ -147,7 +180,8 @@ interface CardsSelectProps {
 /**
  * Menu déroulant dessiné par l'application.
  * Clic ou Entrée : ouvre la liste. Flèches : déplacent la surbrillance.
- * Entrée : valide. Échap : ferme la liste (sans fermer la vue en cartes).
+ * Entrée : valide. Échap : ferme la liste (sans fermer l'atelier).
+ * Quand il s'ouvre, tous les autres menus déroulants se ferment.
  */
 function CardsSelect({ value, options, onChange, ariaLabel }: CardsSelectProps) {
   const [open, setOpen] = useState(false);
@@ -155,6 +189,9 @@ function CardsSelect({ value, options, onChange, ariaLabel }: CardsSelectProps) 
 
   const rootRef = useRef<HTMLDivElement | null>(null);
   const listRef = useRef<HTMLUListElement | null>(null);
+
+  // Un seul menu ouvert à la fois.
+  useExclusiveDropdown(open, () => setOpen(false));
 
   const selectedIndex = options.findIndex((option) => option.value === value);
   const selected = selectedIndex >= 0 ? options[selectedIndex] : options[0];
@@ -196,7 +233,7 @@ function CardsSelect({ value, options, onChange, ariaLabel }: CardsSelectProps) 
   function handleKeyDown(event: KeyboardEvent<HTMLButtonElement>): void {
     if (event.key === 'Escape') {
       if (open) {
-        // preventDefault : la vue en cartes ne se ferme pas en même temps.
+        // preventDefault : l'atelier ne se ferme pas en même temps.
         event.preventDefault();
         event.stopPropagation();
         setOpen(false);
@@ -314,53 +351,24 @@ export function WbCardsView({ controller }: WbCardsViewProps) {
   /** Traduction d'une clé construite (ex. wbField_<key>). */
   const tr = (key: string): string => (t as unknown as (k: string) => string)(key);
 
-  const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState('');
-  const [filterType, setFilterType] = useState<string>(FILTER_ALL);
-  const [sortMode, setSortMode] = useState<SortMode>('name');
-  const [reversed, setReversed] = useState(false);
-  const [grouped, setGrouped] = useState(false);
+  const [query, setQuery] = useState(() => cardsMemory.query);
+  const [filterType, setFilterType] = useState<string>(() => cardsMemory.filterType);
+  const [sortMode, setSortMode] = useState<SortMode>(() => cardsMemory.sortMode);
+  const [reversed, setReversed] = useState(() => cardsMemory.reversed);
+  const [grouped, setGrouped] = useState(() => cardsMemory.grouped);
   const [size, setSize] = useState<CardSize>(readStoredSize);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const searchRef = useRef<HTMLInputElement | null>(null);
 
-  // -------------------------------------------------------------------------
-  // Ouverture et fermeture
-  // -------------------------------------------------------------------------
-
+  // Mémorise les réglages pour la prochaine ouverture de l'atelier.
   useEffect(() => {
-    const listener = (event: Event): void => {
-      const detail = (event as CustomEvent<WbCardsEventDetail>).detail;
-      if (!detail) return;
-      if (detail.action === 'open') setOpen(true);
-      else if (detail.action === 'close') setOpen(false);
-      else setOpen((previous) => !previous);
-    };
-    window.addEventListener(WB_CARDS_EVENT, listener);
-    return () => {
-      window.removeEventListener(WB_CARDS_EVENT, listener);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!open) return;
-    const timer = window.setTimeout(() => {
-      searchRef.current?.focus();
-    }, 0);
-    const onKeyDown = (event: globalThis.KeyboardEvent): void => {
-      if (event.key !== 'Escape' || event.defaultPrevented) return;
-      if (document.querySelector('.modal-overlay, .modal-backdrop')) return;
-      setOpen(false);
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => {
-      window.clearTimeout(timer);
-      window.removeEventListener('keydown', onKeyDown);
-    };
-  }, [open]);
-
-  if (!open) return null;
+    cardsMemory.query = query;
+    cardsMemory.filterType = filterType;
+    cardsMemory.sortMode = sortMode;
+    cardsMemory.reversed = reversed;
+    cardsMemory.grouped = grouped;
+  }, [query, filterType, sortMode, reversed, grouped]);
 
   // -------------------------------------------------------------------------
   // Données
@@ -529,11 +537,16 @@ export function WbCardsView({ controller }: WbCardsViewProps) {
   // Actions
   // -------------------------------------------------------------------------
 
+  /** Ouvre la fiche dans un onglet et ferme l'atelier pour la montrer. */
+  function openInTab(id: string): void {
+    controller.openItem(id, 'world');
+    closeWbWorkspace();
+  }
+
   function handleCardClick(event: MouseEvent<HTMLButtonElement>, id: string): void {
     if (event.ctrlKey || event.metaKey) {
       event.preventDefault();
-      controller.openItem(id, 'world');
-      setOpen(false);
+      openInTab(id);
       return;
     }
     setSelectedId(id);
@@ -543,8 +556,7 @@ export function WbCardsView({ controller }: WbCardsViewProps) {
   function handleCardAuxClick(event: MouseEvent<HTMLButtonElement>, id: string): void {
     if (event.button !== 1) return;
     event.preventDefault();
-    controller.openItem(id, 'world');
-    setOpen(false);
+    openInTab(id);
   }
 
   function handleSearchKeyDown(event: KeyboardEvent<HTMLInputElement>): void {
@@ -722,23 +734,10 @@ export function WbCardsView({ controller }: WbCardsViewProps) {
       : fill(t('wbCardsCountFiltered'), { shown: sortedItems.length, total: allCount });
 
   return (
-    <div
-      className="wb-cards-overlay"
-      role="dialog"
-      aria-label={t('wbCardsTitle')}
-    >
+    <div className="wb-cards-overlay">
       <div className="wb-cards-header">
         <h2 className="wb-cards-title">{t('wbCardsTitle')}</h2>
         <span className="wb-cards-count">{countText}</span>
-        <button
-          type="button"
-          className="wb-cards-close"
-          title={t('wbCardsClose')}
-          aria-label={t('wbCardsClose')}
-          onClick={() => setOpen(false)}
-        >
-          ✕
-        </button>
       </div>
 
       <div className="wb-cards-toolbar">

@@ -1,0 +1,180 @@
+/* src/renderer/components/editor/wb-workspace.css */
+/* Atelier World Building : espace commun en onglets (Cartes, Relations, Frise). */
+
+/* ------------------------------------------------------------------------- */
+/* CONTENEUR                                                                 */
+/* ------------------------------------------------------------------------- */
+
+.wb-ws {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--bg-app);
+  color: var(--text-main);
+  font-family: var(--ui-font-family);
+  font-size: var(--ui-font-size);
+  animation: wb-ws-in 0.14s ease-out;
+}
+
+@keyframes wb-ws-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ------------------------------------------------------------------------- */
+/* EN-TÊTE : TITRE, ONGLETS, FERMETURE                                       */
+/* ------------------------------------------------------------------------- */
+
+.wb-ws-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 6px 10px 6px 14px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+}
+
+.wb-ws-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  font-weight: 600;
+  font-size: 1.05em;
+  white-space: nowrap;
+}
+
+.wb-ws-title-icon {
+  font-size: 1.1em;
+  line-height: 1;
+}
+
+.wb-ws-tabs {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 2px;
+  padding: 3px;
+  min-width: 0;
+  overflow-x: auto;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.wb-ws-tab {
+  flex: 0 0 auto;
+  padding: 5px 14px;
+  border: none;
+  border-radius: calc(var(--radius) - 2px);
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.wb-ws-tab:hover {
+  background: var(--bg-hover);
+  color: var(--text-main);
+}
+
+.wb-ws-tab.is-active {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.wb-ws-tab.is-active:hover {
+  background: var(--accent-hover);
+}
+
+.wb-ws-tab:focus-visible,
+.wb-ws-close:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.wb-ws-spacer {
+  flex: 1 1 auto;
+}
+
+.wb-ws-close {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 1.05em;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.wb-ws-close:hover {
+  background: var(--bg-hover);
+  border-color: var(--border);
+  color: var(--text-main);
+}
+
+/* ------------------------------------------------------------------------- */
+/* CORPS : UNE VUE PAR ONGLET                                                */
+/* ------------------------------------------------------------------------- */
+
+.wb-ws-body {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Chaque vue remplit le corps. Le positionnement relatif sert de repère :
+   une vue réglée pour couvrir tout l'écran remplit seulement ce cadre. */
+.wb-ws-pane {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Sans cette règle, display: flex l'emporterait sur l'attribut hidden. */
+.wb-ws-pane[hidden] {
+  display: none;
+}
+
+/* ------------------------------------------------------------------------- */
+/* ACCESSIBILITÉ                                                             */
+/* ------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .wb-ws {
+    animation: none;
+  }
+
+  .wb-ws-tab,
+  .wb-ws-close {
+    transition: none;
+  }
+}
