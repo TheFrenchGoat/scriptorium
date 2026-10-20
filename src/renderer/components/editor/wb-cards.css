@@ -72,6 +72,8 @@
    ------------------------------------------------------------------------ */
 
 .wb-cards-toolbar {
+  position: relative;
+  z-index: 2;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -94,8 +96,7 @@
   font: inherit;
 }
 
-.wb-cards-search:focus,
-.wb-cards-select:focus {
+.wb-cards-search:focus {
   outline: none;
   border-color: var(--accent);
 }
@@ -110,21 +111,6 @@
 .wb-cards-control-label {
   color: var(--text-muted);
   font-size: 0.9em;
-}
-
-.wb-cards-select {
-  padding: 5px 8px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg-input);
-  color: var(--text-main);
-  font: inherit;
-  cursor: pointer;
-}
-
-.wb-cards-select option {
-  background: var(--bg-panel);
-  color: var(--text-main);
 }
 
 .wb-cards-check {
@@ -161,6 +147,132 @@
   background: var(--accent);
   border-color: var(--accent);
   color: var(--bg-panel);
+}
+
+/* ------------------------------------------------------------------------
+   Menus déroulants (CardsSelect)
+   ------------------------------------------------------------------------ */
+
+.wb-cards-dd {
+  position: relative;
+  display: inline-block;
+}
+
+.wb-cards-dd-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 120px;
+  padding: 5px 8px 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-input);
+  color: var(--text-main);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+
+.wb-cards-dd-btn:hover {
+  background: var(--bg-hover);
+  border-color: var(--accent);
+}
+
+.wb-cards-dd-btn:focus {
+  outline: none;
+}
+
+.wb-cards-dd-btn:focus-visible,
+.wb-cards-dd.open .wb-cards-dd-btn {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+.wb-cards-dd-btn .wb-cards-dd-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wb-cards-dd-chevron {
+  flex-shrink: 0;
+  margin-left: 4px;
+  color: var(--text-muted);
+  font-size: 0.85em;
+  transition: transform 0.15s ease;
+}
+
+.wb-cards-dd.open .wb-cards-dd-chevron {
+  transform: rotate(180deg);
+  color: var(--accent);
+}
+
+.wb-cards-dd-icon {
+  flex-shrink: 0;
+  width: 1.3em;
+  text-align: center;
+  line-height: 1;
+}
+
+.wb-cards-dd-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 60;
+  min-width: 100%;
+  max-height: 300px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-panel);
+  color: var(--text-main);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18), var(--shadow);
+  animation: wb-cards-dd-in 0.12s ease-out;
+}
+
+@keyframes wb-cards-dd-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.wb-cards-dd-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px 6px 6px;
+  border-radius: calc(var(--radius) - 2px);
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+
+.wb-cards-dd-option.highlighted {
+  background: var(--bg-hover);
+}
+
+.wb-cards-dd-option.selected {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.wb-cards-dd-check {
+  flex-shrink: 0;
+  width: 1em;
+  text-align: center;
+  color: var(--accent);
+  font-weight: 700;
 }
 
 /* ------------------------------------------------------------------------
@@ -441,4 +553,23 @@
 .wb-card-filled.complete {
   border-color: var(--accent);
   color: var(--accent);
+}
+
+/* ------------------------------------------------------------------------
+   Animations réduites (réglage d'accessibilité de Windows)
+   ------------------------------------------------------------------------ */
+
+@media (prefers-reduced-motion: reduce) {
+  .wb-cards-dd-list {
+    animation: none;
+  }
+
+  .wb-cards-dd-chevron,
+  .wb-card {
+    transition: none;
+  }
+
+  .wb-card:hover {
+    transform: none;
+  }
 }

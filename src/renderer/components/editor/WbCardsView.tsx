@@ -11,6 +11,9 @@
 // Ctrl+clic ou clic molette : ouverture dans un onglet et fermeture des cartes.
 // Échap ou ✕ : fermeture.
 //
+// Les menus déroulants (CardsSelect) sont dessinés par l'application pour
+// suivre les couleurs du thème ; ils se pilotent aussi au clavier.
+//
 // N'importe quel composant peut ouvrir la vue avec `openWbCards()`.
 
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent } from 'react';
@@ -123,6 +126,183 @@ function truncate(value: string, max: number): string {
   if (value.length <= max) return value;
   return value.slice(0, max - 1).trimEnd() + '…';
 }
+
+// ---------------------------------------------------------------------------
+// Menu déroulant aux couleurs du thème
+// ---------------------------------------------------------------------------
+
+interface CardsSelectOption {
+  value: string;
+  label: string;
+  icon?: string;
+}
+
+interface CardsSelectProps {
+  value: string;
+  options: CardsSelectOption[];
+  onChange: (value: string) => void;
+  ariaLabel: string;
+}
+
+/**
+ * Menu déroulant dessiné par l'application.
+ * Clic ou Entrée : ouvre la liste. Flèches : déplacent la surbrillance.
+ * Entrée : valide. Échap : ferme la liste (sans fermer la vue en cartes).
+ */
+function CardsSelect({ value, options, onChange, ariaLabel }: CardsSelectProps) {
+  const [open, setOpen] = useState(false);
+  const [highlight, setHighlight] = useState(-1);
+
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const listRef = useRef<HTMLUListElement | null>(null);
+
+  const selectedIndex = options.findIndex((option) => option.value === value);
+  const selected = selectedIndex >= 0 ? options[selectedIndex] : options[0];
+
+  // Fermeture au clic en dehors du menu.
+  useEffect(() => {
+    if (!open) return;
+    const onMouseDown = (event: globalThis.MouseEvent): void => {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onMouseDown);
+    return () => {
+      document.removeEventListener('mousedown', onMouseDown);
+    };
+  }, [open]);
+
+  // L'option en surbrillance reste visible dans la liste.
+  useEffect(() => {
+    if (!open || highlight < 0) return;
+    const element = listRef.current?.children[highlight] as HTMLElement | undefined;
+    element?.scrollIntoView({ block: 'nearest' });
+  }, [open, highlight]);
+
+  function openList(): void {
+    setHighlight(selectedIndex >= 0 ? selectedIndex : 0);
+    setOpen(true);
+  }
+
+  function choose(index: number): void {
+    const option = options[index];
+    if (option) {
+      onChange(option.value);
+    }
+    setOpen(false);
+  }
+
+  function handleKeyDown(event: KeyboardEvent<HTMLButtonElement>): void {
+    if (event.key === 'Escape') {
+      if (open) {
+        // preventDefault : la vue en cartes ne se ferme pas en même temps.
+        event.preventDefault();
+        event.stopPropagation();
+        setOpen(false);
+      }
+      return;
+    }
+
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      if (!open) {
+        openList();
+        return;
+      }
+      const step = event.key === 'ArrowDown' ? 1 : -1;
+      setHighlight((previous) => {
+        const count = options.length;
+        if (count === 0) return -1;
+        return (previous + step + count) % count;
+      });
+      return;
+    }
+
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      if (open && highlight >= 0) {
+        choose(highlight);
+      } else {
+        openList();
+      }
+      return;
+    }
+
+    if (event.key === 'Tab' && open) {
+      setOpen(false);
+    }
+  }
+
+  return (
+    <div
+      ref={rootRef}
+      className={'wb-cards-dd' + (open ? ' open' : '')}
+    >
+      <button
+        type="button"
+        className="wb-cards-dd-btn"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={ariaLabel}
+        onClick={() => {
+          if (open) {
+            setOpen(false);
+          } else {
+            openList();
+          }
+        }}
+        onKeyDown={handleKeyDown}
+      >
+        {selected?.icon && (
+          <span className="wb-cards-dd-icon">{selected.icon}</span>
+        )}
+        <span className="wb-cards-dd-label">{selected?.label ?? ''}</span>
+        <span className="wb-cards-dd-chevron" aria-hidden="true">▾</span>
+      </button>
+
+      {open && (
+        <ul
+          ref={listRef}
+          className="wb-cards-dd-list"
+          role="listbox"
+          aria-label={ariaLabel}
+        >
+          {options.map((option, index) => {
+            const isSelected = option.value === value;
+            const optionClass =
+              'wb-cards-dd-option' +
+              (isSelected ? ' selected' : '') +
+              (index === highlight ? ' highlighted' : '');
+            return (
+              <li
+                key={option.value}
+                className={optionClass}
+                role="option"
+                aria-selected={isSelected}
+                onMouseEnter={() => setHighlight(index)}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => choose(index)}
+              >
+                <span className="wb-cards-dd-check" aria-hidden="true">
+                  {isSelected ? '✓' : ''}
+                </span>
+                {option.icon && (
+                  <span className="wb-cards-dd-icon">{option.icon}</span>
+                )}
+                <span className="wb-cards-dd-label">{option.label}</span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Vue en cartes
+// ---------------------------------------------------------------------------
 
 interface WbCardsViewProps {
   controller: EditorController;
@@ -327,6 +507,23 @@ export function WbCardsView({ controller }: WbCardsViewProps) {
     setFilterType(FILTER_ALL);
     searchRef.current?.focus();
   }
+
+  // -------------------------------------------------------------------------
+  // Options des menus déroulants
+  // -------------------------------------------------------------------------
+
+  const filterOptions: CardsSelectOption[] = [{ value: FILTER_ALL, label: t('wbCardsFilterAll') }];
+  for (const slug of typeSlugs) {
+    filterOptions.push({
+      value: slug,
+      label: categoryLabel(slug),
+      icon: categoryIcon(slug),
+    });
+  }
+
+  const sortOptions: CardsSelectOption[] = [{ value: 'name', label: t('wbCardsSortName') }, { value: 'type', label: t('wbCardsSortType') }, { value: 'date', label: t('wbCardsSortDate') }];
+
+  const sizeOptions: CardsSelectOption[] = [{ value: 'small', label: t('wbCardsSizeSmall') }, { value: 'medium', label: t('wbCardsSizeMedium') }, { value: 'large', label: t('wbCardsSizeLarge') }];
 
   // -------------------------------------------------------------------------
   // Actions
@@ -556,33 +753,24 @@ export function WbCardsView({ controller }: WbCardsViewProps) {
           onKeyDown={handleSearchKeyDown}
         />
 
-        <label className="wb-cards-control">
+        <div className="wb-cards-control">
           <span className="wb-cards-control-label">{t('wbCardsFilterLabel')}</span>
-          <select
-            className="wb-cards-select"
+          <CardsSelect
             value={activeFilter}
-            onChange={(event) => setFilterType(event.target.value)}
-          >
-            <option value={FILTER_ALL}>{t('wbCardsFilterAll')}</option>
-            {typeSlugs.map((slug) => (
-              <option key={slug} value={slug}>
-                {categoryIcon(slug) + ' ' + categoryLabel(slug)}
-              </option>
-            ))}
-          </select>
-        </label>
+            options={filterOptions}
+            onChange={setFilterType}
+            ariaLabel={t('wbCardsFilterLabel')}
+          />
+        </div>
 
-        <label className="wb-cards-control">
+        <div className="wb-cards-control">
           <span className="wb-cards-control-label">{t('wbCardsSortLabel')}</span>
-          <select
-            className="wb-cards-select"
+          <CardsSelect
             value={sortMode}
-            onChange={(event) => handleSortChange(event.target.value)}
-          >
-            <option value="name">{t('wbCardsSortName')}</option>
-            <option value="type">{t('wbCardsSortType')}</option>
-            <option value="date">{t('wbCardsSortDate')}</option>
-          </select>
+            options={sortOptions}
+            onChange={handleSortChange}
+            ariaLabel={t('wbCardsSortLabel')}
+          />
           <button
             type="button"
             className={'wb-cards-btn wb-cards-reverse' + (reversed ? ' active' : '')}
@@ -593,7 +781,7 @@ export function WbCardsView({ controller }: WbCardsViewProps) {
           >
             ⇅
           </button>
-        </label>
+        </div>
 
         <label className="wb-cards-control wb-cards-check">
           <input
@@ -604,18 +792,15 @@ export function WbCardsView({ controller }: WbCardsViewProps) {
           <span>{t('wbCardsGroupByType')}</span>
         </label>
 
-        <label className="wb-cards-control">
+        <div className="wb-cards-control">
           <span className="wb-cards-control-label">{t('wbCardsSizeLabel')}</span>
-          <select
-            className="wb-cards-select"
+          <CardsSelect
             value={size}
-            onChange={(event) => handleSizeChange(event.target.value)}
-          >
-            <option value="small">{t('wbCardsSizeSmall')}</option>
-            <option value="medium">{t('wbCardsSizeMedium')}</option>
-            <option value="large">{t('wbCardsSizeLarge')}</option>
-          </select>
-        </label>
+            options={sizeOptions}
+            onChange={handleSizeChange}
+            ariaLabel={t('wbCardsSizeLabel')}
+          />
+        </div>
       </div>
 
       <div className="wb-cards-body">
