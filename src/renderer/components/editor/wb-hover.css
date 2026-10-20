@@ -1,0 +1,194 @@
+/* src/renderer/components/editor/wb-hover.css
+   Aperçu d'une fiche World Building au survol d'un nom surligné
+   (WbHoverPreview.tsx). Couleurs du thème uniquement. */
+
+/* ------------------------------------------------------------------------
+   Ancienne info-bulle CSS des mentions : masquée quand l'aperçu est actif
+   ------------------------------------------------------------------------ */
+
+body.wb-hover-enabled .wb-mention:hover::after {
+  content: none;
+  display: none;
+}
+
+/* ------------------------------------------------------------------------
+   Carte
+   ------------------------------------------------------------------------ */
+
+.wb-hover-card {
+  position: fixed;
+  z-index: 2000;
+  box-sizing: border-box;
+  width: 300px;
+  max-width: calc(100vw - 16px);
+  max-height: calc(100vh - 16px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 12px 10px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-panel);
+  color: var(--text-main);
+  font-family: var(--ui-font-family);
+  font-size: var(--ui-font-size);
+  font-weight: normal;
+  font-style: normal;
+  line-height: 1.3;
+  text-align: left;
+  text-indent: 0;
+  white-space: normal;
+  cursor: pointer;
+  user-select: none;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22), var(--shadow);
+  animation: wb-hover-in 0.12s ease-out;
+}
+
+.wb-hover-card:hover {
+  border-color: var(--wb-card-color, var(--accent));
+}
+
+@keyframes wb-hover-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Bande de couleur à gauche */
+.wb-hover-band {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 5px;
+  background: var(--wb-card-color, var(--accent));
+}
+
+/* Portrait */
+.wb-hover-portrait {
+  display: block;
+  flex-shrink: 0;
+  margin: -12px -12px 0 -16px;
+  height: 130px;
+  overflow: hidden;
+  background: var(--bg-input);
+  border-bottom: 1px solid var(--border);
+}
+
+.wb-hover-portrait img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Icône, nom et type */
+.wb-hover-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.wb-hover-icon {
+  flex-shrink: 0;
+  font-size: 1.5em;
+  line-height: 1;
+}
+
+.wb-hover-titles {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.wb-hover-name {
+  font-weight: 600;
+  font-size: 1.08em;
+  color: var(--text-main);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wb-hover-type {
+  color: var(--text-muted);
+  font-size: 0.82em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Alias */
+.wb-hover-aliases {
+  color: var(--text-muted);
+  font-size: 0.85em;
+  font-style: italic;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Extrait des champs */
+.wb-hover-excerpt {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.wb-hover-field {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.wb-hover-field-label {
+  color: var(--text-muted);
+  font-size: 0.75em;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.wb-hover-field-value {
+  font-size: 0.9em;
+  line-height: 1.35;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow-wrap: anywhere;
+}
+
+.wb-hover-empty {
+  color: var(--text-muted);
+  font-size: 0.85em;
+  font-style: italic;
+}
+
+/* Aide en bas de la carte */
+.wb-hover-hint {
+  flex-shrink: 0;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.75em;
+}
+
+/* ------------------------------------------------------------------------
+   Animations réduites (réglage d'accessibilité de Windows)
+   ------------------------------------------------------------------------ */
+
+@media (prefers-reduced-motion: reduce) {
+  .wb-hover-card {
+    animation: none;
+  }
+}

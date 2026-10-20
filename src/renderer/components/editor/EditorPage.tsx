@@ -16,6 +16,9 @@
 //
 // La vue en cartes des fiches (WbCardsView.tsx) s'affiche par-dessus la zone
 // d'écriture ; elle s'ouvre avec le bouton « ▦ Cartes » de la barre latérale.
+//
+// L'aperçu d'une fiche au survol d'un nom surligné (WbHoverPreview.tsx)
+// s'affiche par-dessus toute la fenêtre ; il ne modifie pas le texte.
 
 import React, {
   useCallback,
@@ -41,6 +44,7 @@ import { ChapterEditor } from './ChapterEditor';
 import { ScreenplayEditor } from './ScreenplayEditor';
 import { WbSheet } from './WbSheet';
 import { WbCardsView } from './WbCardsView';
+import { WbHoverPreview } from './WbHoverPreview';
 
 import { GrammarPopup } from './GrammarPopup';
 
@@ -1454,6 +1458,11 @@ export function EditorPage({
       />
 
       <GrammarPopup
+        controller={controller}
+      />
+
+      {/* Aperçu d'une fiche au survol d'un nom surligné */}
+      <WbHoverPreview
         controller={controller}
       />
 
