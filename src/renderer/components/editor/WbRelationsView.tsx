@@ -1153,7 +1153,7 @@ export function WbRelationsView({ controller }: WbRelationsViewProps) {
     const projectData = controller.data();
     projectData.wbRelations = next;
     controller.setSaveStatus('pending');
-    void controller.save();
+    void controller.saveWholeProject();
     redraw();
   }
 

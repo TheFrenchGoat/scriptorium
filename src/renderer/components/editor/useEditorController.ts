@@ -196,6 +196,8 @@ export interface EditorController {
   cycleTab(delta: number): void;
 
   save(): Promise<void>;
+  /** Enregistre tout le projet sur le disque (fiches, relations, frise), quel que soit le document actif. */
+  saveWholeProject(): Promise<void>;
   setSaveStatus(state: 'saved' | 'pending' | 'error'): void;
   updateStats(): void;
 
@@ -1772,6 +1774,7 @@ export function useEditorController({
       },
 
       save,
+      saveWholeProject: () => saveAllRef.current(),
       setSaveStatus,
       updateStats,
       recordWritingStats,
