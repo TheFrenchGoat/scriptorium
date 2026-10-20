@@ -388,6 +388,44 @@ export const fr = {
     'Glisser pour changer la largeur du panneau',
 
   // -------------------------------------------------------------------------
+  // VUE EN CARTES
+  // -------------------------------------------------------------------------
+
+  wbCardsBtn: '▦ Cartes',
+  wbCardsBtnTitle:
+    'Afficher toutes les fiches sous forme de cartes',
+  wbCardsTitle: 'Toutes les fiches',
+  wbCardsClose: 'Fermer la vue en cartes (Échap)',
+  wbCardsSearchPlaceholder:
+    'Rechercher (nom, alias ou contenu des fiches)…',
+  wbCardsFilterAll: 'Tous les types',
+  wbCardsFilterLabel: 'Type',
+  wbCardsSortLabel: 'Trier par',
+  wbCardsSortName: 'Nom',
+  wbCardsSortType: 'Type',
+  wbCardsSortDate: 'Date',
+  wbCardsSortReverseTitle: 'Inverser l’ordre',
+  wbCardsGroupByType: 'Grouper par type',
+  wbCardsSizeLabel: 'Taille des cartes',
+  wbCardsSizeSmall: 'Petites',
+  wbCardsSizeMedium: 'Moyennes',
+  wbCardsSizeLarge: 'Grandes',
+  wbCardsCount: '{count} fiche(s)',
+  wbCardsCountFiltered: '{shown} sur {total} fiche(s)',
+  wbCardsEmpty:
+    'Aucune fiche pour le moment. Créez-en une avec le bouton + de la section World Building.',
+  wbCardsNoResults:
+    'Aucune fiche ne correspond à la recherche ou au filtre.',
+  wbCardsResetFilters: 'Effacer la recherche et les filtres',
+  wbCardsFilled: '{filled}/{total} champs',
+  wbCardsFilledTitle:
+    'Nombre de champs remplis dans cette fiche',
+  wbCardsNoContent: 'Fiche encore vide.',
+  wbCardsCardTitle:
+    'Clic : ouvrir à gauche • Ctrl+clic : ouvrir dans un onglet',
+  wbCardsGroupCount: '{count} fiche(s)',
+
+  // -------------------------------------------------------------------------
   // BARRE DE STATUT
   // -------------------------------------------------------------------------
 
@@ -1163,6 +1201,44 @@ export const en: Record<TranslationKey, string> = {
   wbPanelNoSheets: 'No sheets yet.',
   wbPanelResizeTitle:
     'Drag to change the panel width',
+
+  // -------------------------------------------------------------------------
+  // CARDS VIEW
+  // -------------------------------------------------------------------------
+
+  wbCardsBtn: '▦ Cards',
+  wbCardsBtnTitle:
+    'Show all sheets as cards',
+  wbCardsTitle: 'All sheets',
+  wbCardsClose: 'Close the cards view (Esc)',
+  wbCardsSearchPlaceholder:
+    'Search (name, alias or sheet content)…',
+  wbCardsFilterAll: 'All types',
+  wbCardsFilterLabel: 'Type',
+  wbCardsSortLabel: 'Sort by',
+  wbCardsSortName: 'Name',
+  wbCardsSortType: 'Type',
+  wbCardsSortDate: 'Date',
+  wbCardsSortReverseTitle: 'Reverse order',
+  wbCardsGroupByType: 'Group by type',
+  wbCardsSizeLabel: 'Card size',
+  wbCardsSizeSmall: 'Small',
+  wbCardsSizeMedium: 'Medium',
+  wbCardsSizeLarge: 'Large',
+  wbCardsCount: '{count} sheet(s)',
+  wbCardsCountFiltered: '{shown} of {total} sheet(s)',
+  wbCardsEmpty:
+    'No sheets yet. Create one with the + button in the World Building section.',
+  wbCardsNoResults:
+    'No sheet matches your search or filter.',
+  wbCardsResetFilters: 'Clear search and filters',
+  wbCardsFilled: '{filled}/{total} fields',
+  wbCardsFilledTitle:
+    'Number of filled fields in this sheet',
+  wbCardsNoContent: 'This sheet is still empty.',
+  wbCardsCardTitle:
+    'Click: open on the left • Ctrl+click: open in a tab',
+  wbCardsGroupCount: '{count} sheet(s)',
 
   // -------------------------------------------------------------------------
   // STATUS BAR
