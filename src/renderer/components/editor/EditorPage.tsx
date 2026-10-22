@@ -1096,27 +1096,15 @@ export function EditorPage({
             ←
           </button>
 
-          <h2 id="projectTitle">
-            {projectName}
-          </h2>
-
-          <button
-            type="button"
-            title={t(
-              'renameProjectModalTitle'
-            )}
-            onClick={() => {
-              setRenameProjectValue(
-                projectName
-              );
-            }}
-            style={{
-              padding: '4px 8px',
-              fontSize: 13
+          <h2
+            id="projectTitle"
+            title={t('renameProjectHint')}
+            onDoubleClick={() => {
+              setRenameProjectValue(projectName);
             }}
           >
-            ✏️
-          </button>
+            {projectName}
+          </h2>
         </div>
 
         <div className="header-actions">
