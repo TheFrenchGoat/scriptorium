@@ -17,7 +17,7 @@
 // L'atelier (WbWorkspace.tsx) s'affiche par-dessus la zone d'écriture : il
 // réunit en onglets la vue en cartes des fiches (WbCardsView.tsx) et la vue
 // des relations (WbRelationsView.tsx : graphe des liens et arbre
-// généalogique) ; la frise chronologique y viendra plus tard. Il s'ouvre avec
+// généalogique) ; la frise chronologique (WbTimelineView.tsx) complète l'ensemble. Il s'ouvre avec
 // le bouton « 🧭 Atelier » de la barre latérale et se ferme tout seul dès
 // qu'un autre onglet d'écriture devient actif.
 //
@@ -49,6 +49,7 @@ import { ScreenplayEditor } from './ScreenplayEditor';
 import { WbSheet } from './WbSheet';
 import { WbCardsView } from './WbCardsView';
 import { WbRelationsView } from './WbRelationsView';
+import { WbTimelineView } from './WbTimelineView';
 import { WbWorkspace } from './WbWorkspace';
 import { WbHoverPreview } from './WbHoverPreview';
 
@@ -1256,7 +1257,7 @@ export function EditorPage({
         />
 
         {/*
-          position: relative : l'atelier (WbWorkspace : cartes, relations)
+          position: relative : l'atelier (WbWorkspace : cartes, relations, frise)
           recouvre uniquement cette zone, pas la barre latérale.
         */}
         <main
@@ -1411,6 +1412,11 @@ export function EditorPage({
               ),
               relations: (
                 <WbRelationsView
+                  controller={controller}
+                />
+              ),
+              timeline: (
+                <WbTimelineView
                   controller={controller}
                 />
               )

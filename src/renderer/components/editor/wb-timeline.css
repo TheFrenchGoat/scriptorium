@@ -1,0 +1,514 @@
+/* src/renderer/components/editor/wb-timeline.css
+ * Frise chronologique de l'atelier (WbTimelineView).
+ * Toutes les couleurs viennent des variables du thème.
+ * Les styles de la fenêtre d'édition ne dépendent pas de .wb-tl-root,
+ * car Modal est rendu dans <body> par un portail.
+ */
+
+/* ------------------------------------------------------------------------
+ * Conteneur et barre d'outils
+ * --------------------------------------------------------------------- */
+
+.wb-tl-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--bg-app);
+  color: var(--text-main);
+  font-family: var(--ui-font-family);
+  font-size: var(--ui-font-size);
+}
+
+.wb-tl-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-panel);
+  flex: none;
+}
+
+.wb-tl-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+}
+
+.wb-tl-filter select {
+  min-width: 180px;
+  max-width: 280px;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-input);
+  color: var(--text-main);
+  font: inherit;
+}
+
+/* ------------------------------------------------------------------------
+ * Boutons
+ * --------------------------------------------------------------------- */
+
+.wb-tl-btn {
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-input);
+  color: var(--text-main);
+  font: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.wb-tl-btn:hover {
+  background: var(--bg-hover);
+}
+
+.wb-tl-btn-primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.wb-tl-btn-primary:hover {
+  border-color: var(--accent-hover);
+  background: var(--accent-hover);
+}
+
+.wb-tl-btn-danger {
+  border-color: #dc2626;
+  background: #dc2626;
+  color: #fff;
+}
+
+.wb-tl-btn-danger:hover {
+  border-color: #b91c1c;
+  background: #b91c1c;
+}
+
+.wb-tl-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.wb-tl-icon-btn:hover:not(:disabled) {
+  border-color: var(--border);
+  background: var(--bg-hover);
+  color: var(--text-main);
+}
+
+.wb-tl-icon-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.wb-tl-icon-danger:hover:not(:disabled) {
+  border-color: #dc2626;
+  color: #dc2626;
+}
+
+/* ------------------------------------------------------------------------
+ * États vides
+ * --------------------------------------------------------------------- */
+
+.wb-tl-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  flex: 1;
+  padding: 40px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.wb-tl-empty p {
+  margin: 0;
+  max-width: 420px;
+}
+
+/* ------------------------------------------------------------------------
+ * Frise : axe horizontal et cartes
+ * --------------------------------------------------------------------- */
+
+.wb-tl-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.wb-tl-track {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  width: max-content;
+  min-width: 100%;
+  padding: 24px 32px 32px;
+  box-sizing: border-box;
+}
+
+.wb-tl-axis {
+  position: absolute;
+  top: 37px;
+  left: 16px;
+  right: 16px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--border);
+}
+
+.wb-tl-event {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: none;
+  width: 260px;
+}
+
+.wb-tl-dot {
+  position: relative;
+  z-index: 1;
+  width: 14px;
+  height: 14px;
+  margin: 6px 0 14px;
+  border: 3px solid var(--bg-app);
+  border-radius: 50%;
+  background: var(--wb-tl-color, var(--accent));
+  box-shadow: 0 0 0 2px var(--wb-tl-color, var(--accent));
+}
+
+.wb-tl-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 14px 8px;
+  border: 1px solid var(--border);
+  border-top: 4px solid var(--wb-tl-color, var(--accent));
+  border-radius: var(--radius);
+  background: var(--bg-panel);
+  box-shadow: var(--shadow);
+  box-sizing: border-box;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+
+.wb-tl-card:hover {
+  border-color: var(--wb-tl-color, var(--accent));
+}
+
+.wb-tl-date {
+  color: var(--wb-tl-color, var(--accent));
+  font-size: 0.85em;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.wb-tl-title {
+  font-size: 1.05em;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.wb-tl-desc {
+  max-height: 9.5em;
+  overflow: auto;
+  color: var(--text-muted);
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.wb-tl-chapters {
+  color: var(--text-muted);
+  font-size: 0.85em;
+  overflow-wrap: anywhere;
+}
+
+.wb-tl-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-top: 2px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+}
+
+.wb-tl-actions-spacer {
+  flex: 1;
+}
+
+/* ------------------------------------------------------------------------
+ * Glisser-déposer
+ * --------------------------------------------------------------------- */
+
+/* Pendant le glissement : main fermée partout, aucune sélection de texte. */
+body.wb-tl-dragging,
+body.wb-tl-dragging * {
+  cursor: grabbing !important;
+  user-select: none !important;
+}
+
+/* Carte en cours de déplacement. */
+.wb-tl-event.is-dragging {
+  opacity: 0.35;
+}
+
+.wb-tl-event.is-dragging .wb-tl-card {
+  border-style: dashed;
+  box-shadow: none;
+}
+
+/* Pas de surbrillance au survol des autres cartes pendant le glissement. */
+.wb-tl-track.is-drag-active .wb-tl-card:hover {
+  border-color: var(--border);
+  border-top-color: var(--wb-tl-color, var(--accent));
+}
+
+/* Trait de dépôt, au milieu de l'espace (20 px) entre deux cartes. */
+.wb-tl-event.is-drop-before::before,
+.wb-tl-event.is-drop-after::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 2;
+  width: 4px;
+  border-radius: 2px;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent);
+  pointer-events: none;
+}
+
+.wb-tl-event.is-drop-before::before {
+  left: -12px;
+}
+
+.wb-tl-event.is-drop-after::after {
+  right: -12px;
+}
+
+/* ------------------------------------------------------------------------
+ * Pastilles de fiches
+ * --------------------------------------------------------------------- */
+
+.wb-tl-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.wb-tl-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 2px 8px;
+  border: 1px solid var(--wb-tl-chip-color, var(--accent));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--wb-tl-chip-color, var(--accent)) 14%, transparent);
+  color: var(--text-main);
+  font: inherit;
+  font-size: 0.85em;
+  line-height: 1.5;
+}
+
+button.wb-tl-chip {
+  cursor: pointer;
+}
+
+button.wb-tl-chip:hover {
+  background: color-mix(in srgb, var(--wb-tl-chip-color, var(--accent)) 28%, transparent);
+}
+
+.wb-tl-chip-icon {
+  flex: none;
+}
+
+.wb-tl-chip-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wb-tl-chip-remove {
+  margin-left: 2px;
+  padding: 0 2px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 1.1em;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.wb-tl-chip-remove:hover {
+  color: #dc2626;
+}
+
+/* ------------------------------------------------------------------------
+ * Fenêtre de création et de modification
+ * --------------------------------------------------------------------- */
+
+.wb-tl-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: left;
+}
+
+.wb-tl-row {
+  display: flex;
+  gap: 12px;
+}
+
+.wb-tl-row .wb-tl-field {
+  flex: 1;
+  min-width: 0;
+}
+
+.wb-tl-row .wb-tl-field-small {
+  flex: 0 0 150px;
+}
+
+.wb-tl-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.wb-tl-field > span {
+  color: var(--text-muted);
+  font-size: 0.9em;
+  font-weight: 600;
+}
+
+.wb-tl-field input[type='text'],
+.wb-tl-field textarea {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-input);
+  color: var(--text-main);
+  font: inherit;
+  box-sizing: border-box;
+}
+
+.wb-tl-field textarea {
+  resize: vertical;
+  min-height: 70px;
+}
+
+.wb-tl-field input[type='text']:focus,
+.wb-tl-field textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.wb-tl-hint {
+  margin-top: -6px;
+  color: var(--text-muted);
+  font-size: 0.8em;
+}
+
+/* Couleurs */
+
+.wb-tl-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.wb-tl-swatch {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 2px solid var(--border);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.wb-tl-swatch.is-selected {
+  border-color: var(--text-main);
+  box-shadow: 0 0 0 2px var(--bg-panel), 0 0 0 4px var(--accent);
+}
+
+.wb-tl-swatch-none {
+  background: linear-gradient(135deg, transparent 45%, #dc2626 45%, #dc2626 55%, transparent 55%), var(--bg-input);
+}
+
+/* Liste des fiches à ajouter */
+
+.wb-tl-picker-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 170px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-input);
+}
+
+.wb-tl-picker-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: none;
+  border-left: 3px solid var(--wb-tl-chip-color, var(--accent));
+  background: transparent;
+  color: var(--text-main);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.wb-tl-picker-item:hover {
+  background: var(--bg-hover);
+}
+
+/* Chapitres */
+
+.wb-tl-checks {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 160px;
+  overflow: auto;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-input);
+}
+
+.wb-tl-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0;
+  cursor: pointer;
+}
+
+.wb-tl-check span {
+  overflow-wrap: anywhere;
+}

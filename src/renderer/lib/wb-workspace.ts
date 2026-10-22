@@ -18,8 +18,8 @@ import { useEffect, useId, useRef } from 'react';
 
 export type WbWorkspaceTab = 'cards' | 'relations' | 'timeline';
 
-/** Onglets réellement disponibles (la frise arrivera au lot 8). */
-export const WB_WORKSPACE_TABS: WbWorkspaceTab[] = ['cards', 'relations'];
+/** Onglets réellement disponibles. */
+export const WB_WORKSPACE_TABS: WbWorkspaceTab[] = ['cards', 'relations', 'timeline'];
 
 const TAB_STORAGE_KEY = 'scriptorium.wbWorkspace.tab';
 
