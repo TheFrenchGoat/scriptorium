@@ -15,7 +15,7 @@
 // l’identifiant stable de la fiche. Le libellé visible est son nom actuel,
 // ce qui permet à l’onglet de suivre les renommages.
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useI18n } from '../../i18n';
 import { getSceneDisplayTitle } from '../../lib/screenplay';
 import type { EditorController } from './useEditorController';
@@ -118,8 +118,52 @@ export function TabsBar({ controller }: TabsBarProps): React.ReactElement {
 
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
+  /** Barre des onglets : la molette fait défiler horizontalement quand ça déborde. */
+  const barRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const bar = barRef.current;
+
+    if (!bar) {
+      return;
+    }
+
+    const onWheel = (event: WheelEvent): void => {
+      // Ctrl+molette : laissé au garde-fou global (pas de zoom ici).
+      if (event.ctrlKey) {
+        return;
+      }
+
+      // Pas de débordement : rien à faire défiler.
+      if (bar.scrollWidth <= bar.clientWidth) {
+        return;
+      }
+
+      // Pavé tactile : un geste déjà horizontal est laissé au navigateur.
+      if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) {
+        return;
+      }
+
+      // deltaMode 1 = défilement par lignes (certaines souris).
+      const delta = event.deltaMode === 1 ? event.deltaY * 40 : event.deltaY;
+      const before = bar.scrollLeft;
+
+      bar.scrollLeft = before + delta;
+
+      if (bar.scrollLeft !== before) {
+        event.preventDefault();
+      }
+    };
+
+    bar.addEventListener('wheel', onWheel, { passive: false });
+
+    return () => {
+      bar.removeEventListener('wheel', onWheel);
+    };
+  }, []);
+
   return (
-    <div id="tabs" className="tabs-bar" role="tablist">
+    <div id="tabs" ref={barRef} className="tabs-bar" role="tablist">
       {tabs.map((tab, index) => {
         const isActive = tab.name === activeTab && tab.type === activeType;
 
