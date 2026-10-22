@@ -359,6 +359,72 @@ export function getChapterWordCounts(
   return result;
 }
 
+/** Scène d'un projet scénario, telle qu'enregistrée dans le projet. */
+type StatsScreenplayScene =
+  NonNullable<ProjectData['screenplay']>['scenes'][number];
+
+/**
+ * HTML d'une scène de scénario à compter : l'en-tête, puis les paragraphes.
+ *
+ * Les morceaux sont séparés par un saut de ligne pour que deux paragraphes
+ * voisins ne soient jamais comptés comme un seul mot.
+ */
+function sceneHtmlForStats(
+  scene: StatsScreenplayScene
+): string {
+  const parts: string[] = [];
+  const heading = scene?.heading;
+
+  if (heading) {
+    if (heading.mode === 'free') {
+      if (typeof heading.html === 'string') {
+        parts.push(heading.html);
+      }
+    } else {
+      const prefix =
+        heading.interiorExterior === 'OTHER'
+          ? heading.customInteriorExterior
+          : heading.interiorExterior;
+
+      [prefix, heading.location, heading.timeOfDay].forEach((part) => {
+        if (typeof part === 'string' && part.trim()) {
+          parts.push(part);
+        }
+      });
+    }
+  }
+
+  const elements = Array.isArray(scene?.elements)
+    ? scene.elements
+    : [];
+
+  elements.forEach((element) => {
+    if (element && typeof element.html === 'string') {
+      parts.push(element.html);
+    }
+  });
+
+  return parts.join('\n');
+}
+
+/**
+ * Contenus HTML à compter dans un projet : les scènes (en-tête et
+ * paragraphes) pour un scénario, les chapitres pour un roman.
+ */
+function getCountableHtml(
+  projectData: ProjectData
+): string[] {
+  if (projectData.projectType === 'screenplay') {
+    const scenes = projectData.screenplay?.scenes;
+
+    return Array.isArray(scenes)
+      ? scenes.map((scene) => sceneHtmlForStats(scene))
+      : [];
+  }
+
+  return Object.values(projectData.chapters || {});
+}
+
 /**
  * Compte les mots et caractères d’un projet.
  */
@@ -371,9 +437,7 @@ export function getTotalStats(
   let totalWords = 0;
   let totalChars = 0;
 
-  Object.values(
-    projectData.chapters || {}
-  ).forEach((htmlContent) => {
+  getCountableHtml(projectData).forEach((htmlContent) => {
     if (
       typeof htmlContent !== 'string'
     ) {
