@@ -531,6 +531,20 @@ export const fr = {
   wbTlColorNone: 'Aucune',
   wbTlSave: 'Enregistrer',
   wbTlCancel: 'Annuler',
+  // Atelier : annuler / rétablir (Ctrl+Z / Ctrl+Y)
+  wbHistUndone: 'Annulé : {action}',
+  wbHistRedone: 'Rétabli : {action}',
+  wbHistNothingUndo: 'Rien à annuler',
+  wbHistNothingRedo: 'Rien à rétablir',
+  wbHistTlCreate: 'nouvel événement',
+  wbHistTlEdit: 'événement modifié',
+  wbHistTlDelete: 'événement supprimé',
+  wbHistTlMove: 'événement déplacé',
+  wbHistRelCreate: 'nouvelle relation',
+  wbHistRelEdit: 'relation modifiée',
+  wbHistRelDelete: 'relation supprimée',
+  wbHistRelMoveNode: 'fiche déplacée',
+  wbHistRelLayout: 'réorganisation du graphe',
 
   // -------------------------------------------------------------------------
   // BARRE DE STATUT
@@ -1453,6 +1467,20 @@ export const en: Record<TranslationKey, string> = {
   wbTlColorNone: 'None',
   wbTlSave: 'Save',
   wbTlCancel: 'Cancel',
+  // Workspace: undo / redo (Ctrl+Z / Ctrl+Y)
+  wbHistUndone: 'Undone: {action}',
+  wbHistRedone: 'Redone: {action}',
+  wbHistNothingUndo: 'Nothing to undo',
+  wbHistNothingRedo: 'Nothing to redo',
+  wbHistTlCreate: 'new event',
+  wbHistTlEdit: 'event edited',
+  wbHistTlDelete: 'event deleted',
+  wbHistTlMove: 'event moved',
+  wbHistRelCreate: 'new relationship',
+  wbHistRelEdit: 'relationship edited',
+  wbHistRelDelete: 'relationship deleted',
+  wbHistRelMoveNode: 'item moved',
+  wbHistRelLayout: 'graph rearranged',
 
   // -------------------------------------------------------------------------
   // STATUS BAR

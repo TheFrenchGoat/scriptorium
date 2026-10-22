@@ -26,6 +26,7 @@ import { useI18n } from '../../i18n';
 import type { LanguageCode, WbCategoryDef, WbItem, WbRelation, WbRelationKind } from '../../../shared/types';
 import { pickText, relationLabelFrom, resolveCategoryLabel, resolveRelationTypes, WB_FALLBACK_ICON, WB_RELATION_KIND_LABELS, type ResolvedRelationType, type WbTreeRole } from '../../lib/wb-config';
 import { closeWbWorkspace, openWbWorkspace, toggleWbWorkspace, useExclusiveDropdown } from '../../lib/wb-workspace';
+import { cloneWbData, pushWbHistory, useWbHistoryVersion } from '../../lib/wb-history';
 import { Modal } from '../common/Modal';
 import type { EditorController } from './useEditorController';
 import { openWbPanel } from './WbSidePanel';
@@ -216,6 +217,19 @@ function storePositions(positions: Record<string, Point>): void {
   } catch {
     // Sans conséquence : la disposition sera recalculée.
   }
+}
+
+/**
+ * Modifie les positions enregistrées : un point remplace la position,
+ * null la supprime (elle sera recalculée). Sert à annuler / rétablir.
+ */
+function patchStoredPositions(patch: Record<string, Point | null>): void {
+  const stored = readPositions();
+  for (const [id, point] of Object.entries(patch)) {
+    if (point) stored[id] = { x: point.x, y: point.y };
+    else delete stored[id];
+  }
+  storePositions(stored);
 }
 
 function readShowIsolated(): boolean {
@@ -907,6 +921,11 @@ export function WbRelationsView({ controller }: WbRelationsViewProps) {
   const [menu, setMenu] = useState<EdgeMenu | null>(null);
   const [svgEl, setSvgEl] = useState<SVGSVGElement | null>(null);
   const [, setVersion] = useState(0);
+  // Historique de l'atelier : redessine la vue après Ctrl+Z / Ctrl+Y.
+  const historyVersion = useWbHistoryVersion();
+  const historySeenRef = useRef(historyVersion);
+  // Positions des ronds au repos (avant un glissement), pour l'historique.
+  const restPositionsRef = useRef<Record<string, Point>>({});
 
   // Les positions sont lues une seule fois, au montage (l'atelier démonte
   // la vue à sa fermeture : elles sont donc relues à chaque ouverture).
@@ -1090,12 +1109,21 @@ export function WbRelationsView({ controller }: WbRelationsViewProps) {
 
   const graphNodeIds: string[] = itemIds.filter((id) => typeMatches(id) && (showIsolated || linkedIds.has(id)));
 
+  // Après une annulation ou un rétablissement : positions relues (hors glissement).
+  if (historySeenRef.current !== historyVersion && !dragRef.current) {
+    historySeenRef.current = historyVersion;
+    positionsRef.current = readPositions();
+  }
+
   if (tab === 'graph' && graphNodeIds.some((id) => !positionsRef.current[id])) {
     const edges: Array<[string, string]> = allRelations.map((relation) => [relation.sourceId, relation.targetId] as [string, string]);
     const computed = layoutGraph(graphNodeIds, edges, positionsRef.current);
     positionsRef.current = { ...positionsRef.current, ...computed };
     storePositions(positionsRef.current);
   }
+
+  // Positions au repos, mémorisées pour pouvoir annuler un déplacement de rond.
+  if (!dragRef.current) restPositionsRef.current = cloneWbData(positionsRef.current);
 
   // Fiche sélectionnée et ses voisins directs.
   const activeSelection = selectedId && graphNodeIds.includes(selectedId) ? selectedId : null;
@@ -1149,11 +1177,31 @@ export function WbRelationsView({ controller }: WbRelationsViewProps) {
   // Enregistrement des relations
   // -------------------------------------------------------------------------
 
-  function commitRelations(next: WbRelation[]): void {
+  function writeRelations(next: WbRelation[]): void {
     const projectData = controller.data();
     projectData.wbRelations = next;
     controller.setSaveStatus('pending');
     void controller.saveWholeProject();
+  }
+
+  /** Enregistre les relations et ajoute l'action à l'historique de l'atelier. */
+  function commitRelations(next: WbRelation[]): void {
+    const before = cloneWbData(controller.data().wbRelations ?? []);
+    const after = cloneWbData(next);
+    writeRelations(next);
+    if (JSON.stringify(before) !== JSON.stringify(after)) {
+      pushWbHistory({
+        tab: 'relations',
+        labelKey:
+          after.length > before.length
+            ? 'wbHistRelCreate'
+            : after.length < before.length
+              ? 'wbHistRelDelete'
+              : 'wbHistRelEdit',
+        undo: () => writeRelations(cloneWbData(before)),
+        redo: () => writeRelations(cloneWbData(after)),
+      });
+    }
     redraw();
   }
 
@@ -1255,11 +1303,25 @@ export function WbRelationsView({ controller }: WbRelationsViewProps) {
   }
 
   function resetLayout(): void {
+    const removed: Record<string, Point> = {};
     const next = { ...positionsRef.current };
-    for (const id of itemIds) delete next[id];
+    for (const id of itemIds) {
+      if (next[id]) removed[id] = { x: next[id].x, y: next[id].y };
+      delete next[id];
+    }
     positionsRef.current = next;
     storePositions(next);
     fitPendingRef.current = true;
+    if (Object.keys(removed).length > 0) {
+      const cleared: Record<string, Point | null> = {};
+      for (const id of Object.keys(removed)) cleared[id] = null;
+      pushWbHistory({
+        tab: 'relations',
+        labelKey: 'wbHistRelLayout',
+        undo: () => patchStoredPositions(removed),
+        redo: () => patchStoredPositions(cleared),
+      });
+    }
     redraw();
   }
 
@@ -1319,6 +1381,25 @@ export function WbRelationsView({ controller }: WbRelationsViewProps) {
     }
   }
 
+  /** Fin du déplacement d'un rond : enregistre la position et l'ajoute à l'historique. */
+  function finishNodeMove(id: string | null): void {
+    storePositions(positionsRef.current);
+    if (!id) return;
+    const nodeId = id;
+    const before = restPositionsRef.current[nodeId];
+    const after = positionsRef.current[nodeId];
+    if (!before || !after) return;
+    if (Math.round(before.x) === Math.round(after.x) && Math.round(before.y) === Math.round(after.y)) return;
+    const from: Point = { x: before.x, y: before.y };
+    const to: Point = { x: after.x, y: after.y };
+    pushWbHistory({
+      tab: 'relations',
+      labelKey: 'wbHistRelMoveNode',
+      undo: () => patchStoredPositions({ [nodeId]: from }),
+      redo: () => patchStoredPositions({ [nodeId]: to }),
+    });
+  }
+
   function releasePointer(pointerId: number): void {
     if (svgEl && svgEl.hasPointerCapture(pointerId)) {
       svgEl.releasePointerCapture(pointerId);
@@ -1331,7 +1412,7 @@ export function WbRelationsView({ controller }: WbRelationsViewProps) {
     dragRef.current = null;
     releasePointer(event.pointerId);
     if (drag.moved) {
-      if (drag.mode === 'node') storePositions(positionsRef.current);
+      if (drag.mode === 'node') finishNodeMove(drag.id);
       return;
     }
     if (!drag.id) {
@@ -1346,7 +1427,7 @@ export function WbRelationsView({ controller }: WbRelationsViewProps) {
     if (!drag || drag.pointerId !== event.pointerId) return;
     dragRef.current = null;
     releasePointer(event.pointerId);
-    if (drag.moved && drag.mode === 'node') storePositions(positionsRef.current);
+    if (drag.moved && drag.mode === 'node') finishNodeMove(drag.id);
   }
 
   function handleNodeTap(id: string, ctrl: boolean): void {

@@ -19,7 +19,9 @@
 //
 // Les événements sont enregistrés dans le projet (wbTimeline) avec
 // `controller.saveWholeProject()`, quel que soit l'onglet actif.
-// L'ouverture, la fermeture et la touche Échap sont gérées par l'atelier.
+// Chaque modification est ajoutée à l'historique commun de l'atelier
+// (wb-history) : Ctrl+Z / Ctrl+Y, gérés par WbWorkspace, la défont ou la
+// refont. L'ouverture, la fermeture et la touche Échap sont gérées par l'atelier.
 
 import {
   useEffect,
@@ -30,8 +32,10 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from 'react';
 import { useI18n } from '../../i18n';
+import type { TranslationKey } from '../../i18n/dict';
 import type { WbCategoryDef, WbItem, WbTimelineEvent } from '../../../shared/types';
 import { pickText, WB_COLOR_PALETTE, WB_FALLBACK_ICON, WB_UNTITLED_NAME } from '../../lib/wb-config';
+import { cloneWbData, pushWbHistory, useWbHistoryVersion } from '../../lib/wb-history';
 import { closeWbWorkspace } from '../../lib/wb-workspace';
 import { Modal } from '../common/Modal';
 import type { EditorController } from './useEditorController';
@@ -140,6 +144,13 @@ function keyBetween(current: number, prev: number | undefined, next: number | un
 export function WbTimelineView({ controller }: WbTimelineViewProps) {
   const { t, lang } = useI18n();
 
+  // Redessine la frise après chaque annulation ou rétablissement.
+  useWbHistoryVersion();
+
+  // Contrôleur à jour, utilisé par les actions d'annulation et de rétablissement.
+  const controllerRef = useRef(controller);
+  controllerRef.current = controller;
+
   const [, setVersion] = useState(0);
   const [filterId, setFilterId] = useState('');
   const [draft, setDraft] = useState<EventDraft | null>(null);
@@ -202,14 +213,36 @@ export function WbTimelineView({ controller }: WbTimelineViewProps) {
   visibleRef.current = visibleEvents;
 
   // -------------------------------------------------------------------------
-  // Enregistrement
+  // Enregistrement et historique
   // -------------------------------------------------------------------------
 
-  function commit(next: WbTimelineEvent[]): void {
-    const projectData = controller.data();
+  /** Écrit les événements dans le projet et lance la sauvegarde. */
+  function writeTimeline(next: WbTimelineEvent[]): void {
+    const current = controllerRef.current;
+    const projectData = current.data();
     projectData.wbTimeline = next;
-    controller.setSaveStatus('pending');
-    void controller.saveWholeProject();
+    current.setSaveStatus('pending');
+    void current.saveWholeProject();
+  }
+
+  /** Enregistre `next` et l'ajoute à l'historique de l'atelier. */
+  function commit(next: WbTimelineEvent[], labelKey: TranslationKey): void {
+    const before = cloneWbData(controllerRef.current.data().wbTimeline ?? []);
+    const after = cloneWbData(next);
+
+    // Rien n'a changé (ex. : fenêtre validée sans modification) : pas d'étape.
+    if (JSON.stringify(before) === JSON.stringify(after)) {
+      redraw();
+      return;
+    }
+
+    writeTimeline(next);
+    pushWbHistory({
+      tab: 'timeline',
+      labelKey,
+      undo: () => writeTimeline(cloneWbData(before)),
+      redo: () => writeTimeline(cloneWbData(after)),
+    });
     redraw();
   }
 
@@ -274,7 +307,7 @@ export function WbTimelineView({ controller }: WbTimelineViewProps) {
       ? rawEvents.map((entry) => (entry.id === existing.id ? event : entry))
       : [...rawEvents, event];
 
-    commit(next);
+    commit(next, existing ? 'wbHistTlEdit' : 'wbHistTlCreate');
     closeDraft();
   }
 
@@ -282,7 +315,10 @@ export function WbTimelineView({ controller }: WbTimelineViewProps) {
     if (!pendingDelete) return;
     const id = pendingDelete.id;
     setPendingDelete(null);
-    commit(rawEvents.filter((event) => event.id !== id));
+    commit(
+      rawEvents.filter((event) => event.id !== id),
+      'wbHistTlDelete'
+    );
   }
 
   /** direction : -1 = plus tôt, 1 = plus tard. */
@@ -304,7 +340,8 @@ export function WbTimelineView({ controller }: WbTimelineViewProps) {
         if (entry.id === event.id) return { ...entry, sortKey: movedKey };
         if (entry.id === neighbor.id) return { ...entry, sortKey: neighborKey };
         return entry;
-      })
+      }),
+      'wbHistTlMove'
     );
   }
 
@@ -456,7 +493,7 @@ export function WbTimelineView({ controller }: WbTimelineViewProps) {
     const sortKey = keyBetween(moved.sortKey, prev?.sortKey, next?.sortKey);
 
     ordered.splice(insertAt, 0, { ...moved, sortKey });
-    commit(ordered);
+    commit(ordered, 'wbHistTlMove');
   }
 
   // Les écouteurs globaux appellent toujours la version à jour des fonctions.

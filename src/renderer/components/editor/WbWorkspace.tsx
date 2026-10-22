@@ -1,11 +1,17 @@
 // src/renderer/components/editor/WbWorkspace.tsx
 // Atelier World Building : un seul espace, au-dessus de la zone d'écriture,
-// qui regroupe les vues en onglets (Cartes, Relations, puis Frise au lot 8).
+// qui regroupe les vues en onglets (Cartes, Relations, Frise).
 //
 // L'atelier ne connaît pas les vues : EditorPage les lui fournit via la prop
 // `views`. Il gère l'ouverture / fermeture (événements de lib/wb-workspace),
 // l'onglet mémorisé, la touche Échap, et se ferme tout seul quand un document
 // devient actif dans les onglets de l'éditeur (prop `activeDocKey`).
+//
+// Il gère aussi l'historique commun (lib/wb-history) : Ctrl+Z annule,
+// Ctrl+Y ou Ctrl+Maj+Z rétablit, avec bascule sur l'onglet concerné et un
+// court message en bas. Tant que l'atelier est ouvert, ces raccourcis ne
+// touchent jamais au chapitre ; ils sont laissés au navigateur dans les
+// champs de saisie et quand une fenêtre (modal) est ouverte.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react';
@@ -20,6 +26,7 @@ import {
   useWbWorkspaceRequests
 } from '../../lib/wb-workspace';
 import type { WbWorkspaceTab } from '../../lib/wb-workspace';
+import { clearWbHistory, redoWbHistory, undoWbHistory } from '../../lib/wb-history';
 import './wb-workspace.css';
 
 const TAB_LABELS: Record<WbWorkspaceTab, TranslationKey> = {
@@ -27,6 +34,32 @@ const TAB_LABELS: Record<WbWorkspaceTab, TranslationKey> = {
   relations: 'wbWsTabRelations',
   timeline: 'wbWsTabTimeline'
 };
+
+/** Fenêtres ouvertes : les raccourcis de l'atelier sont alors désactivés. */
+const MODAL_SELECTOR = '.modal, .modal-overlay, .modal-backdrop';
+
+/** Durée d'affichage du message « Annulé : … » (ms). */
+const TOAST_DURATION = 2500;
+
+/** Types de champs où Ctrl+Z ne concerne pas du texte. */
+const NON_TEXT_INPUTS = ['checkbox', 'radio', 'button', 'submit', 'reset', 'range', 'color', 'file'];
+
+/** Vrai si la touche est destinée à un champ de saisie (annulation du navigateur). */
+function isEditableTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  if (target.isContentEditable) return true;
+  const tag = target.tagName;
+  if (tag === 'TEXTAREA' || tag === 'SELECT') return true;
+  if (tag === 'INPUT') {
+    return !NON_TEXT_INPUTS.includes((target as HTMLInputElement).type);
+  }
+  return false;
+}
+
+interface WbToast {
+  id: number;
+  text: string;
+}
 
 export interface WbWorkspaceProps {
   /** Contenu de chaque onglet. Un onglet sans contenu n'est pas affiché. */
@@ -49,6 +82,7 @@ export function WbWorkspace({ views, activeDocKey }: WbWorkspaceProps) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<WbWorkspaceTab>(() => loadLastWbWorkspaceTab());
   const [visited, setVisited] = useState<WbWorkspaceTab[]>([]);
+  const [toast, setToast] = useState<WbToast | null>(null);
 
   const currentTab: WbWorkspaceTab = availableTabs.includes(tab)
     ? tab
@@ -63,6 +97,7 @@ export function WbWorkspace({ views, activeDocKey }: WbWorkspaceProps) {
 
   const tabRefs = useRef<Partial<Record<WbWorkspaceTab, HTMLButtonElement | null>>>({});
   const restoreFocusRef = useRef<HTMLElement | null>(null);
+  const toastTimerRef = useRef<number | null>(null);
 
   // -------------------------------------------------------------------------
   // ONGLETS
@@ -193,13 +228,77 @@ export function WbWorkspace({ views, activeDocKey }: WbWorkspaceProps) {
     if (!open) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' || event.defaultPrevented) return;
-      if (document.querySelector('.modal, .modal-overlay, .modal-backdrop')) return;
+      if (document.querySelector(MODAL_SELECTOR)) return;
       event.preventDefault();
       close();
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [open, close]);
+
+  // -------------------------------------------------------------------------
+  // ANNULER / RÉTABLIR
+  // -------------------------------------------------------------------------
+
+  const showToast = useCallback((text: string) => {
+    if (toastTimerRef.current !== null) window.clearTimeout(toastTimerRef.current);
+    setToast((previous) => ({ id: (previous?.id ?? 0) + 1, text }));
+    toastTimerRef.current = window.setTimeout(() => {
+      toastTimerRef.current = null;
+      setToast(null);
+    }, TOAST_DURATION);
+  }, []);
+
+  // Ctrl+Z / Ctrl+Y / Ctrl+Maj+Z, écoutés en capture sur window : l'atelier
+  // passe avant l'éditeur et la règle, qui ne reçoivent pas la touche.
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
+      const key = event.key.toLowerCase();
+      const isUndo = key === 'z' && !event.shiftKey;
+      const isRedo = key === 'y' || (key === 'z' && event.shiftKey);
+      if (!isUndo && !isRedo) return;
+
+      // Champ de saisie ou fenêtre ouverte : annulation habituelle du navigateur.
+      if (isEditableTarget(event.target)) return;
+      if (document.querySelector(MODAL_SELECTOR)) return;
+
+      // Atelier ouvert : le chapitre n'est jamais touché, même sans historique.
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      const entry = isUndo ? undoWbHistory() : redoWbHistory();
+      if (!entry) {
+        showToast(t(isUndo ? 'wbHistNothingUndo' : 'wbHistNothingRedo'));
+        return;
+      }
+      if (entry.tab !== tabRef.current && availableRef.current.includes(entry.tab)) {
+        selectTab(entry.tab);
+      }
+      showToast(t(isUndo ? 'wbHistUndone' : 'wbHistRedone', { action: t(entry.labelKey) }));
+    };
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => window.removeEventListener('keydown', onKeyDown, true);
+  }, [open, selectTab, showToast, t]);
+
+  // Fermeture de l'atelier : le message disparaît.
+  useEffect(() => {
+    if (open) return;
+    if (toastTimerRef.current !== null) {
+      window.clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = null;
+    }
+    setToast(null);
+  }, [open]);
+
+  // Démontage (fermeture du projet) : historique vidé.
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current !== null) window.clearTimeout(toastTimerRef.current);
+      clearWbHistory();
+    };
+  }, []);
 
   // -------------------------------------------------------------------------
   // AFFICHAGE
@@ -278,6 +377,12 @@ export function WbWorkspace({ views, activeDocKey }: WbWorkspaceProps) {
           );
         })}
       </div>
+
+      {toast && (
+        <div key={toast.id} className="wb-ws-toast" role="status" aria-live="polite">
+          {toast.text}
+        </div>
+      )}
     </div>
   );
 }

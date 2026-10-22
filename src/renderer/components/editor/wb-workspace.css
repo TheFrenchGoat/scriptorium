@@ -1,5 +1,6 @@
 /* src/renderer/components/editor/wb-workspace.css */
-/* Atelier World Building : espace commun en onglets (Cartes, Relations, Frise). */
+/* Atelier World Building : espace commun en onglets (Cartes, Relations, Frise),
+   avec le message d'annulation / rétablissement (Ctrl+Z / Ctrl+Y). */
 
 /* ------------------------------------------------------------------------- */
 /* CONTENEUR                                                                 */
@@ -165,11 +166,48 @@
 }
 
 /* ------------------------------------------------------------------------- */
+/* MESSAGE « ANNULÉ : … » / « RÉTABLI : … »                                  */
+/* ------------------------------------------------------------------------- */
+
+.wb-ws-toast {
+  position: absolute;
+  left: 50%;
+  bottom: 22px;
+  z-index: 5;
+  max-width: min(480px, calc(100% - 40px));
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-panel);
+  color: var(--text-main);
+  box-shadow: var(--shadow);
+  font-size: 0.95em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  transform: translateX(-50%);
+  animation: wb-ws-toast-in 0.16s ease-out;
+}
+
+@keyframes wb-ws-toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%);
+  }
+}
+
+/* ------------------------------------------------------------------------- */
 /* ACCESSIBILITÉ                                                             */
 /* ------------------------------------------------------------------------- */
 
 @media (prefers-reduced-motion: reduce) {
-  .wb-ws {
+  .wb-ws,
+  .wb-ws-toast {
     animation: none;
   }
 
