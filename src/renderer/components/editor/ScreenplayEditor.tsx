@@ -37,6 +37,8 @@ import {
 
 import type { WbRegistry } from '../../lib/wb-registry';
 
+import { highlightWorldBuilding } from '../../lib/highlight';
+
 import { ScreenplayElementEditor } from './ScreenplayElementEditor';
 
 import type {
@@ -310,25 +312,80 @@ interface SceneHeadingEditorProps {
   language: ScreenplayConventionLanguage;
   nativeSpellcheck: boolean;
   active: boolean;
+  /** Fiches et registre des couleurs, pour le surlignage World Building. */
+  projectData?: ProjectData | null;
+  wbRegistry?: WbRegistry;
+  /** Change quand une fiche change : le surlignage est alors relancé. */
+  worldSignature: string;
   onFocus: () => void;
   onChange: (heading: ScreenplaySceneHeading) => void;
   onFocusFirstElement: () => void;
 }
+
+/** Délai du surlignage pendant la saisie de l'en-tête. */
+const HEADING_HIGHLIGHT_DELAY_MS = 400;
 
 function SceneHeadingEditor({
   scene,
   language,
   nativeSpellcheck,
   active,
+  projectData,
+  wbRegistry,
+  worldSignature,
   onFocus,
   onChange,
   onFocusFirstElement
 }: SceneHeadingEditorProps): React.ReactElement {
   const editorRef = useRef<HTMLDivElement | null>(null);
   const focusedRef = useRef(false);
+  const highlightTimerRef = useRef<number | null>(null);
+
+  // Version à jour des fiches, lue par la minuterie du surlignage.
+  const worldRef = useRef({ projectData, wbRegistry });
+
+  worldRef.current = { projectData, wbRegistry };
 
   const headingText = useMemo(() => getHeadingText(scene.heading, language), [language, scene.heading]);
 
+  /*
+   * Surlignage World Building de l'en-tête. Les marques ne sont jamais
+   * enregistrées : commit() relit l'en-tête par innerText (texte seul).
+   */
+  const applyHighlight = useCallback((): void => {
+    const editor = editorRef.current;
+    const data = worldRef.current.projectData;
+    const registry = worldRef.current.wbRegistry;
+
+    if (!editor || !data || !registry) {
+      return;
+    }
+
+    try {
+      highlightWorldBuilding(editor, data, registry);
+    } catch (error) {
+      console.error('Scénario : surlignage impossible (en-tête).', error);
+    }
+  }, []);
+
+  const cancelHighlightTimer = useCallback((): void => {
+    if (highlightTimerRef.current !== null) {
+      window.clearTimeout(highlightTimerRef.current);
+      highlightTimerRef.current = null;
+    }
+  }, []);
+
+  // Nettoyage de la minuterie quand l'en-tête disparaît.
+  useEffect(() => {
+    return () => {
+      cancelHighlightTimer();
+    };
+  }, [cancelHighlightTimer]);
+
+  /*
+   * En-tête sans le focus : texte à jour, puis surlignage (à l'ouverture,
+   * quand l'en-tête change de l'extérieur, ou quand une fiche change).
+   */
   useEffect(() => {
     const editor = editorRef.current;
 
@@ -339,7 +396,9 @@ function SceneHeadingEditor({
     if (editor.innerText !== headingText) {
       editor.innerText = headingText;
     }
-  }, [headingText]);
+
+    applyHighlight();
+  }, [applyHighlight, headingText, worldSignature, projectData, wbRegistry]);
 
   const commit = useCallback((): void => {
     const editor = editorRef.current;
@@ -393,7 +452,17 @@ function SceneHeadingEditor({
       }}
       onBlur={() => {
         focusedRef.current = false;
+        cancelHighlightTimer();
         commit();
+        applyHighlight();
+      }}
+      onInput={() => {
+        // Surlignage différé pendant la saisie (le curseur est conservé).
+        cancelHighlightTimer();
+        highlightTimerRef.current = window.setTimeout(() => {
+          highlightTimerRef.current = null;
+          applyHighlight();
+        }, HEADING_HIGHLIGHT_DELAY_MS);
       }}
       onKeyDown={(event) => {
         if (event.key === 'Enter') {
@@ -811,6 +880,9 @@ export function ScreenplayEditor({
                 scene={scene}
                 language={language}
                 nativeSpellcheck={nativeSpellcheck}
+                projectData={worldContext.projectData}
+                wbRegistry={worldContext.wbRegistry}
+                worldSignature={worldSignature}
                 active={activeHeadingId === scene.heading.id}
                 onFocus={() => {
                   selectHeading(scene, sceneIndex);

@@ -14,7 +14,7 @@
 // Scénario (étape 2e-2) : scenesContaining() cherche les mentions dans les
 // paragraphes des scènes. Le résultat est mémorisé par paragraphe : un
 // paragraphe modifié est un nouvel objet, lui seul est donc réanalysé.
-// Les en-têtes de scène ne sont pas comptés (ils ne sont pas surlignés).
+// Les en-têtes de scène sont aussi comptés : ils sont surlignés.
 //
 // Ce module fournit aussi les outils de détection partagés avec
 // highlight.ts, afin que le surlignage et l'index reconnaissent exactement
@@ -334,6 +334,51 @@ export function createMentionIndex(getProjectData: () => ProjectData): MentionIn
     return found;
   }
 
+  /** Mémoire des en-têtes de scène (valable pour une signature des fiches). */
+  const headingCache = new WeakMap<object, { signature: unknown; found: Set<string> }>();
+
+  /**
+   * Fiches mentionnées dans un en-tête de scène (avec mémoire). Même texte
+   * que celui affiché et surligné : texte libre, ou préfixe personnalisé,
+   * lieu et moment de l'en-tête structuré.
+   */
+  function itemsInHeading(heading: ScreenplayScene['heading'] | undefined, current: TermMatcher): Set<string> {
+    if (!heading || typeof heading !== 'object') {
+      return new Set<string>();
+    }
+
+    const cached = headingCache.get(heading);
+
+    if (cached && cached.signature === current.signature) {
+      return cached.found;
+    }
+
+    let found: Set<string>;
+
+    if (heading.mode === 'free') {
+      const html = typeof heading.html === 'string' ? heading.html : '';
+
+      found = html ? findItemsInHtml(html, current) : new Set<string>();
+    } else {
+      const inText = new Set<string>();
+      const text = [heading.customInteriorExterior, heading.location, heading.timeOfDay]
+        .filter((part): part is string => typeof part === 'string' && part.trim().length > 0)
+        .join('\n');
+
+      if (current.regex && text) {
+        for (const match of text.matchAll(current.regex)) {
+          current.termToIds.get(normalizeTerm(match[0]))?.forEach((id) => inText.add(id));
+        }
+      }
+
+      found = inText;
+    }
+
+    headingCache.set(heading, { signature: current.signature, found });
+
+    return found;
+  }
+
   /** Fiches mentionnées dans un paragraphe de scénario (avec mémoire). */
   function itemsInElement(element: ScreenplayElement, current: TermMatcher): Set<string> {
     const cached = elementCache.get(element);
@@ -451,7 +496,7 @@ export function createMentionIndex(getProjectData: () => ProjectData): MentionIn
           return;
         }
 
-        const mentioned = scene.elements.some(
+        const mentioned = itemsInHeading(scene.heading, current).has(itemId) || scene.elements.some(
           (element: ScreenplayElement) => !!element && itemsInElement(element, current).has(itemId)
         );
 
