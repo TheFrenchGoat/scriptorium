@@ -403,8 +403,8 @@ export function WbTimelineView({ controller }: WbTimelineViewProps) {
     if (event.button !== 0 || dragRef.current) return;
     const target = event.target as HTMLElement;
     if (target.closest('button, a, input, textarea, select, label')) return;
-    // Clic sur la barre de défilement de la description : pas de glissement.
-    if (target.classList.contains('wb-tl-desc') && event.nativeEvent.offsetX > target.clientWidth) return;
+    // Titre et description : sélection du texte (et barre de défilement), pas de glissement.
+    if (target.closest('.wb-tl-desc, .wb-tl-title')) return;
 
     event.preventDefault();
     dragRef.current = {

@@ -238,6 +238,13 @@
   overflow-wrap: anywhere;
 }
 
+/* Titre et description : texte sélectionnable ; la carte se glisse par ses autres zones. */
+.wb-tl-title,
+.wb-tl-desc {
+  user-select: text;
+  cursor: text;
+}
+
 .wb-tl-chapters {
   color: var(--text-muted);
   font-size: 0.85em;
