@@ -439,6 +439,9 @@ export function useEditorController({
   /** Utilisé au démontage pour enregistrer ce qui était encore en attente. */
   const saveAllRef = useRef<() => Promise<void>>(async () => undefined);
 
+  /** Vrai une fois le projet renommé : plus aucune sauvegarde sous l'ancien nom. */
+  const renamedRef = useRef(false);
+
   const api = useRef<EditorController | null>(null);
 
   const history = historyRef.current;
@@ -697,6 +700,10 @@ export function useEditorController({
       html: string,
       options?: { saveUiState?: boolean }
     ): Promise<void> => {
+      if (renamedRef.current) {
+        return;
+      }
+
       if (s.projectData.chapters[chapterName] === undefined) {
         return;
       }
@@ -752,6 +759,10 @@ export function useEditorController({
   );
 
   const saveAll = useCallback(async (): Promise<void> => {
+    if (renamedRef.current) {
+      return;
+    }
+
     cancelAllPendingChapterSaves();
     cancelPendingScreenplaySave();
     cancelPendingWbSave();
@@ -3391,6 +3402,17 @@ export function useEditorController({
         });
 
         await window.api.saveProjects(next);
+
+        // Le projet est enregistré sous son nouveau nom : plus aucune
+        // sauvegarde ne doit partir avec l'ancien (elle échouerait ou
+        // recréerait l'ancien projet). L'éditeur est ensuite recréé
+        // sous le nouveau nom (key dans App.tsx).
+        renamedRef.current = true;
+        cancelAllPendingChapterSaves();
+        cancelPendingScreenplaySave();
+        cancelPendingWbSave();
+        delete s.projects[projectName];
+        s.projects[trimmed] = s.projectData;
 
         const uiState = await window.api.getUiState();
 

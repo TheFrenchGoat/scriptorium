@@ -127,6 +127,7 @@ export function App(): React.ReactElement | null {
           />
         ) : (
           <EditorPage
+            key={openedProject}
             projectName={openedProject}
             theme={theme}
             onChangeTheme={changeTheme}
