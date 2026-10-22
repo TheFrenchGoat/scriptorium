@@ -369,10 +369,6 @@ export const fr = {
   // -------------------------------------------------------------------------
 
   wbPanelTitle: 'Fiches',
-  wbPanelToggleBtn: '🗂 Fiches',
-  wbPanelToggleTitle:
-    'Afficher ou masquer le panneau des fiches',
-  wbPanelClose: 'Fermer le panneau',
   wbPanelEmpty:
     'Cliquez sur un nom surligné dans le texte pour afficher sa fiche ici. Ctrl+clic l’ouvre dans un onglet.',
   wbPanelOpenInTab: '↗ Ouvrir en onglet',
@@ -384,18 +380,12 @@ export const fr = {
     'Aucune fiche ne correspond à la recherche.',
   wbPanelNoSheets:
     'Aucune fiche pour le moment.',
-  wbPanelResizeTitle:
-    'Glisser pour changer la largeur du panneau',
 
   // -------------------------------------------------------------------------
   // VUE EN CARTES
   // -------------------------------------------------------------------------
 
-  wbCardsBtn: '▦ Cartes',
-  wbCardsBtnTitle:
-    'Afficher toutes les fiches sous forme de cartes',
   wbCardsTitle: 'Toutes les fiches',
-  wbCardsClose: 'Fermer la vue en cartes (Échap)',
   wbCardsSearchPlaceholder:
     'Rechercher (nom, alias ou contenu des fiches)…',
   wbCardsFilterAll: 'Tous les types',
@@ -429,11 +419,7 @@ export const fr = {
   // VUE RELATIONS
   // -------------------------------------------------------------------------
 
-  wbRelBtn: '🕸 Relations',
-  wbRelBtnTitle:
-    'Afficher le graphe des relations et l’arbre généalogique',
   wbRelTitle: 'Relations',
-  wbRelClose: 'Fermer la vue des relations (Échap)',
   wbRelTabGraph: 'Graphe',
   wbRelTabTree: 'Arbre généalogique',
   wbRelAdd: '+ Relation',
@@ -549,7 +535,6 @@ export const fr = {
   wbHistItemDelete: 'fiche supprimée',
   wbHistItemRename: 'fiche renommée',
   wbHistItemEdit: 'fiche modifiée',
-  wbHistItemType: 'catégorie de la fiche changée',
   wbHistItemIcon: 'icône modifiée',
   wbHistItemColor: 'couleur modifiée',
   wbHistItemAliases: 'alias modifiés',
@@ -1318,10 +1303,6 @@ export const en: Record<TranslationKey, string> = {
   // -------------------------------------------------------------------------
 
   wbPanelTitle: 'Sheets',
-  wbPanelToggleBtn: '🗂 Sheets',
-  wbPanelToggleTitle:
-    'Show or hide the sheets panel',
-  wbPanelClose: 'Close the panel',
   wbPanelEmpty:
     'Click a highlighted name in the text to show its sheet here. Ctrl+click opens it in a tab.',
   wbPanelOpenInTab: '↗ Open in a tab',
@@ -1332,18 +1313,12 @@ export const en: Record<TranslationKey, string> = {
   wbPanelNoResults:
     'No sheet matches your search.',
   wbPanelNoSheets: 'No sheets yet.',
-  wbPanelResizeTitle:
-    'Drag to change the panel width',
 
   // -------------------------------------------------------------------------
   // CARDS VIEW
   // -------------------------------------------------------------------------
 
-  wbCardsBtn: '▦ Cards',
-  wbCardsBtnTitle:
-    'Show all sheets as cards',
   wbCardsTitle: 'All sheets',
-  wbCardsClose: 'Close the cards view (Esc)',
   wbCardsSearchPlaceholder:
     'Search (name, alias or sheet content)…',
   wbCardsFilterAll: 'All types',
@@ -1377,11 +1352,7 @@ export const en: Record<TranslationKey, string> = {
   // RELATIONS VIEW
   // -------------------------------------------------------------------------
 
-  wbRelBtn: '🕸 Relations',
-  wbRelBtnTitle:
-    'Show the relationship graph and family tree',
   wbRelTitle: 'Relationships',
-  wbRelClose: 'Close the relationships view (Esc)',
   wbRelTabGraph: 'Graph',
   wbRelTabTree: 'Family tree',
   wbRelAdd: '+ Relationship',
@@ -1497,7 +1468,6 @@ export const en: Record<TranslationKey, string> = {
   wbHistItemDelete: 'item deleted',
   wbHistItemRename: 'item renamed',
   wbHistItemEdit: 'item edited',
-  wbHistItemType: 'item category changed',
   wbHistItemIcon: 'icon changed',
   wbHistItemColor: 'color changed',
   wbHistItemAliases: 'aliases changed',

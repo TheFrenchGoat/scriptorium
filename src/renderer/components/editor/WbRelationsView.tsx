@@ -19,57 +19,17 @@
 //
 // Les relations sont enregistrées dans le projet (wbRelations).
 // L'ouverture, la fermeture et la touche Échap sont gérées par l'atelier.
-// N'importe quel composant peut ouvrir la vue avec `openWbRelations()`.
 
 import { Fragment, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { useI18n } from '../../i18n';
 import type { LanguageCode, WbCategoryDef, WbItem, WbRelation, WbRelationKind } from '../../../shared/types';
 import { pickText, relationLabelFrom, resolveCategoryLabel, resolveRelationTypes, WB_FALLBACK_ICON, WB_RELATION_KIND_LABELS, type ResolvedRelationType, type WbTreeRole } from '../../lib/wb-config';
-import { closeWbWorkspace, openWbWorkspace, toggleWbWorkspace, useExclusiveDropdown } from '../../lib/wb-workspace';
+import { closeWbWorkspace, useExclusiveDropdown } from '../../lib/wb-workspace';
 import { cloneWbData, pushWbHistory, useWbHistoryVersion } from '../../lib/wb-history';
 import { Modal } from '../common/Modal';
 import type { EditorController } from './useEditorController';
 import { openWbPanel } from './WbSidePanel';
 import './wb-relations.css';
-
-/**
- * Événement window émis à chaque demande d'ouverture ou de fermeture de la
- * vue des relations (gardé pour compatibilité ; l'atelier fait le travail).
- */
-export const WB_RELATIONS_EVENT = 'scriptorium:wb-relations';
-
-export type WbRelationsAction = 'open' | 'close' | 'toggle';
-
-export interface WbRelationsEventDetail {
-  action: WbRelationsAction;
-}
-
-export function dispatchWbRelationsEvent(detail: WbRelationsEventDetail): void {
-  window.dispatchEvent(
-    new CustomEvent<WbRelationsEventDetail>(WB_RELATIONS_EVENT, {
-      detail,
-    }),
-  );
-  if (detail.action === 'open') {
-    openWbWorkspace('relations');
-  } else if (detail.action === 'close') {
-    closeWbWorkspace();
-  } else {
-    toggleWbWorkspace('relations');
-  }
-}
-
-export function openWbRelations(): void {
-  dispatchWbRelationsEvent({ action: 'open' });
-}
-
-export function closeWbRelations(): void {
-  dispatchWbRelationsEvent({ action: 'close' });
-}
-
-export function toggleWbRelations(): void {
-  dispatchWbRelationsEvent({ action: 'toggle' });
-}
 
 // ---------------------------------------------------------------------------
 // Constantes

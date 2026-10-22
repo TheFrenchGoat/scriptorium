@@ -14,12 +14,12 @@
 // Le panneau des fiches est intégré à la section World Building de la barre
 // latérale (voir Sidebar.tsx et WbSidePanel.tsx).
 //
-// L'atelier (WbWorkspace.tsx) s'affiche par-dessus la zone d'écriture : il
-// réunit en onglets la vue en cartes des fiches (WbCardsView.tsx) et la vue
-// des relations (WbRelationsView.tsx : graphe des liens et arbre
-// généalogique) ; la frise chronologique (WbTimelineView.tsx) complète l'ensemble. Il s'ouvre avec
-// le bouton « 🧭 Atelier » de la barre latérale et se ferme tout seul dès
-// qu'un autre onglet d'écriture devient actif.
+// L'atelier (WbWorkspace.tsx) s'affiche par-dessus la zone d'écriture. Il
+// réunit trois onglets : la vue en cartes des fiches (WbCardsView.tsx), la
+// vue des relations (WbRelationsView.tsx : graphe des liens et arbre
+// généalogique) et la frise chronologique (WbTimelineView.tsx). Il s'ouvre
+// avec le bouton « 🧭 Atelier » de la barre latérale et se ferme tout seul
+// dès qu'un autre onglet d'écriture devient actif.
 //
 // L'aperçu d'une fiche au survol d'un nom surligné (WbHoverPreview.tsx)
 // s'affiche par-dessus toute la fenêtre ; il ne modifie pas le texte.

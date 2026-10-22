@@ -120,11 +120,6 @@ interface WbSidePanelProps {
   onCreateItem?: (wbType: WbType | null) => void;
   /** Renommage d'une fiche (fenêtre de renommage de la barre latérale). */
   onRenameItem?: (itemId: string) => void;
-  /**
-   * Ancien bouton ✕ du panneau de droite. N'est plus utilisé : conservé
-   * seulement le temps de la transition.
-   */
-  onClose?: () => void;
 }
 
 export function WbSidePanel({

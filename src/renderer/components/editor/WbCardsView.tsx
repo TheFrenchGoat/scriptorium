@@ -15,8 +15,6 @@
 // Les menus déroulants (CardsSelect) sont dessinés par l'application pour
 // suivre les couleurs du thème ; ils se pilotent aussi au clavier, et un seul
 // peut être ouvert à la fois dans toute l'application.
-//
-// N'importe quel composant peut ouvrir l'atelier sur les cartes avec `openWbCards()`.
 
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent } from 'react';
 import { useI18n } from '../../i18n';
@@ -25,47 +23,9 @@ import type { EditorController } from './useEditorController';
 import { openWbPanel } from './WbSidePanel';
 import {
   closeWbWorkspace,
-  openWbWorkspace,
-  toggleWbWorkspace,
   useExclusiveDropdown
 } from '../../lib/wb-workspace';
 import './wb-cards.css';
-
-/**
- * Ancien événement de la vue en cartes. Il est toujours émis (pour les
- * fichiers qui l'écoutent éventuellement), mais c'est l'atelier qui
- * ouvre et ferme désormais la vue.
- */
-export const WB_CARDS_EVENT = 'scriptorium:wb-cards';
-
-export type WbCardsAction = 'open' | 'close' | 'toggle';
-
-export interface WbCardsEventDetail {
-  action: WbCardsAction;
-}
-
-export function dispatchWbCardsEvent(detail: WbCardsEventDetail): void {
-  window.dispatchEvent(
-    new CustomEvent<WbCardsEventDetail>(WB_CARDS_EVENT, {
-      detail,
-    }),
-  );
-  if (detail.action === 'open') openWbWorkspace('cards');
-  else if (detail.action === 'close') closeWbWorkspace();
-  else toggleWbWorkspace('cards');
-}
-
-export function openWbCards(): void {
-  dispatchWbCardsEvent({ action: 'open' });
-}
-
-export function closeWbCards(): void {
-  dispatchWbCardsEvent({ action: 'close' });
-}
-
-export function toggleWbCards(): void {
-  dispatchWbCardsEvent({ action: 'toggle' });
-}
 
 /** Valeur du filtre qui affiche tous les types. */
 const FILTER_ALL = '__all__';
