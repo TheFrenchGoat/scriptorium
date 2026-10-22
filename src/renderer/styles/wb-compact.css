@@ -375,3 +375,9 @@ body.resizing-panel * {
   cursor: col-resize !important;
   user-select: none !important;
 }
+
+/* Redimensionnement entre deux sections : curseur vertical. */
+body.resizing-panel.resizing-row,
+body.resizing-panel.resizing-row * {
+  cursor: row-resize !important;
+}

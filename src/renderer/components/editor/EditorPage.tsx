@@ -409,7 +409,8 @@ export function EditorPage({
         );
 
         document.body.classList.remove(
-          'resizing-panel'
+          'resizing-panel',
+          'resizing-row'
         );
       };
 
@@ -454,7 +455,8 @@ export function EditorPage({
       );
 
       document.body.classList.add(
-        'resizing-panel'
+        'resizing-panel',
+        'resizing-row'
       );
 
       firstSection.style.flex =
