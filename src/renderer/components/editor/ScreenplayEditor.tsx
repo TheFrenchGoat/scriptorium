@@ -39,7 +39,9 @@ import type { WbRegistry } from '../../lib/wb-registry';
 
 import { highlightWorldBuilding } from '../../lib/highlight';
 
-import { ScreenplayElementEditor } from './ScreenplayElementEditor';
+import { ScreenplayElementEditor, WB_OPEN_TAB_EVENT, type WbOpenTabEventDetail } from './ScreenplayElementEditor';
+
+import { openWbPanel } from './WbSidePanel';
 
 import type {
   FreeScreenplayHeading,
@@ -436,6 +438,47 @@ function SceneHeadingEditor({
     onChange(nextHeading);
   }, [onChange, scene.heading.id]);
 
+  /**
+   * Clic sur un nom surligné, comme dans les paragraphes :
+   * - clic simple : la fiche s'ouvre dans le panneau latéral, et le curseur
+   *   se place normalement. Rien ne s'ouvre pendant une sélection de texte ;
+   * - Ctrl+clic (Cmd+clic) : la fiche s'ouvre dans un onglet.
+   */
+  const handleClick = useCallback((event: React.MouseEvent<HTMLDivElement>): void => {
+    const mention = (event.target as HTMLElement).closest<HTMLElement>('.wb-mention');
+
+    if (!mention) {
+      return;
+    }
+
+    const itemId = mention.dataset.wbKey;
+    const data = worldRef.current.projectData;
+    const itemExists = Boolean(itemId && data && data.world[itemId]);
+
+    if (event.ctrlKey || event.metaKey) {
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (itemId && itemExists) {
+        window.dispatchEvent(
+          new CustomEvent<WbOpenTabEventDetail>(WB_OPEN_TAB_EVENT, { detail: { itemId } })
+        );
+      }
+
+      return;
+    }
+
+    const selection = window.getSelection();
+
+    if (selection && !selection.isCollapsed) {
+      return;
+    }
+
+    if (itemId && itemExists) {
+      openWbPanel(itemId);
+    }
+  }, []);
+
   return (
     <div
       ref={editorRef}
@@ -446,6 +489,7 @@ function SceneHeadingEditor({
       role="textbox"
       aria-label={language === 'en' ? 'Scene heading' : 'En-tête de scène'}
       data-screenplay-heading-id={scene.heading.id}
+      onClick={handleClick}
       onFocus={() => {
         focusedRef.current = true;
         onFocus();
