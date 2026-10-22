@@ -1,7 +1,8 @@
 // src/main/ipc/backups.ts
 // SAUVEGARDES AUTOMATIQUES HORODATÉES
 // Un instantané complet du projet est écrit dans un dossier dédié du profil
-// utilisateur, avec rotation (on ne garde que les N dernières par projet).
+// utilisateur, avec rotation : les 10 dernières, plus la dernière de chaque
+// heure sur 24 h et de chaque jour sur 14 jours (voir removeRegularBackups).
 // Objectif : pouvoir revenir en arrière après une suppression ou un
 // remplacement malheureux, indépendamment du fichier de travail courant.
 //
@@ -18,6 +19,13 @@ import type { BackupEntry, ProjectData } from '../../shared/types';
 
 const MAX_BACKUPS_PER_PROJECT = 10;
 const MAX_PRE_CONVERSION_BACKUPS = 3;
+
+/** En plus des plus récentes : la dernière sauvegarde de chaque heure sur cette durée… */
+const KEEP_HOURLY_HOURS = 24;
+/** … et la dernière de chaque jour sur cette durée. */
+const KEEP_DAILY_DAYS = 14;
+const HOUR_MS = 60 * 60 * 1000;
+const DAY_MS = 24 * HOUR_MS;
 
 /** Suffixe des sauvegardes faites avant la conversion du World Building. */
 const PRE_CONVERSION_SUFFIX = '-avant-conversion.json';
@@ -113,13 +121,75 @@ function removeOldest(dir: string, files: string[], max: number): void {
   });
 }
 
+/** Format des noms de sauvegarde ordinaires : 2026-10-22T14-30-05-123Z.json */
+const BACKUP_NAME_PATTERN = /^(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2})-(\d{3})Z\.json$/;
+
+/** Date d'une sauvegarde d'après son nom, ou null si le nom n'a pas le format attendu. */
+function backupTime(fileName: string): number | null {
+  const match = BACKUP_NAME_PATTERN.exec(fileName);
+  if (!match) return null;
+  const time = Date.parse(`${match[1]}T${match[2]}:${match[3]}:${match[4]}.${match[5]}Z`);
+  return Number.isNaN(time) ? null : time;
+}
+
+/**
+ * Rotation des sauvegardes ordinaires. On garde :
+ * - les MAX_BACKUPS_PER_PROJECT plus récentes ;
+ * - la plus récente de chaque heure sur les KEEP_HOURLY_HOURS dernières heures ;
+ * - la plus récente de chaque jour sur les KEEP_DAILY_DAYS derniers jours.
+ * Un fichier dont le nom n'a pas le format attendu n'est jamais supprimé.
+ */
+function removeRegularBackups(dir: string, files: string[]): void {
+  const now = Date.now();
+  const dated = files
+    .map((fileName) => ({ fileName, time: backupTime(fileName) }))
+    .filter((entry): entry is { fileName: string; time: number } => entry.time !== null)
+    .sort((a, b) => b.time - a.time);
+
+  const keep = new Set<string>();
+  const seenHours = new Set<string>();
+  const seenDays = new Set<string>();
+
+  // Du plus récent au plus ancien : la première sauvegarde rencontrée pour une
+  // heure (ou un jour) est donc la plus récente de cette heure (ou ce jour).
+  dated.forEach((entry, index) => {
+    if (index < MAX_BACKUPS_PER_PROJECT) keep.add(entry.fileName);
+
+    // Jour et heure locaux : « hier » et « 14 h » au sens de l'utilisateur.
+    const date = new Date(entry.time);
+    const dayKey = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+    const hourKey = `${dayKey} ${date.getHours()}`;
+    const age = now - entry.time;
+
+    if (age < KEEP_HOURLY_HOURS * HOUR_MS && !seenHours.has(hourKey)) {
+      seenHours.add(hourKey);
+      keep.add(entry.fileName);
+    }
+
+    if (age < KEEP_DAILY_DAYS * DAY_MS && !seenDays.has(dayKey)) {
+      seenDays.add(dayKey);
+      keep.add(entry.fileName);
+    }
+  });
+
+  dated.forEach((entry) => {
+    if (keep.has(entry.fileName)) return;
+
+    try {
+      fs.unlinkSync(path.join(dir, entry.fileName));
+    } catch (error) {
+      console.error('Impossible de supprimer une ancienne sauvegarde :', entry.fileName, error);
+    }
+  });
+}
+
 function rotateBackups(dir: string): void {
   const files = fs.readdirSync(dir).filter((f) => f.endsWith('.json'));
 
   const preConversion = files.filter((f) => f.endsWith(PRE_CONVERSION_SUFFIX));
   const regular = files.filter((f) => !f.endsWith(PRE_CONVERSION_SUFFIX));
 
-  removeOldest(dir, regular, MAX_BACKUPS_PER_PROJECT);
+  removeRegularBackups(dir, regular);
   removeOldest(dir, preConversion, MAX_PRE_CONVERSION_BACKUPS);
 }
 
