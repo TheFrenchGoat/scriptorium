@@ -30,6 +30,7 @@ import { Modal } from '../common/Modal';
 import { ProjectCard } from './ProjectCard';
 import { HomeSettingsModal } from './HomeSettingsModal';
 import { describeError } from '../../lib/errors';
+import { renameWritingStatsProject } from '../../lib/writing-stats-rename';
 import {
   createScreenplayProject,
   getDefaultSceneHeading
@@ -295,54 +296,6 @@ async function migrateStoredUiState(
   } catch (error) {
     console.error(
       "World Building : impossible d'enregistrer les onglets reconnectés :",
-      error
-    );
-  }
-}
-
-/**
- * Déplace l'ancien historique quotidien vers le nouveau nom du projet.
- */
-async function renameWritingStatsProject(
-  oldName: string,
-  newName: string
-): Promise<void> {
-  let stats: WritingStats;
-
-  try {
-    stats =
-      (await window.api.getWritingStats()) ||
-      {};
-  } catch (error) {
-    console.error(
-      'Impossible de charger les statistiques pendant le renommage :',
-      error
-    );
-
-    return;
-  }
-
-  if (!stats.projects?.[oldName]) {
-    return;
-  }
-
-  const projects = {
-    ...(stats.projects || {})
-  };
-
-  projects[newName] =
-    projects[oldName];
-
-  delete projects[oldName];
-
-  try {
-    await window.api.saveWritingStats({
-      ...stats,
-      projects
-    });
-  } catch (error) {
-    console.error(
-      'Impossible de déplacer les statistiques vers le nouveau nom :',
       error
     );
   }

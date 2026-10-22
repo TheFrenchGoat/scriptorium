@@ -50,6 +50,7 @@ import {
   invalidateProjectWordCache
 } from '../../lib/project-word-cache';
 import { getDateKey, getStatsBucket } from '../../lib/stats';
+import { renameWritingStatsProject } from '../../lib/writing-stats-rename';
 import { buildDocxData } from '../../lib/docx-export';
 import { buildMarkdown } from '../../lib/markdown-export';
 import { buildPrintHtml } from '../../lib/pdf-export';
@@ -600,6 +601,10 @@ export function useEditorController({
   }, [s, status]);
 
   const recordWritingStats = useCallback(async (): Promise<void> => {
+    if (renamedRef.current) {
+      return;
+    }
+
     try {
       // Dans la file d'enregistrement : deux appels rapprochés ne peuvent plus
       // lire la même valeur puis s'écraser l'un l'autre.
@@ -3394,6 +3399,16 @@ export function useEditorController({
           return false;
         }
 
+        // Comme le renommage depuis la page des projets : les sessions et le
+        // titre du scénario (s'il est vide) prennent le nouveau nom.
+        s.projectData.writingSessions = (s.projectData.writingSessions || []).map(
+          (session) => ({ ...session, projectName: trimmed })
+        );
+
+        if (s.projectData.screenplay && !s.projectData.screenplay.titlePage.title) {
+          s.projectData.screenplay.titlePage.title = trimmed;
+        }
+
         const next: ProjectsMap = {};
 
         Object.keys(allProjects).forEach((key) => {
@@ -3422,6 +3437,12 @@ export function useEditorController({
 
           await window.api.saveUiState(uiState);
         }
+
+        // Historique quotidien des statistiques : déplacé vers le nouveau nom,
+        // dans la file pour passer après les enregistrements en cours.
+        await enqueuePersistence(() =>
+          renameWritingStatsProject(projectName, trimmed)
+        );
 
         await window.api.setCurrentProject(trimmed);
 
