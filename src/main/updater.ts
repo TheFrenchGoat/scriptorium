@@ -29,6 +29,11 @@ let isManualUpdateCheck = false;
 let pendingUpdate: { version: string } | null = null;
 let sendToWindow: (channel: string, ...args: unknown[]) => void = () => {};
 
+// Vrai pendant « Redémarrer et installer » : empêche un double clic de lancer
+// deux fois l'enregistrement puis l'installation. Remis à faux en cas d'erreur
+// pour que l'utilisateur puisse réessayer.
+let installRequested = false;
+
 export function checkForUpdates(manual = false): void {
   // Un check AUTOMATIQUE (silencieux) n'a aucun sens en dev : il n'y a pas de
   // build publiée à comparer, et ça ne ferait que polluer la console à
@@ -49,7 +54,16 @@ export function checkForUpdates(manual = false): void {
   autoUpdater.checkForUpdates().catch((err) => console.error('checkForUpdates:', err));
 }
 
-export function setupAutoUpdater(getWindow: () => BrowserWindow | null): void {
+/**
+ * @param prepareForQuit Enregistre le projet et autorise la fermeture de la
+ *   fenêtre sans nouvelle attente. Appelée AVANT quitAndInstall : sinon
+ *   l'installateur démarrerait pendant que la fenêtre retient encore sa
+ *   fermeture, et pourrait arrêter l'application en plein enregistrement.
+ */
+export function setupAutoUpdater(
+  getWindow: () => BrowserWindow | null,
+  prepareForQuit: () => Promise<void> = () => Promise.resolve()
+): void {
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = true;
 
@@ -57,11 +71,11 @@ export function setupAutoUpdater(getWindow: () => BrowserWindow | null): void {
     getWindow()?.webContents.send(channel, ...args);
   };
 
-autoUpdater.on('update-available', (info) => {
-  pendingUpdate = { version: info.version };
-  sendToWindow('updater:update-available', pendingUpdate);
-  isManualUpdateCheck = false;
-});
+  autoUpdater.on('update-available', (info) => {
+    pendingUpdate = { version: info.version };
+    sendToWindow('updater:update-available', pendingUpdate);
+    isManualUpdateCheck = false;
+  });
 
   autoUpdater.on('update-not-available', () => {
     if (isManualUpdateCheck) sendToWindow('updater:update-not-available');
@@ -80,11 +94,21 @@ autoUpdater.on('update-available', (info) => {
     console.error('Erreur auto-updater :', err);
     if (isManualUpdateCheck) sendToWindow('updater:error', err.message);
     isManualUpdateCheck = false;
+    installRequested = false;
   });
 
   ipcMain.handle('updater:check', () => checkForUpdates(true));
   ipcMain.handle('updater:get-version', () => app.getVersion());
   ipcMain.handle('updater:confirm-download', () => autoUpdater.downloadUpdate());
-  ipcMain.handle('updater:quit-and-install', () => autoUpdater.quitAndInstall());
+  ipcMain.handle('updater:quit-and-install', async () => {
+    if (installRequested) return;
+    installRequested = true;
+    try {
+      await prepareForQuit();
+    } catch (err) {
+      console.error('Préparation de la fermeture :', err);
+    }
+    autoUpdater.quitAndInstall();
+  });
   ipcMain.handle('updater:get-pending', () => pendingUpdate);
 }

@@ -21,6 +21,79 @@ const getWindow = (): MainWindow | null => win;
 
 const DEV_SERVER_URL = process.env.SCRIPTORIUM_DEV_SERVER;
 
+/** Délai maximal d'attente de l'enregistrement par le renderer. */
+const SAVE_BEFORE_CLOSE_TIMEOUT_MS = 5000;
+
+/**
+ * Jusqu'à cette date (ms), la fenêtre peut se fermer sans nouvel
+ * enregistrement : posée par prepareForQuit, juste avant quitAndInstall.
+ */
+let quitPreparedUntil = 0;
+
+/**
+ * Demande au renderer d'enregistrer tout le projet ("app:before-close") et
+ * attend sa réponse ("app:close-ready"), ou le délai maximal s'il ne répond pas.
+ * Ne rejette jamais.
+ */
+function saveBeforeClose(target: BrowserWindow): Promise<void> {
+  return new Promise((resolve) => {
+    if (target.isDestroyed()) {
+      resolve();
+      return;
+    }
+
+    const contents = target.webContents;
+    let done = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const finish = (): void => {
+      if (done) {
+        return;
+      }
+
+      done = true;
+
+      if (timer) {
+        clearTimeout(timer);
+      }
+
+      ipcMain.removeListener('app:close-ready', onReady);
+      resolve();
+    };
+
+    const onReady = (readyEvent: IpcMainEvent): void => {
+      if (readyEvent.sender === contents) {
+        finish();
+      }
+    };
+
+    ipcMain.on('app:close-ready', onReady);
+    timer = setTimeout(finish, SAVE_BEFORE_CLOSE_TIMEOUT_MS);
+
+    try {
+      contents.send('app:before-close');
+    } catch {
+      finish();
+    }
+  });
+}
+
+/**
+ * Appelée par « Redémarrer et installer » AVANT quitAndInstall : enregistre,
+ * puis autorise la fermeture sans nouvelle attente pendant 15 secondes. Sans
+ * cela, l'installateur démarrerait pendant que la fenêtre retient encore sa
+ * fermeture, et pourrait arrêter l'application en plein enregistrement.
+ */
+async function prepareForQuit(): Promise<void> {
+  const target = win;
+
+  if (target && !target.isDestroyed()) {
+    await saveBeforeClose(target);
+  }
+
+  quitPreparedUntil = Date.now() + 15000;
+}
+
 function createWindow(): void {
   win = new BrowserWindow({
     width: 1400,
@@ -140,12 +213,14 @@ function createWindow(): void {
 
   // Fermeture : le renderer enregistre d'abord tout le projet. La fenêtre se
   // ferme dès sa réponse, ou au bout de 5 secondes s'il ne répond pas.
+  // Exception : juste après prepareForQuit (mise à jour), l'enregistrement
+  // vient d'être fait, la fenêtre se ferme donc sans attendre.
   const currentWin = win;
   let closeAllowed = false;
   let closeRequested = false;
 
   currentWin.on('close', (event) => {
-    if (closeAllowed) {
+    if (closeAllowed || Date.now() < quitPreparedUntil) {
       return;
     }
 
@@ -157,40 +232,13 @@ function createWindow(): void {
 
     closeRequested = true;
 
-    let timer: ReturnType<typeof setTimeout> | null = null;
-
-    const finish = (): void => {
-      if (closeAllowed) {
-        return;
-      }
-
+    void saveBeforeClose(currentWin).then(() => {
       closeAllowed = true;
-
-      if (timer) {
-        clearTimeout(timer);
-      }
-
-      ipcMain.removeListener('app:close-ready', onReady);
 
       if (!currentWin.isDestroyed()) {
         currentWin.close();
       }
-    };
-
-    const onReady = (readyEvent: IpcMainEvent): void => {
-      if (readyEvent.sender === currentWin.webContents) {
-        finish();
-      }
-    };
-
-    ipcMain.on('app:close-ready', onReady);
-    timer = setTimeout(finish, 5000);
-
-    try {
-      currentWin.webContents.send('app:before-close');
-    } catch {
-      finish();
-    }
+    });
   });
 
   win.on('closed', () => {
@@ -253,7 +301,7 @@ registerGrammarIpc(getWindow);
 app.whenReady().then(() => {
   setupContentSecurityPolicy();
   createWindow();
-  setupAutoUpdater(getWindow);
+  setupAutoUpdater(getWindow, prepareForQuit);
 
   // Premier check 5s après le démarrage (laisse l'UI se charger), puis check
   // périodique pour les sessions d'écriture qui restent ouvertes longtemps.
