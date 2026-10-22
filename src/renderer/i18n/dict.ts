@@ -545,6 +545,18 @@ export const fr = {
   wbHistRelDelete: 'relation supprimée',
   wbHistRelMoveNode: 'fiche déplacée',
   wbHistRelLayout: 'réorganisation du graphe',
+  wbHistItemCreate: 'fiche créée',
+  wbHistItemDelete: 'fiche supprimée',
+  wbHistItemRename: 'fiche renommée',
+  wbHistItemEdit: 'fiche modifiée',
+  wbHistItemType: 'catégorie de la fiche changée',
+  wbHistItemIcon: 'icône modifiée',
+  wbHistItemColor: 'couleur modifiée',
+  wbHistItemAliases: 'alias modifiés',
+  wbHistItemReorder: 'fiches réordonnées',
+  wbHistCategoryCreate: 'catégorie créée',
+  wbHistCategoryEdit: 'catégorie modifiée',
+  wbHistCategoryDelete: 'catégorie supprimée',
 
   // -------------------------------------------------------------------------
   // BARRE DE STATUT
@@ -1481,6 +1493,18 @@ export const en: Record<TranslationKey, string> = {
   wbHistRelDelete: 'relationship deleted',
   wbHistRelMoveNode: 'item moved',
   wbHistRelLayout: 'graph rearranged',
+  wbHistItemCreate: 'item created',
+  wbHistItemDelete: 'item deleted',
+  wbHistItemRename: 'item renamed',
+  wbHistItemEdit: 'item edited',
+  wbHistItemType: 'item category changed',
+  wbHistItemIcon: 'icon changed',
+  wbHistItemColor: 'color changed',
+  wbHistItemAliases: 'aliases changed',
+  wbHistItemReorder: 'items reordered',
+  wbHistCategoryCreate: 'category created',
+  wbHistCategoryEdit: 'category edited',
+  wbHistCategoryDelete: 'category deleted',
 
   // -------------------------------------------------------------------------
   // STATUS BAR

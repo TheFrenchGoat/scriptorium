@@ -43,6 +43,13 @@ import { Dropdown, DropdownItem } from '../common/Dropdown';
 import { TextColorControl } from './TextColorControl';
 import { SCREENPLAY_HISTORY_EVENT } from './ScreenplayEditor';
 import { Timer } from './Timer';
+import {
+  canRedoWbHistory,
+  canUndoWbHistory,
+  isWbHistoryScope,
+  performWbHistory,
+  useWbHistoryScopeVersion
+} from '../../lib/wb-history';
 import { useEditorStatus } from './editor-status';
 import type { EditorController } from './useEditorController';
 import type {
@@ -484,6 +491,10 @@ export function Toolbar({
 }: ToolbarProps): React.ReactElement {
   const { t, lang } = useI18n();
   const status = useEditorStatus(controller.status);
+
+  // World Building : les boutons annuler / rétablir suivent la zone active.
+  useWbHistoryScopeVersion();
+  const wbScope = isWbHistoryScope();
 
   const data = controller.data();
   const screenplay = data.screenplay;
@@ -1055,9 +1066,14 @@ export function Toolbar({
       <button
         type="button"
         title={t('undoTitle')}
-        disabled={!isScreenplayMode && !status.canUndo}
+        disabled={wbScope ? !canUndoWbHistory() : !isScreenplayMode && !status.canUndo}
         onMouseDown={preventFocusLoss}
         onClick={() => {
+          if (isWbHistoryScope()) {
+            performWbHistory('undo');
+            return;
+          }
+
           if (isScreenplayMode) {
             window.dispatchEvent(
               new CustomEvent(
@@ -1077,9 +1093,14 @@ export function Toolbar({
       <button
         type="button"
         title={t('redoTitle')}
-        disabled={!isScreenplayMode && !status.canRedo}
+        disabled={wbScope ? !canRedoWbHistory() : !isScreenplayMode && !status.canRedo}
         onMouseDown={preventFocusLoss}
         onClick={() => {
+          if (isWbHistoryScope()) {
+            performWbHistory('redo');
+            return;
+          }
+
           if (isScreenplayMode) {
             window.dispatchEvent(
               new CustomEvent(

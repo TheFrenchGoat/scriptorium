@@ -7,11 +7,11 @@
 // l'onglet mémorisé, la touche Échap, et se ferme tout seul quand un document
 // devient actif dans les onglets de l'éditeur (prop `activeDocKey`).
 //
-// Il gère aussi l'historique commun (lib/wb-history) : Ctrl+Z annule,
-// Ctrl+Y ou Ctrl+Maj+Z rétablit, avec bascule sur l'onglet concerné et un
-// court message en bas. Tant que l'atelier est ouvert, ces raccourcis ne
-// touchent jamais au chapitre ; ils sont laissés au navigateur dans les
-// champs de saisie et quand une fenêtre (modal) est ouverte.
+// Il est monté pendant toute l'édition du projet (même fermé) : il installe
+// donc les raccourcis Ctrl+Z / Ctrl+Y / Ctrl+Maj+Z de l'historique World
+// Building (lib/wb-history), affiche le message « Annulé : … » après chaque
+// annulation (raccourci ou boutons ↶ / ↷ de la barre d'outils), bascule sur
+// l'onglet concerné quand il est ouvert, et vide l'historique au démontage.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react';
@@ -26,7 +26,13 @@ import {
   useWbWorkspaceRequests
 } from '../../lib/wb-workspace';
 import type { WbWorkspaceTab } from '../../lib/wb-workspace';
-import { clearWbHistory, redoWbHistory, undoWbHistory } from '../../lib/wb-history';
+import {
+  WB_HISTORY_APPLIED_EVENT,
+  clearWbHistory,
+  refreshWbHistoryScope,
+  useWbHistoryShortcuts
+} from '../../lib/wb-history';
+import type { WbHistoryAppliedDetail } from '../../lib/wb-history';
 import './wb-workspace.css';
 
 const TAB_LABELS: Record<WbWorkspaceTab, TranslationKey> = {
@@ -35,26 +41,11 @@ const TAB_LABELS: Record<WbWorkspaceTab, TranslationKey> = {
   timeline: 'wbWsTabTimeline'
 };
 
-/** Fenêtres ouvertes : les raccourcis de l'atelier sont alors désactivés. */
+/** Fenêtres ouvertes : Échap leur est laissé. */
 const MODAL_SELECTOR = '.modal, .modal-overlay, .modal-backdrop';
 
 /** Durée d'affichage du message « Annulé : … » (ms). */
 const TOAST_DURATION = 2500;
-
-/** Types de champs où Ctrl+Z ne concerne pas du texte. */
-const NON_TEXT_INPUTS = ['checkbox', 'radio', 'button', 'submit', 'reset', 'range', 'color', 'file'];
-
-/** Vrai si la touche est destinée à un champ de saisie (annulation du navigateur). */
-function isEditableTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  if (target.isContentEditable) return true;
-  const tag = target.tagName;
-  if (tag === 'TEXTAREA' || tag === 'SELECT') return true;
-  if (tag === 'INPUT') {
-    return !NON_TEXT_INPUTS.includes((target as HTMLInputElement).type);
-  }
-  return false;
-}
 
 interface WbToast {
   id: number;
@@ -74,6 +65,9 @@ export interface WbWorkspaceProps {
 
 export function WbWorkspace({ views, activeDocKey }: WbWorkspaceProps) {
   const { t } = useI18n();
+
+  // Ctrl+Z / Ctrl+Y du World Building, atelier ouvert ou fermé.
+  useWbHistoryShortcuts();
 
   const availableTabs = WB_WORKSPACE_TABS.filter(
     (key) => views[key] !== undefined && views[key] !== null
@@ -177,6 +171,13 @@ export function WbWorkspace({ views, activeDocKey }: WbWorkspaceProps) {
     };
   }, []);
 
+  // Atelier ouvert / fermé : la barre d'outils relit l'historique à utiliser
+  // (après le rendu, pour que l'atelier soit déjà présent ou retiré).
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => refreshWbHistoryScope());
+    return () => window.cancelAnimationFrame(frame);
+  }, [open]);
+
   // Garde montées les vues déjà visitées tant que l'atelier est ouvert
   // (le graphe garde son zoom quand on revient dessus) ; tout est libéré
   // à la fermeture.
@@ -237,7 +238,7 @@ export function WbWorkspace({ views, activeDocKey }: WbWorkspaceProps) {
   }, [open, close]);
 
   // -------------------------------------------------------------------------
-  // ANNULER / RÉTABLIR
+  // ANNULER / RÉTABLIR : MESSAGE ET CHANGEMENT D'ONGLET
   // -------------------------------------------------------------------------
 
   const showToast = useCallback((text: string) => {
@@ -249,48 +250,33 @@ export function WbWorkspace({ views, activeDocKey }: WbWorkspaceProps) {
     }, TOAST_DURATION);
   }, []);
 
-  // Ctrl+Z / Ctrl+Y / Ctrl+Maj+Z, écoutés en capture sur window : l'atelier
-  // passe avant l'éditeur et la règle, qui ne reçoivent pas la touche.
+  // Après chaque annulation ou rétablissement (raccourci ou boutons ↶ / ↷).
   useEffect(() => {
-    if (!open) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
-      const key = event.key.toLowerCase();
-      const isUndo = key === 'z' && !event.shiftKey;
-      const isRedo = key === 'y' || (key === 'z' && event.shiftKey);
-      if (!isUndo && !isRedo) return;
+    const onApplied = (event: Event) => {
+      const detail = (event as CustomEvent<WbHistoryAppliedDetail>).detail;
+      if (!detail) return;
+      const isUndo = detail.direction === 'undo';
+      const entry = detail.entry;
 
-      // Champ de saisie ou fenêtre ouverte : annulation habituelle du navigateur.
-      if (isEditableTarget(event.target)) return;
-      if (document.querySelector(MODAL_SELECTOR)) return;
-
-      // Atelier ouvert : le chapitre n'est jamais touché, même sans historique.
-      event.preventDefault();
-      event.stopImmediatePropagation();
-
-      const entry = isUndo ? undoWbHistory() : redoWbHistory();
       if (!entry) {
         showToast(t(isUndo ? 'wbHistNothingUndo' : 'wbHistNothingRedo'));
         return;
       }
-      if (entry.tab !== tabRef.current && availableRef.current.includes(entry.tab)) {
+
+      if (
+        openRef.current &&
+        entry.tab &&
+        entry.tab !== tabRef.current &&
+        availableRef.current.includes(entry.tab)
+      ) {
         selectTab(entry.tab);
       }
+
       showToast(t(isUndo ? 'wbHistUndone' : 'wbHistRedone', { action: t(entry.labelKey) }));
     };
-    window.addEventListener('keydown', onKeyDown, true);
-    return () => window.removeEventListener('keydown', onKeyDown, true);
-  }, [open, selectTab, showToast, t]);
-
-  // Fermeture de l'atelier : le message disparaît.
-  useEffect(() => {
-    if (open) return;
-    if (toastTimerRef.current !== null) {
-      window.clearTimeout(toastTimerRef.current);
-      toastTimerRef.current = null;
-    }
-    setToast(null);
-  }, [open]);
+    window.addEventListener(WB_HISTORY_APPLIED_EVENT, onApplied);
+    return () => window.removeEventListener(WB_HISTORY_APPLIED_EVENT, onApplied);
+  }, [selectTab, showToast, t]);
 
   // Démontage (fermeture du projet) : historique vidé.
   useEffect(() => {
@@ -304,7 +290,21 @@ export function WbWorkspace({ views, activeDocKey }: WbWorkspaceProps) {
   // AFFICHAGE
   // -------------------------------------------------------------------------
 
-  if (!open || availableTabs.length === 0) return null;
+  // Atelier fermé : seul le message éventuel est affiché, en bas de la fenêtre.
+  if (!open || availableTabs.length === 0) {
+    if (!toast) return null;
+    return (
+      <div
+        key={toast.id}
+        className="wb-ws-toast"
+        style={{ position: 'fixed', bottom: 48, zIndex: 1000 }}
+        role="status"
+        aria-live="polite"
+      >
+        {toast.text}
+      </div>
+    );
+  }
 
   const mountedTabs = availableTabs.filter(
     (key) => key === currentTab || visited.includes(key)

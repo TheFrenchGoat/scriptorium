@@ -69,6 +69,7 @@ import {
 import { createStatusStore, type StatusStore } from './editor-status';
 import { openWbPanel } from './WbSidePanel';
 import { WB_OPEN_TAB_EVENT, type WbOpenTabEventDetail } from './ScreenplayElementEditor';
+import { cloneWbData, pushWbHistory, type WbHistoryEntry } from '../../lib/wb-history';
 import type { InfoAction } from '../common/Dialogs';
 import type {
   EditorPrefs,
@@ -1988,7 +1989,11 @@ export function useEditorController({
           registry.cloneCategoryDefinitions()[type] ?? { ...registry.categoryFor(type), builtin: undefined }
         );
 
+        const wbBefore = takeWbSnapshot();
+
         s.projectData.world[item.id] = item;
+
+        recordWbChange('wbHistItemCreate', wbBefore);
 
         mentionIndex.refreshItem(item.id);
         registry.bumpVersion();
@@ -2121,6 +2126,8 @@ export function useEditorController({
           history.remove(key);
           mentionIndex.removeChapter(key);
         } else {
+          const wbBefore = takeWbSnapshot();
+
           // Fiche : les mentions deviennent du texte simple partout.
           flushPendingHistoryCommit();
 
@@ -2137,6 +2144,8 @@ export function useEditorController({
           delete s.projectData.world[key];
 
           detachWbItem(s.projectData, key);
+
+          recordWbChange('wbHistItemDelete', wbBefore);
 
           const changedChapters = removeMentionsAcrossChapters(
             s.projectData,
@@ -2306,8 +2315,15 @@ export function useEditorController({
           s.projectData.chapters[open.name] = open.editor.innerHTML;
         }
 
+        const wbBefore = takeWbSnapshot();
+
         item.name = trimmed;
         touchWbItem(item);
+
+        recordWbChange('wbHistItemRename', wbBefore, {
+          undoExtra: () => renameWbMentionsEverywhere(key, trimmed, oldName),
+          redoExtra: () => renameWbMentionsEverywhere(key, oldName, trimmed)
+        });
 
         const changedChapters = renameWorldMentionsAcrossChapters(
           s.projectData,
@@ -2430,7 +2446,11 @@ export function useEditorController({
             }
           });
 
+          const wbBefore = takeWbSnapshot();
+
           s.projectData.world = next;
+
+          recordWbChange('wbHistItemReorder', wbBefore);
         }
 
         setSaveStatus('pending');
@@ -2451,8 +2471,12 @@ export function useEditorController({
           return;
         }
 
+        const wbBefore = cloneWbData(item);
+
         item.content[fieldKey] = value;
         touchWbItem(item);
+
+        recordWbItemChange('wbHistItemEdit', itemId, wbBefore, 'field:' + itemId + ':' + fieldKey);
 
         s.hasUnsavedChangesSinceLastBackup = true;
 
@@ -2472,8 +2496,12 @@ export function useEditorController({
           return;
         }
 
+        const wbBefore = cloneWbData(item);
+
         item.icon = icon;
         touchWbItem(item);
+
+        recordWbItemChange('wbHistItemIcon', itemId, wbBefore);
 
         setSaveStatus('pending');
 
@@ -2488,8 +2516,12 @@ export function useEditorController({
           return;
         }
 
+        const wbBefore = cloneWbData(item);
+
         item.color = color;
         touchWbItem(item);
+
+        recordWbItemChange('wbHistItemColor', itemId, wbBefore, 'color:' + itemId);
 
         s.wbColorVersion += 1;
 
@@ -2564,7 +2596,11 @@ export function useEditorController({
           return true;
         }
 
+        const wbBefore = cloneWbData(item);
+
         item.aliases = cleaned;
+
+        recordWbItemChange('wbHistItemAliases', itemId, wbBefore);
         touchWbItem(item);
 
         mentionIndex.refreshItem(itemId);
@@ -2683,7 +2719,11 @@ export function useEditorController({
           ? { ...previous, ...definition, builtin: previous.builtin }
           : { ...definition };
 
+        const wbBefore = takeWbSnapshot();
+
         s.projectData.wbCategories = categories;
+
+        recordWbChange(previous ? 'wbHistCategoryEdit' : 'wbHistCategoryCreate', wbBefore);
 
         registry.bumpVersion();
 
@@ -2735,7 +2775,11 @@ export function useEditorController({
 
         delete categories[slug];
 
+        const wbBefore = takeWbSnapshot();
+
         s.projectData.wbCategories = categories;
+
+        recordWbChange('wbHistCategoryDelete', wbBefore);
 
         registry.bumpVersion();
 
@@ -3352,6 +3396,230 @@ export function useEditorController({
       }
 
       return { name: s.activeTab, editor: s.editorEl };
+    }
+
+    /** Copie des données World Building annulables : fiches, catégories, relations, frise. */
+    function takeWbSnapshot(): Record<string, unknown> {
+      const data = s.projectData as unknown as Record<string, unknown>;
+      const snapshot: Record<string, unknown> = {};
+
+      ['world', 'wbCategories', 'wbRelations', 'wbTimeline'].forEach((key) => {
+        snapshot[key] = cloneWbData(data[key]);
+      });
+
+      return snapshot;
+    }
+
+    /** Remet les données World Building dans l'état de la copie. */
+    function restoreWbSnapshot(snapshot: Record<string, unknown>, extra?: () => void): void {
+      const previousWorld = s.projectData.world;
+      const data = s.projectData as unknown as Record<string, unknown>;
+
+      Object.keys(snapshot).forEach((key) => {
+        if (snapshot[key] === undefined) {
+          delete data[key];
+        } else {
+          data[key] = cloneWbData(snapshot[key]);
+        }
+      });
+
+      extra?.();
+
+      refreshAfterWbRestore(previousWorld);
+    }
+
+    /** Remet une seule fiche dans l'état de la copie. */
+    function restoreWbItem(itemId: string, snapshot: WbItem): void {
+      const previousWorld = { ...s.projectData.world };
+
+      s.projectData.world[itemId] = cloneWbData(snapshot);
+
+      refreshAfterWbRestore(previousWorld);
+    }
+
+    /**
+     * Après une annulation ou un rétablissement : onglets, mentions, index,
+     * surlignage du chapitre ouvert, statistiques et sauvegarde.
+     */
+    function refreshAfterWbRestore(previousWorld: ProjectData['world']): void {
+      const world = s.projectData.world;
+      const removed: string[] = [];
+      const changed: string[] = [];
+
+      new Set([...Object.keys(previousWorld), ...Object.keys(world)]).forEach((itemId) => {
+        if (!world[itemId]) {
+          removed.push(itemId);
+        } else if (JSON.stringify(previousWorld[itemId]) !== JSON.stringify(world[itemId])) {
+          changed.push(itemId);
+        }
+      });
+
+      // Fiches disparues : onglets fermés, mentions remises en texte simple.
+      s.openTabs = s.openTabs.filter(
+        (tab) => tab.type !== 'world' || Boolean(world[tab.name])
+      );
+
+      if (s.activeType === 'world' && s.activeTab && !world[s.activeTab]) {
+        s.activeTab = null;
+      }
+
+      removed.forEach((itemId) => {
+        removeWbMentionsEverywhere(itemId);
+        mentionIndex.removeItem(itemId);
+      });
+
+      changed.forEach((itemId) => {
+        mentionIndex.refreshItem(itemId);
+      });
+
+      registry.bumpVersion();
+      s.wbColorVersion += 1;
+
+      const open = activeChapterEditor();
+
+      if (open) {
+        highlight();
+        s.projectData.chapters[open.name] = open.editor.innerHTML;
+      }
+
+      if (!isScreenplayData(s.projectData)) {
+        invalidateProjectWordCache(s.projectData);
+      }
+
+      s.hasUnsavedChangesSinceLastBackup = true;
+
+      setSaveStatus('pending');
+
+      updateStats();
+      updateUndoRedo();
+      bump();
+
+      void saveAll();
+    }
+
+    /** Les mentions d'une fiche deviennent du texte simple partout. */
+    function removeWbMentionsEverywhere(key: string): void {
+      flushPendingHistoryCommit();
+
+      const open = activeChapterEditor();
+
+      if (open) {
+        s.projectData.chapters[open.name] = open.editor.innerHTML;
+      }
+
+      const changedChapters = removeMentionsAcrossChapters(s.projectData, key);
+
+      if (open) {
+        withPreservedSelection(open.editor, () => {
+          removeMentionsIn(open.editor, key);
+        });
+
+        s.projectData.chapters[open.name] = open.editor.innerHTML;
+      }
+
+      resyncChapters(changedChapters, open?.name ?? null);
+
+      if (isScreenplayData(s.projectData)) {
+        const nextScenes = transformScenesHtml(
+          s.projectData.screenplay.scenes,
+          (container) => removeMentionsIn(container, key)
+        );
+
+        if (nextScenes) {
+          s.projectData.screenplay = {
+            ...s.projectData.screenplay,
+            scenes: nextScenes
+          };
+          s.projects[projectName] = s.projectData;
+          scheduleScreenplaySave();
+        }
+      }
+    }
+
+    /** Renomme les mentions d'une fiche dans les chapitres et les scènes. */
+    function renameWbMentionsEverywhere(key: string, fromName: string, toName: string): void {
+      flushPendingHistoryCommit();
+
+      const open = activeChapterEditor();
+
+      if (open) {
+        s.projectData.chapters[open.name] = open.editor.innerHTML;
+      }
+
+      const changedChapters = renameWorldMentionsAcrossChapters(
+        s.projectData,
+        key,
+        fromName,
+        toName
+      );
+
+      if (open) {
+        withPreservedSelection(open.editor, () => {
+          renameMentionsIn(open.editor, key, fromName, toName);
+        });
+
+        s.projectData.chapters[open.name] = open.editor.innerHTML;
+      }
+
+      resyncChapters(changedChapters, open?.name ?? null);
+
+      if (isScreenplayData(s.projectData)) {
+        const nextScenes = transformScenesHtml(
+          s.projectData.screenplay.scenes,
+          (container) => renameMentionsIn(container, key, fromName, toName)
+        );
+
+        if (nextScenes) {
+          s.projectData.screenplay = {
+            ...s.projectData.screenplay,
+            scenes: nextScenes
+          };
+          s.projects[projectName] = s.projectData;
+          scheduleScreenplaySave();
+        }
+      }
+    }
+
+    /** Enregistre une action World Building (copie complète avant / après). */
+    function recordWbChange(
+      labelKey: WbHistoryEntry['labelKey'],
+      before: Record<string, unknown>,
+      extras: { undoExtra?: () => void; redoExtra?: () => void } = {}
+    ): void {
+      const after = takeWbSnapshot();
+
+      if (JSON.stringify(before) === JSON.stringify(after)) {
+        return;
+      }
+
+      pushWbHistory({
+        labelKey,
+        undo: () => restoreWbSnapshot(before, extras.undoExtra),
+        redo: () => restoreWbSnapshot(after, extras.redoExtra)
+      });
+    }
+
+    /** Enregistre la modification d'une seule fiche (copie de la fiche). */
+    function recordWbItemChange(
+      labelKey: WbHistoryEntry['labelKey'],
+      itemId: string,
+      before: WbItem,
+      mergeKey?: string
+    ): void {
+      const current = s.projectData.world[itemId];
+
+      if (!current) {
+        return;
+      }
+
+      const after = cloneWbData(current);
+
+      pushWbHistory({
+        labelKey,
+        ...(mergeKey ? { mergeKey } : {}),
+        undo: () => restoreWbItem(itemId, before),
+        redo: () => restoreWbItem(itemId, after)
+      });
     }
 
     /**
