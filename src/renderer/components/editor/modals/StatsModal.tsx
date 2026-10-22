@@ -46,7 +46,6 @@ import {
 import type {
   ProjectGoal,
   ProjectGoalProgressMode,
-  ProjectsMap,
   WritingSession,
   WritingSessionMood
 } from '../../../../shared/types';
@@ -1248,19 +1247,10 @@ export function StatsModal({
         setSaving(true);
 
         try {
+          // Enregistre le document ouvert, puis tout le projet (sessions,
+          // objectifs) par la file d'enregistrement commune.
           await controller.save();
-
-          const projects: ProjectsMap =
-            (await window.api.getProjects()) ||
-            {};
-
-          projects[
-            controller.projectName
-          ] = controller.data();
-
-          await window.api.saveProjects(
-            projects
-          );
+          await controller.saveWholeProject();
         } finally {
           setSaving(false);
         }
