@@ -27,6 +27,26 @@ import type {
   WritingStats
 } from '../shared/types';
 
+/**
+ * Tâches à terminer avant la fermeture de la fenêtre (enregistrement).
+ * Le processus principal attend la réponse "app:close-ready".
+ */
+const beforeCloseHandlers = new Set<() => Promise<void> | void>();
+
+ipcRenderer.on('app:before-close', () => {
+  const tasks = Array.from(beforeCloseHandlers, (handler) =>
+    Promise.resolve()
+      .then(handler)
+      .catch((error: unknown) => {
+        console.error('[fermeture]', error);
+      })
+  );
+
+  void Promise.all(tasks).then(() => {
+    ipcRenderer.send('app:close-ready');
+  });
+});
+
 const api: ScriptoriumApi = {
   // -----------------------------------------------------------------------
   // PERSISTANCE DES PROJETS
@@ -558,6 +578,16 @@ const api: ScriptoriumApi = {
         'updater:error',
         listener
       );
+    };
+  },
+
+  onBeforeClose: (
+    handler: () => Promise<void> | void
+  ) => {
+    beforeCloseHandlers.add(handler);
+
+    return () => {
+      beforeCloseHandlers.delete(handler);
     };
   }
 };

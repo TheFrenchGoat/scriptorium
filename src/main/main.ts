@@ -2,7 +2,7 @@
 // Point d'entrée du processus principal.
 
 import path from 'node:path';
-import { app, BrowserWindow, Menu, MenuItem, session } from 'electron';
+import { app, BrowserWindow, ipcMain, Menu, MenuItem, session, type IpcMainEvent } from 'electron';
 import { store } from './store';
 import { registerPersistenceIpc } from './ipc/persistence';
 import { registerFileIpc } from './ipc/files';
@@ -136,6 +136,61 @@ function createWindow(): void {
     }
 
     if (win) menu.popup({ window: win });
+  });
+
+  // Fermeture : le renderer enregistre d'abord tout le projet. La fenêtre se
+  // ferme dès sa réponse, ou au bout de 5 secondes s'il ne répond pas.
+  const currentWin = win;
+  let closeAllowed = false;
+  let closeRequested = false;
+
+  currentWin.on('close', (event) => {
+    if (closeAllowed) {
+      return;
+    }
+
+    event.preventDefault();
+
+    if (closeRequested) {
+      return;
+    }
+
+    closeRequested = true;
+
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const finish = (): void => {
+      if (closeAllowed) {
+        return;
+      }
+
+      closeAllowed = true;
+
+      if (timer) {
+        clearTimeout(timer);
+      }
+
+      ipcMain.removeListener('app:close-ready', onReady);
+
+      if (!currentWin.isDestroyed()) {
+        currentWin.close();
+      }
+    };
+
+    const onReady = (readyEvent: IpcMainEvent): void => {
+      if (readyEvent.sender === currentWin.webContents) {
+        finish();
+      }
+    };
+
+    ipcMain.on('app:close-ready', onReady);
+    timer = setTimeout(finish, 5000);
+
+    try {
+      currentWin.webContents.send('app:before-close');
+    } catch {
+      finish();
+    }
   });
 
   win.on('closed', () => {

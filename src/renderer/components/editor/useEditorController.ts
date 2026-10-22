@@ -598,30 +598,34 @@ export function useEditorController({
 
   const recordWritingStats = useCallback(async (): Promise<void> => {
     try {
-      const stats = (await window.api.getWritingStats()) || {};
-      const bucket = getStatsBucket(stats, projectName);
-      const todayKey = getDateKey(new Date());
-      const currentTotal = getProjectWordTotal(s.projectData);
+      // Dans la file d'enregistrement : deux appels rapprochés ne peuvent plus
+      // lire la même valeur puis s'écraser l'un l'autre.
+      await enqueuePersistence(async () => {
+        const stats = (await window.api.getWritingStats()) || {};
+        const bucket = getStatsBucket(stats, projectName);
+        const todayKey = getDateKey(new Date());
+        const currentTotal = getProjectWordTotal(s.projectData);
 
-      if (bucket.baselineDate !== todayKey) {
-        bucket.baselineDate = todayKey;
-        bucket.baselineWords = currentTotal;
+        if (bucket.baselineDate !== todayKey) {
+          bucket.baselineDate = todayKey;
+          bucket.baselineWords = currentTotal;
 
-        if (bucket.history[todayKey] === undefined) {
-          bucket.history[todayKey] = 0;
+          if (bucket.history[todayKey] === undefined) {
+            bucket.history[todayKey] = 0;
+          }
+        } else {
+          bucket.history[todayKey] = currentTotal - bucket.baselineWords;
         }
-      } else {
-        bucket.history[todayKey] = currentTotal - bucket.baselineWords;
-      }
 
-      await window.api.saveWritingStats(stats);
+        await window.api.saveWritingStats(stats);
+      });
     } catch (error) {
       console.error(
         "Échec de l'enregistrement des statistiques d'écriture :",
         error
       );
     }
-  }, [projectName, s]);
+  }, [enqueuePersistence, projectName, s]);
 
   const maybeCreateBackup = useCallback(async (): Promise<void> => {
     if (!s.hasUnsavedChangesSinceLastBackup) {
@@ -1458,6 +1462,20 @@ export function useEditorController({
         void saveAllRef.current();
       }
     };
+  }, []);
+
+  /*
+   * Fermeture de la fenêtre : le processus principal attend la fin de cet
+   * enregistrement complet (5 secondes au maximum) avant de fermer.
+   */
+  useEffect(() => {
+    return window.api.onBeforeClose(async () => {
+      if (!stateRef.current.ready) {
+        return;
+      }
+
+      await saveAllRef.current();
+    });
   }, []);
 
   if (!api.current) {

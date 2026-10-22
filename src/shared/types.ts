@@ -1083,6 +1083,18 @@ export interface ScriptoriumApi {
   ): Promise<boolean>;
 
   // ------------------------------------------------------------------------
+  // Fermeture de l'application
+  // ------------------------------------------------------------------------
+
+  /**
+   * Ajoute une tâche à terminer avant la fermeture de la fenêtre
+   * (enregistrement). Retourne la fonction qui la retire.
+   */
+  onBeforeClose(
+    handler: () => Promise<void> | void
+  ): () => void;
+
+  // ------------------------------------------------------------------------
   // Correcteur orthographique natif
   // ------------------------------------------------------------------------
 

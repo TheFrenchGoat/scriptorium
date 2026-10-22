@@ -502,7 +502,7 @@ export function Timer({
       ] = session;
     }
 
-    void controller.save();
+    void controller.saveWholeProject();
   };
 
   /**
@@ -1018,6 +1018,33 @@ export function Timer({
 
     // Le contrôleur reste stable pendant toute la vie de l’éditeur.
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Fermeture de la fenêtre : la session en cours est terminée puis enregistrée
+  // avec le projet. La référence suit la version à jour des fonctions utilisées.
+  const beforeCloseRef = useRef<() => Promise<void>>(async () => undefined);
+
+  useEffect(() => {
+    beforeCloseRef.current = async () => {
+      const activeSession = activeSessionRef.current;
+
+      if (!activeSession) {
+        return;
+      }
+
+      clearTimerInterval();
+
+      const session = createFinishedSession(activeSession, false);
+
+      activeSessionRef.current = null;
+      persistSession(session);
+
+      await controller.saveWholeProject();
+    };
+  });
+
+  useEffect(() => {
+    return window.api.onBeforeClose(() => beforeCloseRef.current());
   }, []);
 
   const currentPresetLabel =
