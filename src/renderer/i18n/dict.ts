@@ -59,6 +59,8 @@ export const fr = {
   importError:
     "Erreur lors de l'import : ce fichier n'est peut-être pas un export Scriptorium valide.\n\n",
   defaultProjectName: 'Projet',
+  projectTypeNovel: 'Roman',
+  projectTypeScreenplay: 'Scénario',
 
   // -------------------------------------------------------------------------
   // EN-TÊTE ÉDITEUR
@@ -1008,6 +1010,8 @@ export const en: Record<TranslationKey, string> = {
   importError:
     'Error during import: this file may not be a valid Scriptorium export.\n\n',
   defaultProjectName: 'Project',
+  projectTypeNovel: 'Novel',
+  projectTypeScreenplay: 'Screenplay',
 
   // -------------------------------------------------------------------------
   // EDITOR HEADER

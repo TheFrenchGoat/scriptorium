@@ -103,6 +103,10 @@ export function ProjectCard({
 }: ProjectCardProps): React.ReactElement {
   const { t } = useI18n();
 
+  // Type du projet : un ancien projet sans type est un roman.
+  const isScreenplay =
+    data?.projectType === 'screenplay';
+
   const [menuOpen, setMenuOpen] =
     useState(false);
 
@@ -655,7 +659,11 @@ export function ProjectCard({
   return (
     <>
       <div
-        className="project-card"
+        className={
+          isScreenplay
+            ? 'project-card project-card-screenplay'
+            : 'project-card project-card-novel'
+        }
         tabIndex={0}
         role="button"
         aria-label={name}
@@ -709,6 +717,12 @@ export function ProjectCard({
             >
               {name}
             </h3>
+
+            <span className="project-type-badge">
+              {isScreenplay
+                ? '🎬 ' + t('projectTypeScreenplay')
+                : '📖 ' + t('projectTypeNovel')}
+            </span>
 
             <p>
               {t('projectStats', {

@@ -209,6 +209,16 @@ input[type="text"]:focus { border-color: var(--accent); }
   padding: 20px; border-radius: var(--radius); cursor: pointer; transition: 0.2s;
   display: flex; flex-direction: column; justify-content: space-between; min-height: 120px;
 }
+/* Type du projet : couleur de la bordure gauche et petite étiquette.
+   Placé avant :hover, qui garde la couleur du thème au survol. */
+.project-card-novel { border-left-color: #d97706; }
+.project-card-screenplay { border-left-color: #0284c7; }
+.project-type-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  margin-bottom: 6px; padding: 1px 8px;
+  font-size: 11px; line-height: 1.6; color: var(--text-muted);
+  border: 1px solid var(--border); border-radius: 999px;
+}
 .project-card:hover { transform: translateY(-3px); border-color: var(--accent); border-left-color: var(--accent); box-shadow: var(--shadow); }
 .project-card h3 { margin-bottom: 8px; font-size: 18px; display: flex; align-items: center; gap: 8px; }
 .project-card p { color: var(--text-muted); font-size: 13px; }
