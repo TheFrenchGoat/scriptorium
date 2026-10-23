@@ -70,8 +70,6 @@ export const fr = {
   exportPdfItem: '📕 PDF (.pdf)',
   exportDocxItem: '📝 Word (.docx)',
   exportProjectItem: '💾 Projet complet (.scriptorium)',
-  backupsBtn: '🕐 Sauvegardes',
-  backupsBtnTitle: 'Voir et restaurer les sauvegardes automatiques',
   displayPrefsBtn: '⚙️ Affichage',
   displayPrefsBtnTitle:
     "Personnaliser l'affichage de la page d'écriture",
@@ -156,7 +154,6 @@ export const fr = {
   settingsSectionHelp: 'Aide',
   updateInstalledVersion: 'Version installée :',
   updateChecking: 'Vérification en cours…',
-  updateCheckDone: 'Vérification terminée.',
   updateCheckError: 'Impossible de vérifier les mises à jour.',
   updateStatusUpToDate: 'Vous utilisez la dernière version.',
   updateStatusAvailable: 'La version {version} est disponible.',
@@ -182,8 +179,6 @@ export const fr = {
   // AIDE
   // -------------------------------------------------------------------------
 
-  helpMenuBtn: '❓ Aide',
-  helpMenuBtnTitle: 'Raccourcis clavier',
   helpModalTitle: 'Raccourcis clavier',
   shortcutSave: 'Enregistrer',
   shortcutUndo: 'Annuler',
@@ -1021,9 +1016,6 @@ export const en: Record<TranslationKey, string> = {
   exportDocxItem: '📝 Word (.docx)',
   exportProjectItem:
     '💾 Full project (.scriptorium)',
-  backupsBtn: '🕐 Backups',
-  backupsBtnTitle:
-    'View and restore automatic backups',
   displayPrefsBtn: '⚙️ Display',
   displayPrefsBtnTitle:
     'Customize the writing page display',
@@ -1109,7 +1101,6 @@ export const en: Record<TranslationKey, string> = {
   settingsSectionHelp: 'Help',
   updateInstalledVersion: 'Installed version:',
   updateChecking: 'Checking…',
-  updateCheckDone: 'Check complete.',
   updateCheckError: 'Unable to check for updates.',
   updateStatusUpToDate: 'You are using the latest version.',
   updateStatusAvailable: 'Version {version} is available.',
@@ -1135,8 +1126,6 @@ export const en: Record<TranslationKey, string> = {
   // HELP
   // -------------------------------------------------------------------------
 
-  helpMenuBtn: '❓ Help',
-  helpMenuBtnTitle: 'Keyboard shortcuts',
   helpModalTitle: 'Keyboard shortcuts',
   shortcutSave: 'Save',
   shortcutUndo: 'Undo',
