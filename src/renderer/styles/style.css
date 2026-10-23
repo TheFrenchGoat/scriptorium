@@ -1,5 +1,6 @@
 /* VARIABLES & THÈMES HARMONISÉS */
-:root {
+:root,
+.theme-swatch-dark {
   --bg-app: #0f172a;
   --bg-panel: #1e293b;
   --bg-page: #152033;
@@ -27,7 +28,8 @@
   --sidebar-width: 250px;
 }
 
-body.light {
+body.light,
+.theme-swatch-light {
   --bg-app: #e2e8f0;
   --bg-panel: #f8fafc;
   --bg-page: #ffffff;
@@ -39,7 +41,8 @@ body.light {
   --shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
 }
 
-body.sepia {
+body.sepia,
+.theme-swatch-sepia {
   --bg-app: #e6dfd1;
   --bg-panel: #f4ecd8;
   --bg-page: #fbf0d9;
@@ -51,7 +54,8 @@ body.sepia {
   --shadow: 0 4px 6px -1px rgba(92, 64, 51, 0.1);
 }
 
-body.midnight {
+body.midnight,
+.theme-swatch-midnight {
   --bg-app: #05070f;
   --bg-panel: #0d1326;
   --bg-page: #0a0f20;
@@ -65,7 +69,8 @@ body.midnight {
   --shadow: 0 10px 25px -5px rgba(0,0,0,0.6);
 }
 
-body.forest {
+body.forest,
+.theme-swatch-forest {
   --bg-app: #0d1a12;
   --bg-panel: #16261b;
   --bg-page: #122015;
@@ -82,7 +87,8 @@ body.forest {
 /* Thème à fort contraste : pensé pour l'accessibilité (texte blanc pur sur
    fond noir pur, accent jaune très saturé pour rester visible sans dépendre
    de la seule teinte). */
-body.contrast {
+body.contrast,
+.theme-swatch-contrast {
   --bg-app: #000000;
   --bg-panel: #0a0a0a;
   --bg-page: #000000;
@@ -96,7 +102,8 @@ body.contrast {
   --shadow: 0 0 0 1px rgba(255,255,255,0.2);
 }
 
-body.rose {
+body.rose,
+.theme-swatch-rose {
   --bg-app: #fdf1f4;
   --bg-panel: #fff7f9;
   --bg-page: #ffffff;
@@ -110,7 +117,8 @@ body.rose {
   --shadow: 0 4px 6px -1px rgba(190, 24, 93, 0.12);
 }
 
-body.lavender {
+body.lavender,
+.theme-swatch-lavender {
   --bg-app: #f3f0fb;
   --bg-panel: #faf8ff;
   --bg-page: #ffffff;
@@ -124,7 +132,8 @@ body.lavender {
   --shadow: 0 4px 6px -1px rgba(139, 92, 246, 0.12);
 }
 
-body.ocean {
+body.ocean,
+.theme-swatch-ocean {
   --bg-app: #061821;
   --bg-panel: #0b2530;
   --bg-page: #081f29;
@@ -1083,4 +1092,47 @@ mark.grammar-error:hover { background: rgba(59, 130, 246, 0.12); }
 
 #projectTitle:hover::after {
   opacity: 0.6;
+}
+
+/* Paramètres : pastilles de couleur des thèmes.
+   Chaque pastille .theme-swatch-xxx reçoit les variables de son thème
+   (sélecteur ajouté aux blocs de thèmes ci-dessus). */
+.settings-theme-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+}
+.settings-theme-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.theme-swatch {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 5px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: linear-gradient(135deg, var(--bg-app) 50%, var(--bg-panel) 50%);
+  color: var(--text-main);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+}
+.theme-swatch-accent {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+/* Accent des pastilles Clair et Sepia : ces themes n'ont pas d'accent
+   propre et utilisent celui de :root, quel que soit le theme actif. */
+.theme-swatch-light,
+.theme-swatch-sepia {
+  --accent: #3b82f6;
 }

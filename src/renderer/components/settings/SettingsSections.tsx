@@ -35,12 +35,19 @@ export function ThemeLanguageFields({
               key={choice.value}
               type="button"
               className={
-                'settings-choice-btn' +
+                'settings-choice-btn settings-theme-btn' +
                 (theme === choice.value ? ' active' : '')
               }
               onClick={() => onChangeTheme(choice.value)}
             >
-              {t(choice.key)}
+              <span
+                className={'theme-swatch theme-swatch-' + choice.value}
+                aria-hidden="true"
+              >
+                Aa
+                <span className="theme-swatch-accent" />
+              </span>
+              <span className="settings-theme-name">{t(choice.key)}</span>
             </button>
           ))}
         </div>
