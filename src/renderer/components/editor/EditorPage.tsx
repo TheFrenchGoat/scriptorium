@@ -61,11 +61,9 @@ import {
   EDITOR_ZOOM_MIN
 } from './useEditorController';
 
-import { HelpModal } from './modals/HelpModal';
 import { ReplaceModal } from './modals/ReplaceModal';
 import { GlobalSearchModal } from './modals/GlobalSearchModal';
 import { StatsModal } from './modals/StatsModal';
-import { BackupsModal } from './modals/BackupsModal';
 import { SettingsModal } from './modals/SettingsModal';
 import { GrammarSetupModal } from './modals/GrammarSetupModal';
 import { CustomWbTypeModal } from './modals/CustomWbTypeModal';
@@ -139,11 +137,9 @@ export interface EditorPageProps {
 }
 
 type ModalKey =
-  | 'help'
   | 'replace'
   | 'globalSearch'
   | 'stats'
-  | 'backups'
   | 'settings'
   | 'grammarSetup'
   | 'customWbType'
@@ -1148,21 +1144,6 @@ export function EditorPage({
           </Dropdown>
 
           <button
-            id="btnBackups"
-            type="button"
-            title={t(
-              'backupsBtnTitle'
-            )}
-            onClick={() => {
-              setOpenModal(
-                'backups'
-              );
-            }}
-          >
-            {t('backupsBtn')}
-          </button>
-
-          <button
             id="btnStats"
             type="button"
             onClick={() => {
@@ -1172,21 +1153,6 @@ export function EditorPage({
             }}
           >
             {t('statsMenuBtn')}
-          </button>
-
-          <button
-            id="btnHelp"
-            type="button"
-            title={t(
-              'helpMenuBtnTitle'
-            )}
-            onClick={() => {
-              setOpenModal(
-                'help'
-              );
-            }}
-          >
-            {t('helpMenuBtn')}
           </button>
 
           <button
@@ -1418,13 +1384,6 @@ export function EditorPage({
         </main>
       </div>
 
-      <HelpModal
-        open={
-          openModal === 'help'
-        }
-        onClose={closeModal}
-      />
-
       <ReplaceModal
         open={
           openModal === 'replace'
@@ -1445,14 +1404,6 @@ export function EditorPage({
       <StatsModal
         open={
           openModal === 'stats'
-        }
-        controller={controller}
-        onClose={closeModal}
-      />
-
-      <BackupsModal
-        open={
-          openModal === 'backups'
         }
         controller={controller}
         onClose={closeModal}

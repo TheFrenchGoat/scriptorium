@@ -5,9 +5,11 @@
 // l'affichage est ainsi identique partout.
 
 import { useEffect, useRef, useState, type ReactElement } from 'react';
-import { useI18n } from '../../i18n';
+import { useI18n, type TranslationKey } from '../../i18n';
+import { useDialogs } from '../common/Dialogs';
+import { describeError } from '../../lib/errors';
 import { THEMES, UI_FONTS, UI_SIZES } from '../../lib/settings-options';
-import type { LanguageCode, ThemeName } from '../../../shared/types';
+import type { BackupEntry, LanguageCode, ThemeName } from '../../../shared/types';
 
 const LANGUAGES: LanguageCode[] = ['fr', 'en'];
 
@@ -455,6 +457,140 @@ export function ReadingPreview({
         </div>
         <div className="settings-preview-width">{width} px</div>
       </div>
+    </div>
+  );
+}
+
+// ---------- Sauvegardes (éditeur uniquement) ----------
+
+export interface BackupsSectionProps {
+  open: boolean;
+  /** Projet dont on affiche les sauvegardes automatiques. */
+  projectName: Parameters<typeof window.api.listBackups>[0];
+  /** Restaure une sauvegarde (fourni par l'éditeur). */
+  onRestore: (fileName: string) => unknown;
+  /** Appelé après une restauration réussie (ferme les paramètres). */
+  onRestored?: () => void;
+}
+
+export function BackupsSection({
+  open,
+  projectName,
+  onRestore,
+  onRestored
+}: BackupsSectionProps): ReactElement {
+  const { t, lang } = useI18n();
+  const { showInfo, showConfirm } = useDialogs();
+  const [backups, setBackups] = useState<BackupEntry[] | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    setBackups(null);
+
+    void (async () => {
+      try {
+        const list = await window.api.listBackups(projectName);
+        if (!cancelled) setBackups(list);
+      } catch (err) {
+        console.error('Erreur ouverture sauvegardes:', err);
+        if (!cancelled) showInfo(t('backupRestoreError') + describeError(err));
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, projectName, showInfo, t]);
+
+  const formatDate = (iso: string | null): string => {
+    if (!iso) return t('unknownDate');
+    const d = new Date(iso);
+    const locale = lang === 'en' ? 'en-US' : 'fr-FR';
+    return d.toLocaleString(locale, { dateStyle: 'medium', timeStyle: 'short' });
+  };
+
+  const restore = async (backup: BackupEntry): Promise<void> => {
+    if (!(await showConfirm(t('backupConfirmRestore', { date: formatDate(backup.savedAt) })))) return;
+    try {
+      await onRestore(backup.fileName);
+      onRestored?.();
+      showInfo(t('backupRestoreSuccess'));
+    } catch (err) {
+      console.error(err);
+      showInfo(t('backupRestoreError') + describeError(err));
+    }
+  };
+
+  return (
+    <div className="settings-section">
+      <h4 className="settings-section-title">{t('backupsModalTitle')}</h4>
+      <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 15 }}>
+        {t('backupsDescription')}
+      </p>
+      <ul
+        id="backupsList"
+        className="item-list"
+        style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius)' }}
+      >
+        {backups === null ? (
+          <li style={{ padding: 15, color: 'var(--text-muted)' }}>{t('loadingBackups')}</li>
+        ) : backups.length === 0 ? (
+          <li style={{ padding: 15, color: 'var(--text-muted)' }}>{t('backupNoneYet')}</li>
+        ) : (
+          backups.map((backup) => (
+            <li className="backup-item" key={backup.fileName}>
+              <span>{formatDate(backup.savedAt)}</span>
+              <button className="btn-restore-backup" onClick={() => void restore(backup)}>
+                {t('backupRestoreBtn')}
+              </button>
+            </li>
+          ))
+        )}
+      </ul>
+    </div>
+  );
+}
+
+// ---------- Aide : raccourcis clavier ----------
+
+/** Raccourcis affichés dans l'onglet Aide. */
+const SHORTCUTS: { labelKey: TranslationKey; kbd: string }[] = [
+  { labelKey: 'shortcutSave', kbd: 'Ctrl+S' },
+  { labelKey: 'shortcutUndo', kbd: 'Ctrl+Z' },
+  { labelKey: 'shortcutRedo', kbd: 'Ctrl+Y' },
+  { labelKey: 'shortcutBold', kbd: 'Ctrl+B' },
+  { labelKey: 'shortcutItalic', kbd: 'Ctrl+I' },
+  { labelKey: 'shortcutUnderline', kbd: 'Ctrl+U' },
+  { labelKey: 'shortcutAlign', kbd: 'Ctrl+L / Ctrl+E / Ctrl+R / Ctrl+J' },
+  { labelKey: 'shortcutAccents', kbd: 'Ctrl+` Ctrl+\' Ctrl+Maj+^ Ctrl+Maj+: Ctrl+,' },
+  { labelKey: 'shortcutReplace', kbd: 'Ctrl+F' },
+  { labelKey: 'shortcutGlobalSearch', kbd: 'Ctrl+Maj+F' },
+  { labelKey: 'shortcutSwitchTab', kbd: 'Ctrl+Tab / Ctrl+Maj+Tab' },
+  { labelKey: 'shortcutZoomKeys', kbd: 'Ctrl++ / Ctrl+- / Ctrl+0' },
+  { labelKey: 'shortcutZoom', kbd: 'Ctrl+Molette' },
+  { labelKey: 'shortcutWbOpen', kbd: 'Ctrl+Clic' },
+  { labelKey: 'shortcutCloseTab', kbd: 'Delete' },
+  { labelKey: 'shortcutMiddleClose', kbd: 'Clic molette' },
+  { labelKey: 'shortcutNavigate', kbd: 'Tab' },
+  { labelKey: 'shortcutActivate', kbd: 'Entrée / Espace' },
+  { labelKey: 'shortcutCloseModal', kbd: 'Échap' }
+];
+
+export function HelpSection(): ReactElement {
+  const { t } = useI18n();
+
+  return (
+    <div className="settings-section">
+      <h4 className="settings-section-title">{t('helpModalTitle')}</h4>
+      <ul className="shortcut-list">
+        {SHORTCUTS.map((item) => (
+          <li key={item.labelKey}>
+            <span>{t(item.labelKey)}</span>
+            <kbd>{item.kbd}</kbd>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

@@ -21,7 +21,9 @@ import {
   WIDTHS
 } from '../../../lib/settings-options';
 import {
+  BackupsSection,
   CorrectionSection,
+  HelpSection,
   ReadingPreview,
   ThemeLanguageFields,
   UiFontFields,
@@ -39,7 +41,9 @@ type EditorSettingsTab =
   | 'correction'
   | 'timer'
   | 'sessions'
-  | 'updates';
+  | 'backups'
+  | 'updates'
+  | 'help';
 
 /** Onglets de la fenêtre, dans l'ordre d'affichage. */
 const EDITOR_TABS: SettingsTabDef<EditorSettingsTab>[] = [
@@ -48,7 +52,9 @@ const EDITOR_TABS: SettingsTabDef<EditorSettingsTab>[] = [
   { id: 'correction', labelKey: 'settingsSectionCorrection' },
   { id: 'timer', labelKey: 'settingsSectionTimer' },
   { id: 'sessions', labelKey: 'settingsSectionSessions' },
-  { id: 'updates', labelKey: 'settingsSectionUpdates' }
+  { id: 'backups', labelKey: 'settingsSectionBackups' },
+  { id: 'updates', labelKey: 'settingsSectionUpdates' },
+  { id: 'help', labelKey: 'settingsSectionHelp' }
 ];
 
 export interface SettingsModalProps {
@@ -425,7 +431,18 @@ export function SettingsModal({
           </div>
         )}
 
+        {tab === 'backups' && (
+          <BackupsSection
+            open={open}
+            projectName={controller.projectName}
+            onRestore={(fileName) => controller.restoreBackup(fileName)}
+            onRestored={onClose}
+          />
+        )}
+
         {tab === 'updates' && <UpdatesSection open={open} />}
+
+        {tab === 'help' && <HelpSection />}
       </SettingsTabsLayout>
     </Modal>
   );

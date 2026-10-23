@@ -15,6 +15,7 @@ import { applyUiPrefs } from '../../App';
 import type { EditorPrefs, ThemeName } from '../../../shared/types';
 import {
   CorrectionSection,
+  HelpSection,
   ThemeLanguageFields,
   UiFontFields,
   UpdatesSection
@@ -25,13 +26,14 @@ import {
   type SettingsTabDef
 } from '../settings/SettingsTabs';
 
-type HomeSettingsTab = 'appearance' | 'correction' | 'updates';
+type HomeSettingsTab = 'appearance' | 'correction' | 'updates' | 'help';
 
 /** Onglets de la fenêtre, dans l'ordre d'affichage. */
 const HOME_TABS: SettingsTabDef<HomeSettingsTab>[] = [
   { id: 'appearance', labelKey: 'settingsSectionAppearance' },
   { id: 'correction', labelKey: 'settingsSectionCorrection' },
-  { id: 'updates', labelKey: 'settingsSectionUpdates' }
+  { id: 'updates', labelKey: 'settingsSectionUpdates' },
+  { id: 'help', labelKey: 'settingsSectionHelp' }
 ];
 
 interface HomeSettingsModalProps {
@@ -133,6 +135,8 @@ export function HomeSettingsModal({ open, theme, onChangeTheme, onClose }: HomeS
         )}
 
         {tab === 'updates' && <UpdatesSection open={open} />}
+
+        {tab === 'help' && <HelpSection />}
       </SettingsTabsLayout>
     </Modal>
   );
