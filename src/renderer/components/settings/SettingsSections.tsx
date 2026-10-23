@@ -4,7 +4,7 @@
 // Chaque fenêtre fournit les valeurs et la façon de les enregistrer ;
 // l'affichage est ainsi identique partout.
 
-import { useEffect, useState, type ReactElement } from 'react';
+import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { useI18n } from '../../i18n';
 import { THEMES, UI_FONTS, UI_SIZES } from '../../lib/settings-options';
 import type { LanguageCode, ThemeName } from '../../../shared/types';
@@ -221,22 +221,48 @@ export function CorrectionSection({
 // ---------- Mises à jour ----------
 
 export interface UpdatesSectionProps {
-  /** Fenêtre ouverte : la version est relue et l'état remis à zéro. */
+  /** Vrai quand la fenêtre Paramètres est ouverte. */
   open: boolean;
 }
 
-type UpdateStatus = 'idle' | 'checking' | 'done' | 'error';
+type UpdateStatus =
+  | { kind: 'idle' }
+  | { kind: 'checking' }
+  | { kind: 'upToDate' }
+  | { kind: 'available'; version: string }
+  | { kind: 'downloading'; version: string }
+  | { kind: 'downloaded'; version: string }
+  | { kind: 'error'; message: string };
 
-/** Section « Mises à jour » (dernière section de la fenêtre). */
+/** Au-delà de ce délai sans réponse, la vérification est considérée comme échouée. */
+const CHECK_TIMEOUT_MS = 60_000;
+
+function errorText(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+/**
+ * Version installée, bouton de vérification et résultat réel de celle-ci.
+ * Le résultat arrive par les événements du processus principal (main/updater.ts) ;
+ * UpdateNotifier les reçoit aussi et affiche ses propres fenêtres.
+ */
 export function UpdatesSection({ open }: UpdatesSectionProps): ReactElement {
   const { t } = useI18n();
   const [version, setVersion] = useState('');
-  const [status, setStatus] = useState<UpdateStatus>('idle');
+  const [status, setStatus] = useState<UpdateStatus>({ kind: 'idle' });
+  const timerRef = useRef<number | null>(null);
+
+  const clearTimer = (): void => {
+    if (timerRef.current !== null) {
+      window.clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  };
 
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
-    setStatus('idle');
+    setStatus({ kind: 'idle' });
 
     void window.api
       .getAppVersion()
@@ -250,29 +276,87 @@ export function UpdatesSection({ open }: UpdatesSectionProps): ReactElement {
         );
       });
 
+    // Mise à jour déjà trouvée (par exemple au démarrage) avant l'ouverture.
+    void window.api
+      .getPendingUpdate()
+      .then((pending) => {
+        if (!cancelled && pending) {
+          setStatus({ kind: 'available', version: pending.version });
+        }
+      })
+      .catch(() => {
+        // Sans importance : le bouton de vérification reste disponible.
+      });
+
+    const unsubs = [
+      window.api.onUpdateAvailable((info) => {
+        clearTimer();
+        setStatus({ kind: 'available', version: info.version });
+      }),
+      window.api.onUpdateNotAvailable(() => {
+        clearTimer();
+        setStatus({ kind: 'upToDate' });
+      }),
+      window.api.onUpdateDownloaded((info) => {
+        clearTimer();
+        setStatus({ kind: 'downloaded', version: info.version });
+      }),
+      window.api.onUpdateError((message) => {
+        clearTimer();
+        setStatus({ kind: 'error', message });
+      })
+    ];
+
     return () => {
       cancelled = true;
+      clearTimer();
+      unsubs.forEach((unsub) => unsub());
     };
   }, [open]);
 
   const check = async (): Promise<void> => {
-    setStatus('checking');
+    clearTimer();
+    setStatus({ kind: 'checking' });
+    timerRef.current = window.setTimeout(() => {
+      timerRef.current = null;
+      setStatus((current) =>
+        current.kind === 'checking' ? { kind: 'error', message: '' } : current
+      );
+    }, CHECK_TIMEOUT_MS);
     try {
       await window.api.checkForUpdates();
-      setStatus('done');
-    } catch {
-      setStatus('error');
+    } catch (error) {
+      clearTimer();
+      setStatus({ kind: 'error', message: errorText(error) });
     }
   };
 
-  const statusText =
-    status === 'checking'
-      ? t('updateChecking')
-      : status === 'done'
-        ? t('updateCheckDone')
-        : status === 'error'
-          ? t('updateCheckError')
-          : '';
+  const download = async (target: string): Promise<void> => {
+    setStatus({ kind: 'downloading', version: target });
+    try {
+      await window.api.confirmUpdateDownload();
+      setStatus({ kind: 'downloaded', version: target });
+    } catch (error) {
+      setStatus({ kind: 'error', message: errorText(error) });
+    }
+  };
+
+  let statusText = '';
+  let detail = '';
+  if (status.kind === 'checking') statusText = t('updateChecking');
+  else if (status.kind === 'upToDate') statusText = t('updateStatusUpToDate');
+  else if (status.kind === 'available')
+    statusText = t('updateStatusAvailable', { version: status.version });
+  else if (status.kind === 'downloading') statusText = t('updateStatusDownloading');
+  else if (status.kind === 'downloaded')
+    statusText = t('updateStatusDownloaded', { version: status.version });
+  else if (status.kind === 'error') {
+    statusText = t('updateCheckError');
+    detail = status.message;
+  }
+
+  const availableVersion = status.kind === 'available' ? status.version : '';
+  const busy = status.kind === 'checking' || status.kind === 'downloading';
 
   return (
     <div
@@ -297,18 +381,37 @@ export function UpdatesSection({ open }: UpdatesSectionProps): ReactElement {
             : ''}
         </span>
 
-        <button
-          type="button"
-          disabled={status === 'checking'}
-          onClick={() => void check()}
-        >
+        <button type="button" disabled={busy} onClick={() => void check()}>
           {t('checkUpdatesMenuBtn')}
         </button>
       </div>
 
       {statusText && (
-        <div style={{ marginTop: 6, color: 'var(--text-muted)', fontSize: 13 }}>
-          {statusText}
+        <div
+          style={{
+            marginTop: 8,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: 10
+          }}
+        >
+          <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>
+            <div>{statusText}</div>
+            {detail && <div style={{ marginTop: 2, fontSize: 12 }}>{detail}</div>}
+          </div>
+
+          {availableVersion && (
+            <button type="button" onClick={() => void download(availableVersion)}>
+              {t('updateDownloadBtn')}
+            </button>
+          )}
+
+          {status.kind === 'downloaded' && (
+            <button type="button" onClick={() => void window.api.quitAndInstall()}>
+              {t('updateRestartNowBtn')}
+            </button>
+          )}
         </div>
       )}
     </div>

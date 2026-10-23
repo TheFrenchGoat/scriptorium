@@ -155,6 +155,10 @@ export const fr = {
   updateChecking: 'Vérification en cours…',
   updateCheckDone: 'Vérification terminée.',
   updateCheckError: 'Impossible de vérifier les mises à jour.',
+  updateStatusUpToDate: 'Vous utilisez la dernière version.',
+  updateStatusAvailable: 'La version {version} est disponible.',
+  updateStatusDownloading: 'Téléchargement en cours…',
+  updateStatusDownloaded: 'La version {version} est téléchargée : elle sera installée au redémarrage.',
   settingsSectionTimer: 'Minuteur',
   settingsSectionSessions: 'Sessions d’écriture',
 
@@ -1099,6 +1103,10 @@ export const en: Record<TranslationKey, string> = {
   updateChecking: 'Checking…',
   updateCheckDone: 'Check complete.',
   updateCheckError: 'Unable to check for updates.',
+  updateStatusUpToDate: 'You are using the latest version.',
+  updateStatusAvailable: 'Version {version} is available.',
+  updateStatusDownloading: 'Downloading…',
+  updateStatusDownloaded: 'Version {version} has been downloaded and will be installed on restart.',
   settingsSectionTimer: 'Timer',
   settingsSectionSessions:
     'Writing sessions',
