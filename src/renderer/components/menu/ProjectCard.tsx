@@ -27,6 +27,7 @@ import React, {
 import { createPortal } from 'react-dom';
 import { useI18n } from '../../i18n';
 import { getAllProjectGoalProgress } from '../../lib/stats';
+import { getScreenplayTextStatistics } from '../../lib/screenplay';
 import type { ProjectData } from '../../../shared/types';
 
 export interface ProjectCardProps {
@@ -52,16 +53,35 @@ const MENU_GAP = 6;
 const VIEWPORT_PADDING = 8;
 
 /**
- * Calcule le nombre de chapitres et de mots du projet.
+ * Calcule le nombre de chapitres (roman) ou de scènes (scénario) et de mots
+ * du projet.
  *
  * Les anciennes versions de Scriptorium stockaient parfois les chapitres
  * directement dans l’objet du projet, sans propriété `chapters`. Le repli
  * ci-dessous permet de continuer à afficher correctement ces projets.
  */
 function countProject(data: ProjectData): {
-  chapters: number;
+  /** Chapitres d'un roman, scènes d'un scénario. */
+  parts: number;
   words: number;
 } {
+  if (data?.projectType === 'screenplay') {
+    const scenes = data.screenplay?.scenes;
+    if (!data.screenplay || !Array.isArray(scenes)) {
+      return { parts: 0, words: 0 };
+    }
+
+    let screenplayWords = 0;
+    try {
+      // Même comptage que l'éditeur (useEditorController).
+      screenplayWords = getScreenplayTextStatistics(data.screenplay).words;
+    } catch (error) {
+      console.error('Comptage des mots du scénario :', error);
+    }
+
+    return { parts: scenes.length, words: screenplayWords };
+  }
+
   const chapters =
     data?.chapters ??
     (data as unknown as Record<string, string>) ??
@@ -88,7 +108,7 @@ function countProject(data: ProjectData): {
   });
 
   return {
-    chapters: chapterCount,
+    parts: chapterCount,
     words
   };
 }
@@ -725,11 +745,15 @@ export function ProjectCard({
             </span>
 
             <p>
-              {t('projectStats', {
-                chapters:
-                  stats.chapters,
-                words: stats.words
-              })}
+              {isScreenplay
+                ? t('projectStatsScreenplay', {
+                    scenes: stats.parts,
+                    words: stats.words
+                  })
+                : t('projectStats', {
+                    chapters: stats.parts,
+                    words: stats.words
+                  })}
             </p>
           </div>
 

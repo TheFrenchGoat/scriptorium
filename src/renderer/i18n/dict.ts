@@ -61,6 +61,7 @@ export const fr = {
   defaultProjectName: 'Projet',
   projectTypeNovel: 'Roman',
   projectTypeScreenplay: 'Scénario',
+  projectStatsScreenplay: '{scenes} scènes • {words} mots',
 
   // -------------------------------------------------------------------------
   // EN-TÊTE ÉDITEUR
@@ -1012,6 +1013,7 @@ export const en: Record<TranslationKey, string> = {
   defaultProjectName: 'Project',
   projectTypeNovel: 'Novel',
   projectTypeScreenplay: 'Screenplay',
+  projectStatsScreenplay: '{scenes} scenes • {words} words',
 
   // -------------------------------------------------------------------------
   // EDITOR HEADER
