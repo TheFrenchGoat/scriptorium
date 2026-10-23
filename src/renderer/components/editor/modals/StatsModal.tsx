@@ -55,6 +55,9 @@ export interface StatsModalProps {
   open: boolean;
   controller: EditorController;
   onClose: () => void;
+
+  /** Bloc « Session en cours » affiché au-dessus des onglets. */
+  sessionPanel?: React.ReactNode;
 }
 
 type StatsTab =
@@ -858,6 +861,7 @@ function CalendarCell({
 
 export function StatsModal({
   open,
+  sessionPanel,
   controller,
   onClose
 }: StatsModalProps): React.ReactElement {
@@ -2891,6 +2895,8 @@ export function StatsModal({
           </button>
         }
       >
+        {sessionPanel}
+
         <div
           style={{
             display: 'flex',

@@ -63,7 +63,7 @@ import {
 
 import { ReplaceModal } from './modals/ReplaceModal';
 import { GlobalSearchModal } from './modals/GlobalSearchModal';
-import { StatsModal } from './modals/StatsModal';
+import { MemoTimer } from './Timer';
 import { SettingsModal } from './modals/SettingsModal';
 import { GrammarSetupModal } from './modals/GrammarSetupModal';
 import { CustomWbTypeModal } from './modals/CustomWbTypeModal';
@@ -304,6 +304,12 @@ export function EditorPage({
   const closeModal =
     useCallback((): void => {
       setOpenModal(null);
+    }, []);
+
+  // Fenêtre « Session et statistiques », ouverte par le bouton Session.
+  const setStatsOpen =
+    useCallback((statsOpen: boolean): void => {
+      setOpenModal(statsOpen ? 'stats' : null);
     }, []);
 
   const handleBack =
@@ -1143,17 +1149,11 @@ export function EditorPage({
             )}
           </Dropdown>
 
-          <button
-            id="btnStats"
-            type="button"
-            onClick={() => {
-              setOpenModal(
-                'stats'
-              );
-            }}
-          >
-            {t('statsMenuBtn')}
-          </button>
+          <MemoTimer
+            controller={controller}
+            statsOpen={openModal === 'stats'}
+            onStatsOpenChange={setStatsOpen}
+          />
 
           <button
             id="btnSettingsToggle"
@@ -1396,14 +1396,6 @@ export function EditorPage({
         open={
           openModal ===
           'globalSearch'
-        }
-        controller={controller}
-        onClose={closeModal}
-      />
-
-      <StatsModal
-        open={
-          openModal === 'stats'
         }
         controller={controller}
         onClose={closeModal}

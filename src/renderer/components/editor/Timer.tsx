@@ -20,16 +20,11 @@ import React, {
 import { useI18n } from '../../i18n';
 import { Modal } from '../common/Modal';
 import {
-  Dropdown,
-  DropdownItem
-} from '../common/Dropdown';
-import {
   startTimerSoundLoop,
   type TimerSoundId
 } from '../../lib/sound';
 import {
   getChapterWordCounts,
-  getTotalStats
 } from '../../lib/stats';
 import type {
   SessionRatingScale,
@@ -39,6 +34,10 @@ import type {
   WritingSessionSource
 } from '../../../shared/types';
 import type { EditorController } from './useEditorController';
+import { StatsModal } from './modals/StatsModal';
+import { getCachedTotalStats } from '../../lib/project-word-cache';
+import { getScreenplayTextStatistics } from '../../lib/screenplay';
+import './session.css';
 
 const PRESETS = [
   {
@@ -102,6 +101,20 @@ const MOODS: {
  */
 const MAX_TICK_MS = 90000;
 
+/**
+ * Total de mots du projet, compté comme l'historique quotidien : paragraphes
+ * des scènes (sans les en-têtes) pour un scénario, chapitres pour un roman.
+ */
+function countProjectWords(
+  projectData: ReturnType<EditorController['data']>
+): number {
+  if (projectData.projectType === 'screenplay' && projectData.screenplay) {
+    return getScreenplayTextStatistics(projectData.screenplay).words;
+  }
+
+  return getCachedTotalStats(projectData).words;
+}
+
 interface ActiveWritingSession {
   id: string;
   source: WritingSessionSource;
@@ -146,6 +159,10 @@ interface ActiveWritingSession {
 
 export interface TimerProps {
   controller: EditorController;
+
+  /** Fenêtre « Session et statistiques » ouverte. */
+  statsOpen: boolean;
+  onStatsOpenChange: (open: boolean) => void;
 }
 
 function createSessionId(): string {
@@ -318,17 +335,17 @@ function isEmptySession(
 }
 
 export function Timer({
-  controller
+  controller,
+  statsOpen,
+  onStatsOpenChange
 }: TimerProps): React.ReactElement {
   const { t } = useI18n();
 
-  const [modalOpen, setModalOpen] =
-    useState(false);
 
   const [
     selectedPreset,
     setSelectedPreset
-  ] = useState(25);
+  ] = useState(0);
 
   const [customValue, setCustomValue] =
     useState('');
@@ -344,6 +361,14 @@ export function Timer({
   ] = useState(0);
 
   const [isRunning, setIsRunning] =
+    useState(false);
+
+  // Mots écrits depuis le début de la session (affichés dans l'en-tête).
+  const [liveWords, setLiveWords] =
+    useState(0);
+
+  // Minuteur arrivé à zéro : encart « Continuer / Terminer » affiché.
+  const [timeUp, setTimeUp] =
     useState(false);
 
   const [
@@ -408,6 +433,10 @@ export function Timer({
     useRef(0);
 
   const finishingRef =
+    useRef(false);
+
+  // Le temps prévu est dépassé (l'utilisateur a choisi de continuer).
+  const overtimeRef =
     useRef(false);
 
   const lastTrackedDocumentRef =
@@ -558,9 +587,8 @@ export function Timer({
     const projectData =
       controller.data();
 
-    const wordsAfter = getTotalStats(
-      projectData
-    ).words;
+    const wordsAfter =
+      countProjectWords(projectData);
 
     const documentWordsAfter =
       getChapterWordCounts(projectData);
@@ -692,6 +720,9 @@ export function Timer({
     setActiveSource(null);
     setTimeRemaining(0);
     setElapsedSeconds(0);
+    setLiveWords(0);
+    setTimeUp(false);
+    overtimeRef.current = false;
 
     if (!isEmptySession(session, completed)) {
       persistSession(session);
@@ -739,6 +770,45 @@ export function Timer({
     finishingRef.current = false;
   };
 
+  /**
+   * Temps prévu écoulé : sonnerie, clignotement et encart. La session
+   * continue jusqu'à ce que l'utilisateur la termine.
+   */
+  const signalTimeUp = (): void => {
+    setTimeUp(true);
+    stopSoundLoop();
+
+    const currentPrefs =
+      controller.prefs();
+
+    if (
+      currentPrefs.timerSoundEnabled !==
+      false
+    ) {
+      const soundId =
+        (currentPrefs.timerSoundId as TimerSoundId) ||
+        'chime';
+
+      soundLoopStopRef.current =
+        startTimerSoundLoop(
+          soundId,
+          currentPrefs.timerVolume ??
+            0.5
+        );
+    }
+
+    setJustFinished(true);
+
+    if (flashTimeoutRef.current) {
+      clearTimeout(flashTimeoutRef.current);
+    }
+
+    flashTimeoutRef.current =
+      setTimeout(() => {
+        setJustFinished(false);
+      }, 4000);
+  };
+
   const startInterval = (): void => {
     clearTimerInterval();
 
@@ -771,6 +841,11 @@ export function Timer({
           activeSession.activeSeconds
         );
 
+        setLiveWords(
+          countProjectWords(controller.data()) -
+            activeSession.wordsBefore
+        );
+
         if (
           activeSession.source !==
           'pomodoro'
@@ -792,8 +867,13 @@ export function Timer({
           nextRemaining
         );
 
-        if (nextRemaining === 0) {
-          finishSession(true, true);
+        if (
+          nextRemaining === 0 &&
+          !overtimeRef.current
+        ) {
+          // Temps prévu écoulé : signal, mais la session continue.
+          overtimeRef.current = true;
+          signalTimeUp();
         }
       },
       1000
@@ -820,7 +900,7 @@ export function Timer({
       controller.data();
 
     const wordsBefore =
-      getTotalStats(projectData).words;
+      countProjectWords(projectData);
 
     const documentWordsBefore =
       getChapterWordCounts(projectData);
@@ -873,6 +953,9 @@ export function Timer({
       normalizedPlannedSeconds ?? 0
     );
     setJustFinished(false);
+    setLiveWords(0);
+    setTimeUp(false);
+    overtimeRef.current = false;
     setIsRunning(true);
 
     startInterval();
@@ -892,7 +975,7 @@ export function Timer({
     setIsRunning(false);
   };
 
-  const resumeSession = (): void => {
+  const resumeSession = (focusAfter = true): void => {
     if (
       !activeSessionRef.current ||
       isRunning
@@ -904,39 +987,72 @@ export function Timer({
     trackCurrentDocument();
     setIsRunning(true);
     startInterval();
-    focusEditor();
+
+    if (focusAfter) {
+      focusEditor();
+    }
   };
 
   const stopSession = (): void => {
-    finishSession(false, false);
-  };
+    const activeSession =
+      activeSessionRef.current;
 
-  const confirmTimerModal =
-    (): void => {
-      const custom = parseInt(
-        customValue,
-        10
+    // Minuteur allé au bout : la session est notée « terminée ».
+    const reached =
+      overtimeRef.current ||
+      Boolean(
+        activeSession?.plannedSeconds &&
+          activeSession.activeSeconds >=
+            activeSession.plannedSeconds
       );
 
-      const minutes =
-        Number.isFinite(custom) &&
-        custom > 0
-          ? custom
-          : selectedPreset;
+    stopSoundLoop();
 
-      setCustomValue('');
-      setModalOpen(false);
+    if (statsOpen) {
+      onStatsOpenChange(false);
+    }
 
+    finishSession(reached, false);
+  };
+
+  /** Durée choisie dans le bloc Session, en minutes (0 : sans minuteur). */
+  const getChosenMinutes = (): number => {
+    const custom = parseInt(
+      customValue,
+      10
+    );
+
+    if (Number.isFinite(custom) && custom > 0) {
+      return Math.min(custom, 1440);
+    }
+
+    return selectedPreset;
+  };
+
+  const startFromPanel = (): void => {
+    const minutes = getChosenMinutes();
+
+    setCustomValue('');
+    onStatsOpenChange(false);
+
+    if (minutes > 0) {
       beginSession(
         'pomodoro',
         minutes * 60
       );
-    };
+    } else {
+      beginSession('manual');
+    }
+  };
 
-  const closeTimerModal = (): void => {
-    setCustomValue('');
-    setModalOpen(false);
-    focusEditor();
+  /** Minuteur à zéro : on coupe la sonnerie, la session continue. */
+  const continueAfterTimeUp = (): void => {
+    stopSoundLoop();
+    setTimeUp(false);
+
+    if (!statsOpen) {
+      focusEditor();
+    }
   };
 
   const resetFeedback = (): void => {
@@ -1104,28 +1220,206 @@ export function Timer({
     return window.api.onBeforeClose(() => beforeCloseRef.current());
   }, []);
 
-  const currentPresetLabel =
-    PRESETS.find(
-      (preset) =>
-        preset.value ===
-        selectedPreset
-    )?.key ?? 'timer25';
+  const currentSession =
+    activeSessionRef.current;
 
-  let mainLabel = t('timerBtn');
+  // Avec minuteur : temps restant. Sans minuteur ou après « Continuer » :
+  // temps écoulé.
+  const showRemaining =
+    activeSource === 'pomodoro' &&
+    !timeUp &&
+    !overtimeRef.current;
 
-  if (
-    activeSource === 'pomodoro'
-  ) {
-    mainLabel = `⏱ ${formatTimer(
-      timeRemaining
-    )}`;
-  } else if (
-    activeSource === 'manual'
-  ) {
-    mainLabel = `✍ ${formatTimer(
-      elapsedSeconds
-    )}`;
+  const displayedTime = formatTimer(
+    showRemaining
+      ? timeRemaining
+      : elapsedSeconds
+  );
+
+  const signedLiveWords =
+    formatSignedWords(liveWords);
+
+  let buttonLabel: string = t('sessionBtn');
+
+  if (currentSession) {
+    buttonLabel = t(
+      isRunning
+        ? 'sessionBtnRunning'
+        : 'sessionBtnPaused'
+    )
+      .replace('{time}', displayedTime)
+      .replace('{words}', signedLiveWords);
   }
+
+  const buttonClassName = [
+    currentSession
+      ? isRunning
+        ? 'running'
+        : 'paused'
+      : '',
+    justFinished ? 'finished-flash' : ''
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  let panelClassName = 'session-panel';
+  let panelState: string = t('sessionPanelIdle');
+
+  if (currentSession) {
+    if (timeUp) {
+      panelClassName = 'session-panel time-up';
+      panelState = t('sessionStateTimeUp');
+    } else if (isRunning) {
+      panelClassName = 'session-panel active';
+      panelState = t('sessionStateRunning');
+    } else {
+      panelClassName = 'session-panel paused';
+      panelState = t('sessionStatePaused');
+    }
+  }
+
+  const customChosen =
+    customValue.trim().length > 0;
+
+  const presetClass = (value: number): string =>
+    !customChosen && selectedPreset === value
+      ? 'settings-choice-btn active'
+      : 'settings-choice-btn';
+
+  const sessionPanel = (
+    <section className={panelClassName}>
+      <div className="session-panel-head">
+        <strong>{t('sessionPanelTitle')}</strong>
+        <span className="session-panel-state">
+          {panelState}
+        </span>
+      </div>
+
+      {currentSession ? (
+        <>
+          <div className="session-panel-figures">
+            <div className="session-figure">
+              <span>{t('sessionDurationLabel')}</span>
+              <strong>{formatTimer(elapsedSeconds)}</strong>
+            </div>
+
+            {showRemaining && (
+              <div className="session-figure">
+                <span>{t('sessionRemainingLabel')}</span>
+                <strong>{formatTimer(timeRemaining)}</strong>
+              </div>
+            )}
+
+            <div className="session-figure">
+              <span>{t('sessionWordsLabel')}</span>
+              <strong
+                style={{
+                  color: getWordsColor(liveWords)
+                }}
+              >
+                {signedLiveWords}
+              </strong>
+            </div>
+          </div>
+
+          <div className="session-actions">
+            {timeUp ? (
+              <button
+                type="button"
+                onClick={continueAfterTimeUp}
+              >
+                {t('sessionContinueBtn')}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  if (isRunning) {
+                    pauseSession();
+                  } else {
+                    resumeSession(false);
+                  }
+                }}
+              >
+                {isRunning
+                  ? t('sessionPauseBtn')
+                  : t('sessionResumeBtn')}
+              </button>
+            )}
+
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={stopSession}
+            >
+              {t('sessionFinishBtn')}
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <span className="session-label">
+            {t('sessionTimerLabel')}
+          </span>
+
+          <div className="session-presets">
+            <button
+              type="button"
+              className={presetClass(0)}
+              onClick={() => {
+                setSelectedPreset(0);
+                setCustomValue('');
+              }}
+            >
+              {t('sessionTimerNone')}
+            </button>
+
+            {PRESETS.map((preset) => (
+              <button
+                key={preset.value}
+                type="button"
+                className={presetClass(preset.value)}
+                onClick={() => {
+                  setSelectedPreset(preset.value);
+                  setCustomValue('');
+                }}
+              >
+                {t(preset.key)}
+              </button>
+            ))}
+
+            <input
+              type="text"
+              inputMode="numeric"
+              aria-label={t('timerCustomLabel')}
+              title={t('timerCustomLabel')}
+              placeholder={t('timerCustomPlaceholder')}
+              value={customValue}
+              onChange={(event) => {
+                setCustomValue(event.target.value);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  startFromPanel();
+                }
+              }}
+            />
+          </div>
+
+          <div className="session-actions">
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={startFromPanel}
+            >
+              {t('sessionStartBtn')}
+            </button>
+          </div>
+        </>
+      )}
+    </section>
+  );
 
   const feedbackDuration =
     feedbackSession
@@ -1145,184 +1439,54 @@ export function Timer({
       : [];
 
   return (
-    <div
-      id="timerContainer"
-      className="timer-container"
-    >
+    <div className="session-anchor">
       <button
-        id="btnTimer"
+        id="btnSession"
         type="button"
-        className={`${
-          isRunning ? 'running' : ''
-        } ${
-          justFinished
-            ? 'timer-finished-flash'
-            : ''
-        }`.trim()}
-        title={
-          activeSessionRef.current
-            ? undefined
-            : t('timerModalTitle')
-        }
+        className={buttonClassName || undefined}
+        title={t('sessionBtnTitle')}
         onClick={() => {
-          if (
-            !activeSessionRef.current
-          ) {
-            setModalOpen(true);
-            return;
-          }
-
-          if (!isRunning) {
-            resumeSession();
-          }
+          onStatsOpenChange(true);
         }}
       >
-        {mainLabel}
+        {buttonLabel}
       </button>
 
-      {!activeSessionRef.current && (
-        <button
-          id="btnWritingSession"
-          type="button"
-          title={t(
-            'sessionManualStartTitle'
-          )}
-          onClick={() =>
-            beginSession('manual')
-          }
-        >
-          {t('sessionManualButton')}
-        </button>
-      )}
-
-      {activeSessionRef.current && (
-        <button
-          id="btnTimerPause"
-          type="button"
-          title={
-            isRunning
-              ? t('timerPauseTitle')
-              : t(
-                  'sessionResumeTitle'
-                )
-          }
-          onClick={() => {
-            if (isRunning) {
-              pauseSession();
-            } else {
-              resumeSession();
-            }
-          }}
-        >
-          {isRunning ? '⏸' : '▶'}
-        </button>
-      )}
-
-      {activeSessionRef.current && (
-        <button
-          id="btnTimerStop"
-          type="button"
-          title={t(
-            'sessionStopTitle'
-          )}
-          onClick={stopSession}
-        >
-          ⏹
-        </button>
-      )}
-
-      <Modal
-        open={modalOpen}
-        title={t('timerModalTitle')}
-        onCancel={closeTimerModal}
-        onPrimary={confirmTimerModal}
-        footer={
-          <>
-            <button
-              type="button"
-              onClick={closeTimerModal}
-            >
-              {t('cancel')}
-            </button>
-
-            <button
-              type="button"
-              onClick={
-                confirmTimerModal
-              }
-            >
-              {t('launch')}
-            </button>
-          </>
-        }
-      >
-        <Dropdown
-          label={
-            <>
-              {t(
-                currentPresetLabel
-              )}{' '}
-              ▾
-            </>
-          }
-          buttonClassName="dropdown-btn modal-dropdown-btn"
-          containerStyle={{
-            width: '100%',
-            margin: '12px 0 20px'
-          }}
-          menuStyle={{
-            width: '100%'
-          }}
-        >
-          {(close) => (
-            <>
-              {PRESETS.map(
-                (preset) => (
-                  <DropdownItem
-                    key={
-                      preset.value
-                    }
-                    className="dropdown-item timer-option"
-                    onSelect={() => {
-                      setSelectedPreset(
-                        preset.value
-                      );
-                      close();
-                    }}
-                  >
-                    {t(preset.key)}
-                  </DropdownItem>
-                )
-              )}
-            </>
-          )}
-        </Dropdown>
-
+      {timeUp && (
         <div
-          className="wb-form-group"
-          style={{
-            margin: '0 0 20px'
-          }}
+          className="session-timeup"
+          role="alert"
         >
-          <label className="wb-label">
-            {t('timerCustomLabel')}
-          </label>
+          <strong>{t('timerFinishedTitle')}</strong>
+          <p>{t('sessionTimeUpMessage')}</p>
 
-          <input
-            type="text"
-            inputMode="numeric"
-            placeholder={t(
-              'timerCustomPlaceholder'
-            )}
-            value={customValue}
-            onChange={(event) => {
-              setCustomValue(
-                event.target.value
-              );
-            }}
-          />
+          <div className="session-actions">
+            <button
+              type="button"
+              onClick={continueAfterTimeUp}
+            >
+              {t('sessionContinueBtn')}
+            </button>
+
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={stopSession}
+            >
+              {t('sessionFinishBtn')}
+            </button>
+          </div>
         </div>
-      </Modal>
+      )}
+
+      <StatsModal
+        open={statsOpen}
+        controller={controller}
+        sessionPanel={sessionPanel}
+        onClose={() => {
+          onStatsOpenChange(false);
+        }}
+      />
 
       <Modal
         open={
@@ -1737,3 +1901,6 @@ export function Timer({
     </div>
   );
 }
+
+/** Le bouton est dans l'en-tête, redessiné souvent : version mémorisée. */
+export const MemoTimer = React.memo(Timer);
