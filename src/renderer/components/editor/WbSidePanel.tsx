@@ -17,6 +17,7 @@
 // `openWbPanel(id)` (nom surligné dans le texte, champ « référence »...).
 // La barre latérale écoute ces demandes avec `useWbPanelListener`.
 
+import { Select } from '../common/Select';
 import { useEffect, useRef, useState, type DragEvent, type KeyboardEvent, type MouseEvent } from 'react';
 import { useI18n } from '../../i18n';
 import type { BuiltinWbType, WbCategoryDef, WbItem, WbType } from '../../../shared/types';
@@ -396,24 +397,22 @@ export function WbSidePanel({
             onKeyDown={handleSearchKeyDown}
           />
           <div className="wb-side-panel-filter-row">
-            <select
-              className="wb-side-panel-filter"
-              aria-label={t('wbPanelFilterAll')}
-              value={activeFilter}
-              onChange={(event) => setFilterType(event.target.value)}
-            >
-              <option value={FILTER_ALL}>
-                {t('wbPanelFilterAll')}
-              </option>
-              {typeSlugs.map((slug) => (
-                <option
-                  key={slug}
-                  value={slug}
-                >
-                  {(categories[slug]?.icon ?? '') + ' ' + categoryLabel(slug)}
-                </option>
-              ))}
-            </select>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <Select
+                block
+                ariaLabel={t('wbPanelFilterAll')}
+                value={activeFilter}
+                onChange={(value) => setFilterType(value)}
+                options={[
+                  { value: FILTER_ALL, label: t('wbPanelFilterAll') },
+                  ...typeSlugs.map((slug) => ({
+                    value: slug,
+                    label: categoryLabel(slug),
+                    icon: categories[slug]?.icon || undefined
+                  }))
+                ]}
+              />
+            </div>
             <span className="wb-side-panel-count">
               {visibleIds.length} / {allCount}
             </span>
