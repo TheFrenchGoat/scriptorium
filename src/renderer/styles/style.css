@@ -1263,3 +1263,32 @@ mark.grammar-error:hover { background: rgba(59, 130, 246, 0.12); }
 .ui-select-option.selected { color: var(--accent); font-weight: 600; }
 .ui-select-check { flex-shrink: 0; width: 1em; text-align: center; color: var(--accent); font-weight: 700; }
 .wb-tl-filter .ui-select { min-width: 180px; max-width: 280px; }
+
+/* Mise à jour : encart de progression du téléchargement (UpdateNotifier) */
+.update-toast {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 2500;
+  min-width: 240px;
+  padding: 10px 14px;
+  font-size: 13px;
+  pointer-events: none;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--bg-panel); color: var(--text-main);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18), var(--shadow);
+}
+
+.update-progress {
+  margin-top: 6px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(127, 127, 127, 0.3);
+  overflow: hidden;
+}
+
+.update-progress-bar {
+  height: 100%;
+  background: currentColor;
+  transition: width 0.3s ease;
+}

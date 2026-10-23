@@ -529,6 +529,35 @@ const api: ScriptoriumApi = {
     };
   },
 
+  onUpdateDownloadProgress: (
+    callback: (info: {
+      version: string;
+      percent: number;
+    }) => void
+  ) => {
+    const listener = (
+      _event: Electron.IpcRendererEvent,
+      info: {
+        version: string;
+        percent: number;
+      }
+    ): void => {
+      callback(info);
+    };
+
+    ipcRenderer.on(
+      'updater:download-progress',
+      listener
+    );
+
+    return () => {
+      ipcRenderer.removeListener(
+        'updater:download-progress',
+        listener
+      );
+    };
+  },
+
   onUpdateDownloaded: (
     callback: (info: {
       version: string;
@@ -558,14 +587,16 @@ const api: ScriptoriumApi = {
 
   onUpdateError: (
     callback: (
-      message: string
+      message: string,
+      during: 'check' | 'download'
     ) => void
   ) => {
     const listener = (
       _event: Electron.IpcRendererEvent,
-      message: string
+      message: string,
+      during?: 'check' | 'download'
     ): void => {
-      callback(message);
+      callback(message, during ?? 'check');
     };
 
     ipcRenderer.on(

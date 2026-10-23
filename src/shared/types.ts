@@ -1247,9 +1247,8 @@ export interface ScriptoriumApi {
 
   checkForUpdates(): Promise<void>;
 
-  getPendingUpdate(): Promise<{
-    version: string;
-  } | null>;
+  getPendingUpdate(): Promise<PendingUpdateInfo | null>;
+
 
   getAppVersion(): Promise<string>;
 
@@ -1267,6 +1266,10 @@ export interface ScriptoriumApi {
     callback: () => void
   ): () => void;
 
+  onUpdateDownloadProgress(
+    callback: (info: UpdateDownloadProgress) => void
+  ): () => void;
+
   onUpdateDownloaded(
     callback: (info: {
       version: string;
@@ -1275,10 +1278,33 @@ export interface ScriptoriumApi {
 
   onUpdateError(
     callback: (
-      message: string
+      message: string,
+      during: UpdateErrorPhase
     ) => void
   ): () => void;
 }
+
+// ------------------------------------------------------------------------
+// Mise à jour automatique : état partagé entre main et renderer
+// ------------------------------------------------------------------------
+
+/** Étape d'une mise à jour trouvée : proposée, en téléchargement ou prête. */
+export type UpdateState = 'available' | 'downloading' | 'downloaded';
+
+export interface PendingUpdateInfo {
+  version: string;
+  state: UpdateState;
+  /** Avancement du téléchargement, de 0 à 100. */
+  percent: number;
+}
+
+export interface UpdateDownloadProgress {
+  version: string;
+  percent: number;
+}
+
+/** Moment où une erreur de mise à jour s'est produite. */
+export type UpdateErrorPhase = 'check' | 'download';
 
 declare global {
   interface Window {

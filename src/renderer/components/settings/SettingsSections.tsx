@@ -9,6 +9,7 @@ import { useI18n, type TranslationKey } from '../../i18n';
 import { useDialogs } from '../common/Dialogs';
 import { Select } from '../common/Select';
 import { describeError } from '../../lib/errors';
+import { registerUpdatesPanel } from '../../lib/update-panel';
 import { THEMES, UI_FONTS, UI_SIZES } from '../../lib/settings-options';
 import type { BackupEntry, LanguageCode, ThemeName } from '../../../shared/types';
 
@@ -243,13 +244,21 @@ function errorText(error: unknown): string {
 /**
  * Version installée, bouton de vérification et résultat réel de celle-ci.
  * Le résultat arrive par les événements du processus principal (main/updater.ts) ;
- * UpdateNotifier les reçoit aussi et affiche ses propres fenêtres.
+ * UpdateNotifier les reçoit aussi, mais n'ouvre aucune fenêtre tant que
+ * cette section est visible (voir lib/update-panel.ts).
  */
 export function UpdatesSection({ open }: UpdatesSectionProps): ReactElement {
   const { t } = useI18n();
   const [version, setVersion] = useState('');
   const [status, setStatus] = useState<UpdateStatus>({ kind: 'idle' });
+  // Avancement du téléchargement (0 à 100), affiché pendant « downloading ».
+  const [percent, setPercent] = useState(0);
+  // Version dont le téléchargement a échoué : permet de proposer « Réessayer ».
+  const [retryVersion, setRetryVersion] = useState('');
   const timerRef = useRef<number | null>(null);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  // Dernière version dont le téléchargement a été suivi ici.
+  const downloadTargetRef = useRef('');
 
   const clearTimer = (): void => {
     if (timerRef.current !== null) {
@@ -262,6 +271,8 @@ export function UpdatesSection({ open }: UpdatesSectionProps): ReactElement {
     if (!open) return;
     let cancelled = false;
     setStatus({ kind: 'idle' });
+    setPercent(0);
+    setRetryVersion('');
 
     void window.api
       .getAppVersion()
@@ -275,11 +286,19 @@ export function UpdatesSection({ open }: UpdatesSectionProps): ReactElement {
         );
       });
 
-    // Mise à jour déjà trouvée (par exemple au démarrage) avant l'ouverture.
+    // État déjà connu du processus principal : mise à jour trouvée au
+    // démarrage, téléchargement lancé depuis la fenêtre de notification, etc.
     void window.api
       .getPendingUpdate()
       .then((pending) => {
-        if (!cancelled && pending) {
+        if (cancelled || !pending) return;
+        if (pending.state === 'downloading') {
+          downloadTargetRef.current = pending.version;
+          setPercent(pending.percent);
+          setStatus({ kind: 'downloading', version: pending.version });
+        } else if (pending.state === 'downloaded') {
+          setStatus({ kind: 'downloaded', version: pending.version });
+        } else {
           setStatus({ kind: 'available', version: pending.version });
         }
       })
@@ -287,21 +306,37 @@ export function UpdatesSection({ open }: UpdatesSectionProps): ReactElement {
         // Sans importance : le bouton de vérification reste disponible.
       });
 
+    // Tant que cette section est visible, UpdateNotifier n'ouvre aucune
+    // fenêtre : le résultat s'affiche ici, une seule fois.
+    const unregister = registerUpdatesPanel(() => {
+      const el = rootRef.current;
+      return el !== null && el.isConnected && el.getClientRects().length > 0;
+    });
+
     const unsubs = [
       window.api.onUpdateAvailable((info) => {
         clearTimer();
+        setRetryVersion('');
         setStatus({ kind: 'available', version: info.version });
       }),
       window.api.onUpdateNotAvailable(() => {
         clearTimer();
         setStatus({ kind: 'upToDate' });
       }),
+      window.api.onUpdateDownloadProgress((info) => {
+        clearTimer();
+        downloadTargetRef.current = info.version;
+        setRetryVersion('');
+        setPercent(info.percent);
+        setStatus({ kind: 'downloading', version: info.version });
+      }),
       window.api.onUpdateDownloaded((info) => {
         clearTimer();
         setStatus({ kind: 'downloaded', version: info.version });
       }),
-      window.api.onUpdateError((message) => {
+      window.api.onUpdateError((message, during) => {
         clearTimer();
+        setRetryVersion(during === 'download' ? downloadTargetRef.current : '');
         setStatus({ kind: 'error', message });
       })
     ];
@@ -309,12 +344,14 @@ export function UpdatesSection({ open }: UpdatesSectionProps): ReactElement {
     return () => {
       cancelled = true;
       clearTimer();
+      unregister();
       unsubs.forEach((unsub) => unsub());
     };
   }, [open]);
 
   const check = async (): Promise<void> => {
     clearTimer();
+    setRetryVersion('');
     setStatus({ kind: 'checking' });
     timerRef.current = window.setTimeout(() => {
       timerRef.current = null;
@@ -331,11 +368,15 @@ export function UpdatesSection({ open }: UpdatesSectionProps): ReactElement {
   };
 
   const download = async (target: string): Promise<void> => {
+    downloadTargetRef.current = target;
+    setRetryVersion('');
+    setPercent(0);
     setStatus({ kind: 'downloading', version: target });
     try {
+      // La suite (progression, fin, échec) arrive par les événements du main.
       await window.api.confirmUpdateDownload();
-      setStatus({ kind: 'downloaded', version: target });
     } catch (error) {
+      setRetryVersion(target);
       setStatus({ kind: 'error', message: errorText(error) });
     }
   };
@@ -346,19 +387,22 @@ export function UpdatesSection({ open }: UpdatesSectionProps): ReactElement {
   else if (status.kind === 'upToDate') statusText = t('updateStatusUpToDate');
   else if (status.kind === 'available')
     statusText = t('updateStatusAvailable', { version: status.version });
-  else if (status.kind === 'downloading') statusText = t('updateStatusDownloading');
+  else if (status.kind === 'downloading')
+    statusText = t('updateStatusDownloading', { percent: String(percent) });
   else if (status.kind === 'downloaded')
     statusText = t('updateStatusDownloaded', { version: status.version });
   else if (status.kind === 'error') {
-    statusText = t('updateCheckError');
+    statusText = retryVersion ? t('updateDownloadFailed') : t('updateCheckError');
     detail = status.message;
   }
 
   const availableVersion = status.kind === 'available' ? status.version : '';
+  const retryTarget = status.kind === 'error' ? retryVersion : '';
   const busy = status.kind === 'checking' || status.kind === 'downloading';
 
   return (
     <div
+      ref={rootRef}
       className="settings-section"
       style={{ borderBottom: 'none', marginBottom: 0 }}
     >
@@ -395,14 +439,33 @@ export function UpdatesSection({ open }: UpdatesSectionProps): ReactElement {
             gap: 10
           }}
         >
-          <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>
+          <div style={{ flex: 1, minWidth: 0, color: 'var(--text-muted)', fontSize: 13 }}>
             <div>{statusText}</div>
-            {detail && <div style={{ marginTop: 2, fontSize: 12 }}>{detail}</div>}
+            {status.kind === 'downloading' && (
+              <div
+                className="update-progress"
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={percent}
+              >
+                <div className="update-progress-bar" style={{ width: percent + '%' }} />
+              </div>
+            )}
+            {detail && (
+              <div style={{ marginTop: 2, fontSize: 12, overflowWrap: 'anywhere' }}>{detail}</div>
+            )}
           </div>
 
           {availableVersion && (
             <button type="button" onClick={() => void download(availableVersion)}>
               {t('updateDownloadBtn')}
+            </button>
+          )}
+
+          {retryTarget && (
+            <button type="button" onClick={() => void download(retryTarget)}>
+              {t('updateRetryBtn')}
             </button>
           )}
 
