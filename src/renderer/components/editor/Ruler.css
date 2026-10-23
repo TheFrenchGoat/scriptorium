@@ -16,7 +16,7 @@
   padding: 5px 0 7px;
   box-sizing: border-box;
   overflow: hidden;
-  background: var(--bg-secondary);
+  background: var(--bg-panel);
   border-bottom: 1px solid var(--border);
   user-select: none;
   z-index: 8;
@@ -249,8 +249,8 @@ button.ruler-marker:focus-visible {
   padding: 2px 5px;
   border: 1px solid var(--border);
   border-radius: 3px;
-  color: var(--text);
-  background: var(--bg-secondary);
+  color: var(--text-main);
+  background: var(--bg-panel);
   box-shadow: 0 2px 7px rgba(0, 0, 0, 0.18);
   font-family: Arial, sans-serif;
   font-size: 10px;
@@ -284,7 +284,7 @@ button.ruler-reset-button {
   border: 1px solid var(--border);
   border-radius: 4px;
   outline: none;
-  background: var(--bg-secondary);
+  background: var(--bg-panel);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
   color: var(--text-muted);
   cursor: pointer;
@@ -299,7 +299,7 @@ button.ruler-reset-button:hover:not(:disabled),
 button.ruler-reset-button:focus-visible {
   color: var(--accent);
   border-color: var(--accent);
-  background: var(--bg-secondary);
+  background: var(--bg-panel);
 }
 
 button.ruler-reset-button:disabled {
@@ -310,28 +310,28 @@ button.ruler-reset-button:disabled {
 /*
  * Contraste renforcé pour les thèmes très clairs ou très sombres.
  */
-[data-theme='light'] .editor-ruler,
-[data-theme='sepia'] .editor-ruler {
+body.light .editor-ruler,
+body.sepia .editor-ruler {
   box-shadow:
     0 1px 2px rgba(0, 0, 0, 0.09),
     inset 0 1px 0 rgba(255, 255, 255, 0.65);
 }
 
-[data-theme='contrast'] .editor-ruler {
+body.contrast .editor-ruler {
   border-width: 2px;
 }
 
-[data-theme='contrast'] .ruler-tick {
-  background: var(--text);
+body.contrast .ruler-tick {
+  background: var(--text-main);
 }
 
-[data-theme='contrast'] .ruler-tick-number {
-  color: var(--text);
+body.contrast .ruler-tick-number {
+  color: var(--text-main);
 }
 
-[data-theme='contrast'] button.ruler-reset-button {
+body.contrast button.ruler-reset-button {
   border-width: 2px;
-  color: var(--text);
+  color: var(--text-main);
 }
 
 /*
