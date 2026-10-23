@@ -19,6 +19,20 @@ import {
   UiFontFields,
   UpdatesSection
 } from '../settings/SettingsSections';
+import {
+  SettingsTabsLayout,
+  useSettingsTab,
+  type SettingsTabDef
+} from '../settings/SettingsTabs';
+
+type HomeSettingsTab = 'appearance' | 'correction' | 'updates';
+
+/** Onglets de la fenêtre, dans l'ordre d'affichage. */
+const HOME_TABS: SettingsTabDef<HomeSettingsTab>[] = [
+  { id: 'appearance', labelKey: 'settingsSectionAppearance' },
+  { id: 'correction', labelKey: 'settingsSectionCorrection' },
+  { id: 'updates', labelKey: 'settingsSectionUpdates' }
+];
 
 interface HomeSettingsModalProps {
   open: boolean;
@@ -29,6 +43,7 @@ interface HomeSettingsModalProps {
 
 export function HomeSettingsModal({ open, theme, onChangeTheme, onClose }: HomeSettingsModalProps) {
   const { t } = useI18n();
+  const [tab, setTab] = useSettingsTab('scriptorium.settingsTab.home', HOME_TABS);
 
   const [prefs, setPrefs] = useState<EditorPrefs | null>(null);
   const [grammarEnabled, setGrammarEnabled] = useState(false);
@@ -84,38 +99,41 @@ export function HomeSettingsModal({ open, theme, onChangeTheme, onClose }: HomeS
     <Modal
       open={open}
       title={t('settingsModalTitle')}
-      width={460}
-      maxHeight="85vh"
+      width="min(720px, 95vw)"
+      maxHeight="90vh"
       onCancel={onClose}
       footer={<button onClick={onClose}>{t('close')}</button>}
     >
-      {/* --- APPARENCE --- */}
-      <div className="settings-section">
-        <h4 className="settings-section-title">
-          {t('settingsSectionAppearance')}
-        </h4>
+      <SettingsTabsLayout tabs={HOME_TABS} active={tab} onSelect={setTab}>
+        {tab === 'appearance' && (
+          <div className="settings-section">
+            <h4 className="settings-section-title">
+              {t('settingsSectionAppearance')}
+            </h4>
 
-        <ThemeLanguageFields theme={theme} onChangeTheme={onChangeTheme} />
+            <ThemeLanguageFields theme={theme} onChangeTheme={onChangeTheme} />
 
-        {prefs && (
-          <UiFontFields
-            uiFontSize={prefs.uiFontSize ?? 14}
-            uiFontFamily={prefs.uiFontFamily ?? "'Roboto', sans-serif"}
-            onChange={updateUiPrefs}
+            {prefs && (
+              <UiFontFields
+                uiFontSize={prefs.uiFontSize ?? 14}
+                uiFontFamily={prefs.uiFontFamily ?? "'Roboto', sans-serif"}
+                onChange={updateUiPrefs}
+              />
+            )}
+          </div>
+        )}
+
+        {tab === 'correction' && (
+          <CorrectionSection
+            grammarEnabled={grammarEnabled}
+            onToggleGrammar={toggleGrammar}
+            picky={picky}
+            onTogglePicky={togglePicky}
           />
         )}
-      </div>
 
-      {/* --- CORRECTION --- */}
-      <CorrectionSection
-        grammarEnabled={grammarEnabled}
-        onToggleGrammar={toggleGrammar}
-        picky={picky}
-        onTogglePicky={togglePicky}
-      />
-
-      {/* --- MISES À JOUR --- */}
-      <UpdatesSection open={open} />
+        {tab === 'updates' && <UpdatesSection open={open} />}
+      </SettingsTabsLayout>
     </Modal>
   );
 }

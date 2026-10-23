@@ -1161,3 +1161,54 @@ mark.grammar-error:hover { background: rgba(59, 130, 246, 0.12); }
   text-align: center;
   color: var(--text-muted);
 }
+
+/* Fenêtres Paramètres : onglets à gauche, contenu à droite */
+.settings-layout {
+  display: flex;
+  gap: 20px;
+  height: min(520px, 62vh);
+  min-height: 260px;
+}
+.settings-tabs {
+  flex: 0 0 170px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-right: 12px;
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+}
+.settings-tabs .settings-tab {
+  width: 100%;
+  margin: 0;
+  padding: 8px 12px;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-left: 3px solid transparent;
+  border-radius: 0 var(--radius) var(--radius) 0;
+  color: var(--text-muted);
+  font-size: inherit;
+  cursor: pointer;
+}
+.settings-tabs .settings-tab:hover {
+  background: var(--bg-hover);
+  color: var(--text-main);
+}
+.settings-tabs .settings-tab.active {
+  background: var(--bg-hover);
+  color: var(--accent);
+  border-left-color: var(--accent);
+  font-weight: 600;
+}
+.settings-panel {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+.settings-panel > .settings-section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
