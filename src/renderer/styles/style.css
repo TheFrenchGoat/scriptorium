@@ -1136,3 +1136,28 @@ mark.grammar-error:hover { background: rgba(59, 130, 246, 0.12); }
 .theme-swatch-sepia {
   --accent: #3b82f6;
 }
+
+/* Aperçu du texte dans les Paramètres */
+.settings-preview {
+  padding: 12px;
+  background: var(--bg-app);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.settings-preview-page {
+  margin: 0 auto;
+  padding: 12px 14px;
+  background: var(--bg-page);
+  color: var(--text-main);
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  font-size: 14px;
+  transition: width 0.2s ease;
+}
+.settings-preview-page p { margin: 0; }
+.settings-preview-width {
+  margin-top: 6px;
+  font-size: 11px;
+  text-align: center;
+  color: var(--text-muted);
+}

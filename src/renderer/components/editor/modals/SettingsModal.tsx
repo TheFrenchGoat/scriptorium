@@ -22,6 +22,7 @@ import {
 } from '../../../lib/settings-options';
 import {
   CorrectionSection,
+  ReadingPreview,
   ThemeLanguageFields,
   UiFontFields,
   UpdatesSection
@@ -132,7 +133,7 @@ export function SettingsModal({
 
           <select
             className="modal-dropdown-btn"
-            style={{ width: '100%' }}
+            style={{ width: '100%', fontFamily: prefs.fontFamily ?? "'Roboto', sans-serif" }}
             value={prefs.fontFamily ?? "'Roboto', sans-serif"}
             onChange={(event) =>
               patchPrefs({
@@ -141,7 +142,7 @@ export function SettingsModal({
             }
           >
             {READING_FONTS.map((font) => (
-              <option key={font.value} value={font.value}>
+              <option key={font.value} value={font.value} style={{ fontFamily: font.value }}>
                 {font.label}
               </option>
             ))}
@@ -173,6 +174,12 @@ export function SettingsModal({
             ))}
           </select>
         </div>
+
+        <ReadingPreview
+          fontFamily={prefs.fontFamily ?? "'Roboto', sans-serif"}
+          lineHeight={prefs.lineHeight ?? 1.6}
+          width={prefs.width ?? 800}
+        />
 
         <UiFontFields
           uiFontSize={prefs.uiFontSize ?? 14}

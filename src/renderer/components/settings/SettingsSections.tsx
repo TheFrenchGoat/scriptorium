@@ -417,3 +417,44 @@ export function UpdatesSection({ open }: UpdatesSectionProps): ReactElement {
     </div>
   );
 }
+
+// ---------- Aperçu du texte ----------
+
+export interface ReadingPreviewProps {
+  fontFamily: string;
+  lineHeight: number;
+  /** Largeur de la page d'écriture (px). */
+  width: number;
+}
+
+/** Plus grande largeur proposée : elle occupe toute la largeur de l'aperçu. */
+const PREVIEW_MAX_WIDTH = 1300;
+
+/**
+ * Paragraphe d'exemple affiché avec la police et l'interligne choisis, sur
+ * une page aux couleurs du thème ; la largeur de la page est représentée à
+ * l'échelle.
+ */
+export function ReadingPreview({
+  fontFamily,
+  lineHeight,
+  width
+}: ReadingPreviewProps): ReactElement {
+  const { t } = useI18n();
+  const ratio = Math.min(1, Math.max(0.3, width / PREVIEW_MAX_WIDTH));
+
+  return (
+    <div className="wb-form-group">
+      <label className="wb-label">{t('settingsPreviewLabel')}</label>
+      <div className="settings-preview">
+        <div
+          className="settings-preview-page"
+          style={{ width: `${Math.round(ratio * 100)}%`, fontFamily, lineHeight }}
+        >
+          <p>{t('settingsPreviewSample')}</p>
+        </div>
+        <div className="settings-preview-width">{width} px</div>
+      </div>
+    </div>
+  );
+}
