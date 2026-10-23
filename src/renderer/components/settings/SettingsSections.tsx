@@ -7,6 +7,7 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { useI18n, type TranslationKey } from '../../i18n';
 import { useDialogs } from '../common/Dialogs';
+import { Select } from '../common/Select';
 import { describeError } from '../../lib/errors';
 import { THEMES, UI_FONTS, UI_SIZES } from '../../lib/settings-options';
 import type { BackupEntry, LanguageCode, ThemeName } from '../../../shared/types';
@@ -120,22 +121,18 @@ export function UiFontFields({
 
       <div className="wb-form-group" style={{ marginBottom: 0 }}>
         <label className="wb-label">{t('prefUiFontLabel')}</label>
-        <select
-          className="modal-dropdown-btn"
-          style={{ width: '100%' }}
+        <Select
+          block
+          ariaLabel={t('prefUiFontLabel')}
           value={uiFontFamily}
-          onChange={(event) => onChange({ uiFontFamily: event.target.value })}
-        >
-          {UI_FONTS.map((font) => (
-            <option
-              key={font.value}
-              value={font.value}
-              style={{ fontFamily: font.value }}
-            >
-              {font.label}
-            </option>
-          ))}
-        </select>
+          buttonStyle={{ fontFamily: uiFontFamily }}
+          options={UI_FONTS.map((font) => ({
+            value: font.value,
+            label: font.label,
+            style: { fontFamily: font.value }
+          }))}
+          onChange={(value) => onChange({ uiFontFamily: value })}
+        />
       </div>
     </>
   );

@@ -23,6 +23,7 @@
 // (wb-history) : Ctrl+Z / Ctrl+Y, gérés par WbWorkspace, la défont ou la
 // refont. L'ouverture, la fermeture et la touche Échap sont gérées par l'atelier.
 
+import { Select } from '../common/Select';
 import {
   useEffect,
   useRef,
@@ -662,14 +663,19 @@ export function WbTimelineView({ controller }: WbTimelineViewProps) {
         {filterItems.length > 0 && (
           <label className="wb-tl-filter">
             <span>{t('wbTlFilterLabel')}</span>
-            <select value={activeFilter} onChange={(event) => setFilterId(event.target.value)}>
-              <option value="">{t('wbTlFilterAll')}</option>
-              {filterItems.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {itemIcon(item) + ' ' + itemName(item)}
-                </option>
-              ))}
-            </select>
+            <Select
+              ariaLabel={t('wbTlFilterLabel')}
+              value={activeFilter}
+              options={[
+                { value: '', label: t('wbTlFilterAll') },
+                ...filterItems.map((item) => ({
+                  value: item.id,
+                  label: String(itemName(item)),
+                  icon: String(itemIcon(item) ?? '')
+                }))
+              ]}
+              onChange={setFilterId}
+            />
           </label>
         )}
       </div>

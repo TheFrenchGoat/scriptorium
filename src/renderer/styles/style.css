@@ -1212,3 +1212,54 @@ mark.grammar-error:hover { background: rgba(59, 130, 246, 0.12); }
   margin-bottom: 0;
   padding-bottom: 0;
 }
+
+/* MENUS DE CHOIX (components/common/Select.tsx) : remplacent les <select>
+   natifs, dont la liste ne suit pas le thème. Même aspect que CardsSelect. */
+.ui-select { position: relative; display: inline-block; max-width: 100%; }
+.ui-select-block { display: block; width: 100%; }
+.ui-select-btn {
+  display: flex; align-items: center; gap: 6px;
+  width: 100%; min-width: 120px; margin: 0;
+  padding: 6px 8px 6px 10px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--bg-input); color: var(--text-main);
+  font: inherit; text-align: left; cursor: pointer;
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+.ui-select-block .ui-select-btn { padding: 10px 10px 10px 12px; }
+.ui-select-btn:hover:not(:disabled) { background: var(--bg-hover); border-color: var(--accent); }
+.ui-select-btn:focus { outline: none; }
+.ui-select-btn:focus-visible,
+.ui-select.open .ui-select-btn {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+.ui-select-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.ui-select-label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ui-select-chevron {
+  flex-shrink: 0; margin-left: 4px; color: var(--text-muted);
+  font-size: 0.85em; transition: transform 0.15s ease;
+}
+.ui-select.open .ui-select-chevron { transform: rotate(180deg); color: var(--accent); }
+.ui-select-icon { flex-shrink: 0; width: 1.3em; text-align: center; line-height: 1; }
+.ui-select-list {
+  position: fixed; z-index: 3000; box-sizing: border-box;
+  margin: 0; padding: 4px; list-style: none; overflow-y: auto;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--bg-panel); color: var(--text-main);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18), var(--shadow);
+  animation: ui-select-in 0.12s ease-out;
+}
+@keyframes ui-select-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.ui-select-option {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 10px 6px 6px; border-radius: calc(var(--radius) - 2px);
+  white-space: nowrap; cursor: pointer; user-select: none;
+}
+.ui-select-option.highlighted { background: var(--bg-hover); }
+.ui-select-option.selected { color: var(--accent); font-weight: 600; }
+.ui-select-check { flex-shrink: 0; width: 1em; text-align: center; color: var(--accent); font-weight: 700; }
+.wb-tl-filter .ui-select { min-width: 180px; max-width: 280px; }

@@ -5,6 +5,7 @@
 import React, { useEffect, useState } from 'react';
 import { useI18n } from '../../../i18n';
 import { Modal } from '../../common/Modal';
+import { Select } from '../../common/Select';
 import {
   playTimerSound,
   TIMER_SOUND_IDS,
@@ -157,43 +158,30 @@ export function SettingsModal({
             <div className="wb-form-group">
               <label className="wb-label">{t('prefWidthLabel')}</label>
 
-              <select
-                className="modal-dropdown-btn"
-                style={{ width: '100%' }}
-                value={prefs.width}
-                onChange={(event) =>
-                  patchPrefs({
-                    width: parseInt(event.target.value, 10)
-                  })
-                }
-              >
-                {WIDTHS.map((width) => (
-                  <option key={width.value} value={width.value}>
-                    {t(width.key)}
-                  </option>
-                ))}
-              </select>
+              <Select
+                block
+                ariaLabel={t('prefWidthLabel')}
+                value={String(prefs.width)}
+                options={WIDTHS.map((width) => ({ value: String(width.value), label: t(width.key) }))}
+                onChange={(value) => patchPrefs({ width: parseInt(value, 10) })}
+              />
             </div>
 
             <div className="wb-form-group">
               <label className="wb-label">{t('prefFontLabel')}</label>
 
-              <select
-                className="modal-dropdown-btn"
-                style={{ width: '100%', fontFamily: prefs.fontFamily ?? "'Roboto', sans-serif" }}
+              <Select
+                block
+                ariaLabel={t('prefFontLabel')}
                 value={prefs.fontFamily ?? "'Roboto', sans-serif"}
-                onChange={(event) =>
-                  patchPrefs({
-                    fontFamily: event.target.value
-                  })
-                }
-              >
-                {READING_FONTS.map((font) => (
-                  <option key={font.value} value={font.value} style={{ fontFamily: font.value }}>
-                    {font.label}
-                  </option>
-                ))}
-              </select>
+                buttonStyle={{ fontFamily: prefs.fontFamily ?? "'Roboto', sans-serif" }}
+                options={READING_FONTS.map((font) => ({
+                  value: font.value,
+                  label: font.label,
+                  style: { fontFamily: font.value }
+                }))}
+                onChange={(value) => patchPrefs({ fontFamily: value })}
+              />
             </div>
 
             <div className="wb-form-group">
@@ -201,25 +189,16 @@ export function SettingsModal({
                 {t('prefLineHeightLabel')}
               </label>
 
-              <select
-                className="modal-dropdown-btn"
-                style={{ width: '100%' }}
-                value={prefs.lineHeight ?? 1.6}
-                onChange={(event) =>
-                  patchPrefs({
-                    lineHeight: parseFloat(event.target.value)
-                  })
-                }
-              >
-                {LINE_HEIGHTS.map((lineHeight) => (
-                  <option
-                    key={lineHeight.value}
-                    value={lineHeight.value}
-                  >
-                    {t(lineHeight.key)}
-                  </option>
-                ))}
-              </select>
+              <Select
+                block
+                ariaLabel={t('prefLineHeightLabel')}
+                value={String(prefs.lineHeight ?? 1.6)}
+                options={LINE_HEIGHTS.map((lineHeight) => ({
+                  value: String(lineHeight.value),
+                  label: t(lineHeight.key)
+                }))}
+                onChange={(value) => patchPrefs({ lineHeight: parseFloat(value) })}
+              />
             </div>
 
             <ReadingPreview
@@ -287,25 +266,14 @@ export function SettingsModal({
                 {t('timerSoundChoiceLabel')}
               </label>
 
-              <select
-                className="modal-dropdown-btn"
-                style={{ width: '100%' }}
+              <Select
+                block
+                ariaLabel={t('timerSoundChoiceLabel')}
                 disabled={prefs.timerSoundEnabled === false}
-                value={
-                  (prefs.timerSoundId as TimerSoundId) || 'chime'
-                }
-                onChange={(event) =>
-                  patchPrefs({
-                    timerSoundId: event.target.value
-                  })
-                }
-              >
-                {TIMER_SOUND_IDS.map((id) => (
-                  <option key={id} value={id}>
-                    {t(TIMER_SOUND_LABEL_KEYS[id])}
-                  </option>
-                ))}
-              </select>
+                value={(prefs.timerSoundId as TimerSoundId) || 'chime'}
+                options={TIMER_SOUND_IDS.map((id) => ({ value: id, label: t(TIMER_SOUND_LABEL_KEYS[id]) }))}
+                onChange={(value) => patchPrefs({ timerSoundId: value })}
+              />
             </div>
 
             <div
