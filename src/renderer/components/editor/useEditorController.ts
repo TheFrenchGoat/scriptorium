@@ -615,8 +615,24 @@ export function useEditorController({
         const currentTotal = getProjectWordTotal(s.projectData);
 
         if (bucket.baselineDate !== todayKey) {
+          // Nouveau jour : la référence devient le dernier total enregistré
+          // (référence précédente + mots de ce jour-là), pour ne pas perdre
+          // les mots tapés avant le premier enregistrement de la journée.
+          const previousKey = bucket.baselineDate;
+          const previousWords =
+            previousKey &&
+            typeof bucket.baselineWords === 'number' &&
+            typeof bucket.history[previousKey] === 'number'
+              ? bucket.history[previousKey]
+              : null;
+          const lastKnownTotal =
+            previousWords === null
+              ? currentTotal
+              : bucket.baselineWords + previousWords;
+
           bucket.baselineDate = todayKey;
-          bucket.baselineWords = currentTotal;
+          bucket.baselineWords = lastKnownTotal;
+          bucket.history[todayKey] = currentTotal - lastKnownTotal;
 
           if (bucket.history[todayKey] === undefined) {
             bucket.history[todayKey] = 0;

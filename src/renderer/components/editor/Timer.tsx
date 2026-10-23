@@ -96,6 +96,12 @@ const MOODS: {
   }
 ];
 
+/**
+ * Écart maximal compté entre deux relevés du chronomètre (90 s). Au-delà
+ * (ordinateur en veille), le temps n'est pas compté comme temps d'écriture.
+ */
+const MAX_TICK_MS = 90000;
+
 interface ActiveWritingSession {
   id: string;
   source: WritingSessionSource;
@@ -129,6 +135,13 @@ interface ActiveWritingSession {
   wordsBefore: number;
   activeSeconds: number;
   plannedSeconds?: number;
+
+  /**
+   * Temps actif mesuré à l'horloge, en millisecondes, et heure du dernier
+   * relevé : la durée reste juste même si la fenêtre est réduite.
+   */
+  activeMs: number;
+  lastTickAt: number;
 }
 
 export interface TimerProps {
@@ -284,6 +297,23 @@ function getDocumentStats(
         stats.documentName ===
         documentName
     ) ?? null
+  );
+}
+
+/**
+ * Session démarrée par erreur : moins d'une minute et aucun mot changé.
+ * Elle n'est ni enregistrée ni proposée au bilan (sauf minuteur terminé).
+ */
+function isEmptySession(
+  session: WritingSession,
+  completed: boolean
+): boolean {
+  if (completed || session.durationSeconds >= 60 || session.wordsWritten !== 0) {
+    return false;
+  }
+
+  return (session.documentStats || []).every(
+    (item) => item.wordsWritten === 0
   );
 }
 
@@ -517,7 +547,12 @@ export function Timer({
      * Synchronise les toutes dernières modifications de l’éditeur avant de
      * calculer les nombres de mots définitifs.
      */
-    controller.handleInput();
+    try {
+      controller.handleInput();
+    } catch (error) {
+      // Éditeur déjà retiré (sortie de l'éditeur) : derniers mots connus.
+      console.error('[session] synchronisation impossible :', error);
+    }
     trackCurrentDocument();
 
     const projectData =
@@ -658,8 +693,10 @@ export function Timer({
     setTimeRemaining(0);
     setElapsedSeconds(0);
 
-    persistSession(session);
-    openFeedback(session);
+    if (!isEmptySession(session, completed)) {
+      persistSession(session);
+      openFeedback(session);
+    }
 
     if (playEndSound) {
       stopSoundLoop();
@@ -717,8 +754,18 @@ export function Timer({
 
         trackCurrentDocument();
 
-        activeSession.activeSeconds +=
-          1;
+        // Temps mesuré à l'horloge : les minuteries ralenties quand la
+        // fenêtre est réduite ne faussent plus la durée.
+        const tickNow = Date.now();
+        const tickDelta = Math.min(
+          Math.max(0, tickNow - activeSession.lastTickAt),
+          MAX_TICK_MS
+        );
+        activeSession.lastTickAt = tickNow;
+        activeSession.activeMs += tickDelta;
+        activeSession.activeSeconds = Math.floor(
+          activeSession.activeMs / 1000
+        );
 
         setElapsedSeconds(
           activeSession.activeSeconds
@@ -734,8 +781,8 @@ export function Timer({
         const nextRemaining =
           Math.max(
             0,
-            remainingSecondsRef.current -
-              1
+            (activeSession.plannedSeconds ?? 0) -
+              activeSession.activeSeconds
           );
 
         remainingSecondsRef.current =
@@ -805,6 +852,8 @@ export function Timer({
         documentWordsBefore,
         wordsBefore,
         activeSeconds: 0,
+        activeMs: 0,
+        lastTickAt: Date.now(),
         plannedSeconds:
           normalizedPlannedSeconds
       };
@@ -851,6 +900,7 @@ export function Timer({
       return;
     }
 
+    activeSessionRef.current.lastTickAt = Date.now();
     trackCurrentDocument();
     setIsRunning(true);
     startInterval();
@@ -1012,7 +1062,9 @@ export function Timer({
         activeSessionRef.current =
           null;
 
-        persistSession(session);
+        if (!isEmptySession(session, false)) {
+          persistSession(session);
+        }
       }
     };
 
@@ -1037,6 +1089,11 @@ export function Timer({
       const session = createFinishedSession(activeSession, false);
 
       activeSessionRef.current = null;
+
+      if (isEmptySession(session, false)) {
+        return;
+      }
+
       persistSession(session);
 
       await controller.saveWholeProject();
