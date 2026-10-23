@@ -11,12 +11,21 @@ import {
   type TimerSoundId
 } from '../../../lib/sound';
 import type { EditorController } from '../useEditorController';
-import type {
-  LanguageCode,
-  SessionRatingScale,
-  ThemeName
-} from '../../../../shared/types';
-import type { TranslationKey } from '../../../i18n';
+import type { ThemeName } from '../../../../shared/types';
+import {
+  LINE_HEIGHTS,
+  normalizeSessionRatingScale,
+  READING_FONTS,
+  SESSION_RATING_SCALES,
+  TIMER_SOUND_LABEL_KEYS,
+  WIDTHS
+} from '../../../lib/settings-options';
+import {
+  CorrectionSection,
+  ThemeLanguageFields,
+  UiFontFields,
+  UpdatesSection
+} from '../../settings/SettingsSections';
 
 export interface SettingsModalProps {
   open: boolean;
@@ -27,73 +36,6 @@ export interface SettingsModalProps {
   onClose: () => void;
 }
 
-const THEMES: { value: ThemeName; key: TranslationKey }[] = [
-  { value: 'dark', key: 'themeDark' },
-  { value: 'light', key: 'themeLight' },
-  { value: 'sepia', key: 'themeSepia' },
-  { value: 'midnight', key: 'themeMidnight' },
-  { value: 'forest', key: 'themeForest' },
-  { value: 'contrast', key: 'themeContrast' },
-  { value: 'rose', key: 'themeRose' },
-  { value: 'lavender', key: 'themeLavender' },
-  { value: 'ocean', key: 'themeOcean' }
-];
-
-const TIMER_SOUND_LABEL_KEYS: Record<TimerSoundId, TranslationKey> = {
-  chime: 'timerSoundChime',
-  bell: 'timerSoundBell',
-  soft: 'timerSoundSoft',
-  alarm: 'timerSoundAlarm'
-};
-
-const WIDTHS = [
-  { value: 650, key: 'prefWidthNarrow' as const },
-  { value: 800, key: 'prefWidthNormal' as const },
-  { value: 1000, key: 'prefWidthLarge' as const },
-  { value: 1300, key: 'prefWidthXLarge' as const }
-];
-
-const READING_FONTS = [
-  { value: "'Roboto', sans-serif", label: 'Roboto' },
-  { value: 'Georgia, serif', label: 'Georgia' },
-  { value: "'Times New Roman', serif", label: 'Times New Roman' },
-  { value: "'Courier New', monospace", label: 'Courier New' },
-  { value: 'Verdana, sans-serif', label: 'Verdana' },
-  { value: "'Merriweather', serif", label: 'Merriweather' }
-];
-
-const LINE_HEIGHTS = [
-  { value: 1.4, key: 'prefLineCompact' as const },
-  { value: 1.6, key: 'prefLineNormal' as const },
-  { value: 1.8, key: 'prefLineAiry' as const },
-  { value: 2.2, key: 'prefLineVeryAiry' as const }
-];
-
-const UI_SIZES = [
-  { value: 12, key: 'prefUiSizeSmall' as const },
-  { value: 14, key: 'prefUiSizeNormal' as const },
-  { value: 16, key: 'prefUiSizeLarge' as const },
-  { value: 18, key: 'prefUiSizeXLarge' as const }
-];
-
-const UI_FONTS = [
-  { value: "'Roboto', sans-serif", label: 'Roboto' },
-  { value: 'Arial, sans-serif', label: 'Arial' },
-  { value: "'Segoe UI', sans-serif", label: 'Segoe UI' },
-  { value: 'Verdana, sans-serif', label: 'Verdana' },
-  { value: "'Trebuchet MS', sans-serif", label: 'Trebuchet MS' },
-  { value: 'Georgia, serif', label: 'Georgia' }
-];
-
-const SESSION_RATING_SCALES: SessionRatingScale[] = [5, 10, 20];
-
-function normalizeSessionRatingScale(
-  value: number | undefined
-): SessionRatingScale {
-  if (value === 5 || value === 20) return value;
-  return 10;
-}
-
 export function SettingsModal({
   open,
   controller,
@@ -102,10 +44,9 @@ export function SettingsModal({
   onOpenGrammarSetup,
   onClose
 }: SettingsModalProps): React.ReactElement {
-  const { t, lang, changeLanguage } = useI18n();
+  const { t } = useI18n();
   const prefs = controller.prefs();
   const grammarPrefs = controller.grammarPrefs();
-  const [version, setVersion] = useState('');
 
   // Correction exigeante (level=picky de LanguageTool) : activée par défaut.
   // Lue directement dans les réglages enregistrés (elle a pu être modifiée
@@ -115,17 +56,6 @@ export function SettingsModal({
 
   useEffect(() => {
     if (!open) return;
-
-    void window.api
-      .getAppVersion()
-      .then((value) => setVersion(value))
-      .catch((error) => {
-        console.error(
-          "Impossible de récupérer la version de l'application :",
-          error
-        );
-        setVersion('');
-      });
 
     void window.api
       .getGrammarPrefs()
@@ -172,44 +102,10 @@ export function SettingsModal({
           {t('settingsSectionAppearance')}
         </h4>
 
-        <div className="wb-form-group">
-          <label className="wb-label">{t('themeSubmenuLabel')}</label>
-
-          <div className="settings-choice-grid">
-            {THEMES.map((choice) => (
-              <button
-                key={choice.value}
-                type="button"
-                className={`settings-choice-btn${
-                  theme === choice.value ? ' active' : ''
-                }`}
-                onClick={() => onChangeTheme(choice.value)}
-              >
-                {t(choice.key)}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="wb-form-group">
-          <label className="wb-label">{t('langSubmenuLabel')}</label>
-
-          <div className="settings-choice-row">
-            {(['fr', 'en'] as LanguageCode[]).map((code) => (
-              <button
-                key={code}
-                type="button"
-                className={`settings-choice-btn${
-                  lang === code ? ' active' : ''
-                }`}
-                onClick={() => changeLanguage(code)}
-              >
-                {t(code === 'fr' ? 'langFr' : 'langEn')}
-              </button>
-            ))}
-          </div>
-        </div>
-
+        <ThemeLanguageFields
+          theme={theme}
+          onChangeTheme={onChangeTheme}
+        />
         <div className="wb-form-group">
           <label className="wb-label">{t('prefWidthLabel')}</label>
 
@@ -278,128 +174,39 @@ export function SettingsModal({
           </select>
         </div>
 
-        <div className="wb-form-group">
-          <label className="wb-label">
-            {t('prefUiFontSizeLabel')}
-          </label>
-
-          <select
-            className="modal-dropdown-btn"
-            style={{ width: '100%' }}
-            value={prefs.uiFontSize ?? 14}
-            onChange={(event) =>
-              patchPrefs({
-                uiFontSize: parseInt(event.target.value, 10)
-              })
-            }
-          >
-            {UI_SIZES.map((size) => (
-              <option key={size.value} value={size.value}>
-                {t(size.key)}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div
-          className="wb-form-group"
-          style={{ marginBottom: 0 }}
-        >
-          <label className="wb-label">
-            {t('prefUiFontLabel')}
-          </label>
-
-          <select
-            className="modal-dropdown-btn"
-            style={{ width: '100%' }}
-            value={prefs.uiFontFamily ?? "'Roboto', sans-serif"}
-            onChange={(event) =>
-              patchPrefs({
-                uiFontFamily: event.target.value
-              })
-            }
-          >
-            {UI_FONTS.map((font) => (
-              <option key={font.value} value={font.value}>
-                {font.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        <UiFontFields
+          uiFontSize={prefs.uiFontSize ?? 14}
+          uiFontFamily={prefs.uiFontFamily ?? "'Roboto', sans-serif"}
+          onChange={patchPrefs}
+        />
       </div>
 
-      <div className="settings-section">
-        <h4 className="settings-section-title">
-          {t('settingsSectionCorrection')}
-        </h4>
+      <CorrectionSection
+        grammarEnabled={grammarPrefs.enabled}
+        onToggleGrammar={(enabled) => {
+          void (async () => {
+            await controller.setGrammarEnabled(enabled);
 
-        <label className="settings-checkbox-row">
-          <input
-            type="checkbox"
-            checked={controller.nativeSpellcheckEnabled()}
-            onChange={(event) => {
-              void controller.setNativeSpellcheck(
-                event.target.checked
-              );
-            }}
-          />
-
-          <span>{t('nativeSpellcheckLabel')}</span>
-        </label>
-
-        <label className="settings-checkbox-row">
-          <input
-            type="checkbox"
-            checked={grammarPrefs.enabled}
-            onChange={(event) => {
-              const enabled = event.target.checked;
-
-              void (async () => {
-                await controller.setGrammarEnabled(enabled);
-
-                // Précaution : si le contrôleur enregistre ses préférences
-                // gardées en mémoire, il pourrait remettre une ancienne
-                // valeur de « Correction exigeante ». On réaffirme donc le
-                // choix affiché dans cette fenêtre.
-                await window.api.saveGrammarPrefs({ picky });
-              })();
-            }}
-          />
-
-          <span>{t('grammarToggleLabel')}</span>
-        </label>
-
-        <label className="settings-checkbox-row">
-          <input
-            type="checkbox"
-            checked={picky}
-            onChange={(event) => {
-              togglePicky(event.target.checked);
-            }}
-          />
-
-          <span>
-            {lang === 'fr'
-              ? 'Correction exigeante (style, typographie, répétitions)'
-              : 'Picky mode (style, typography, repetitions)'}
-          </span>
-        </label>
-
-        <button
-          type="button"
-          style={{
-            width: '100%',
-            marginTop: 4
-          }}
-          onClick={() => {
-            onClose();
-            onOpenGrammarSetup();
-          }}
-        >
-          {t('grammarConfigureBtn')}
-        </button>
-      </div>
-
+            // Précaution : si le contrôleur enregistre ses préférences
+            // gardées en mémoire, il pourrait remettre une ancienne
+            // valeur de « Correction exigeante ». On réaffirme donc le
+            // choix affiché dans cette fenêtre.
+            await window.api.saveGrammarPrefs({ picky });
+          })();
+        }}
+        picky={picky}
+        onTogglePicky={togglePicky}
+        nativeSpellcheck={{
+          enabled: controller.nativeSpellcheckEnabled(),
+          onToggle: (enabled) => {
+            void controller.setNativeSpellcheck(enabled);
+          }
+        }}
+        onConfigureGrammar={() => {
+          onClose();
+          onOpenGrammarSetup();
+        }}
+      />
       <div className="settings-section">
         <h4 className="settings-section-title">
           {t('settingsSectionTimer')}
@@ -568,44 +375,7 @@ export function SettingsModal({
         </div>
       </div>
 
-      <div
-        className="settings-section"
-        style={{
-          borderBottom: 'none',
-          marginBottom: 0
-        }}
-      >
-        <h4 className="settings-section-title">
-          {t('settingsSectionUpdates')}
-        </h4>
-
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: 10
-          }}
-        >
-          <span
-            style={{
-              color: 'var(--text-muted)',
-              fontSize: 13
-            }}
-          >
-            {version ? `v${version}` : ''}
-          </span>
-
-          <button
-            type="button"
-            onClick={() => {
-              void window.api.checkForUpdates();
-            }}
-          >
-            {t('checkUpdatesMenuBtn')}
-          </button>
-        </div>
-      </div>
+      <UpdatesSection open={open} />
     </Modal>
   );
 }
