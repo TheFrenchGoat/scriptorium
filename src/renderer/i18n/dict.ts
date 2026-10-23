@@ -151,6 +151,10 @@ export const fr = {
   settingsSectionAppearance: 'Apparence',
   settingsSectionCorrection: 'Correction',
   settingsSectionUpdates: 'Mises à jour',
+  updateInstalledVersion: 'Version installée :',
+  updateChecking: 'Vérification en cours…',
+  updateCheckDone: 'Vérification terminée.',
+  updateCheckError: 'Impossible de vérifier les mises à jour.',
   settingsSectionTimer: 'Minuteur',
   settingsSectionSessions: 'Sessions d’écriture',
 
@@ -822,6 +826,9 @@ export const fr = {
   grammarToggleLabel:
     'Correction grammaticale',
   grammarConfigureBtn: 'Configurer…',
+  grammarPickyLabel: 'Correction exigeante (style, typographie, répétitions)',
+  grammarInstallFromEditor:
+    "L'installation de LanguageTool se fait depuis l'éditeur.",
   grammarModalTitle:
     'Correcteur de grammaire (LanguageTool)',
   grammarModalIntro:
@@ -1088,6 +1095,10 @@ export const en: Record<TranslationKey, string> = {
   settingsSectionAppearance: 'Appearance',
   settingsSectionCorrection: 'Proofing',
   settingsSectionUpdates: 'Updates',
+  updateInstalledVersion: 'Installed version:',
+  updateChecking: 'Checking…',
+  updateCheckDone: 'Check complete.',
+  updateCheckError: 'Unable to check for updates.',
   settingsSectionTimer: 'Timer',
   settingsSectionSessions:
     'Writing sessions',
@@ -1742,6 +1753,9 @@ export const en: Record<TranslationKey, string> = {
     '🔤 Native spellchecker',
   grammarToggleLabel: 'Grammar checking',
   grammarConfigureBtn: 'Configure…',
+  grammarPickyLabel: 'Picky mode (style, typography, repetitions)',
+  grammarInstallFromEditor:
+    'LanguageTool is installed from the editor.',
   grammarModalTitle:
     'Grammar checker (LanguageTool)',
   grammarModalIntro:

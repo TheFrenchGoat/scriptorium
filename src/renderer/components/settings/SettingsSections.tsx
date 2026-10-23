@@ -157,8 +157,7 @@ export function CorrectionSection({
   nativeSpellcheck,
   onConfigureGrammar
 }: CorrectionSectionProps): ReactElement {
-  const { t, lang } = useI18n();
-  const fr = lang === 'fr';
+  const { t } = useI18n();
 
   return (
     <div className="settings-section">
@@ -192,11 +191,7 @@ export function CorrectionSection({
           checked={picky}
           onChange={(event) => onTogglePicky(event.target.checked)}
         />
-        <span>
-          {fr
-            ? 'Correction exigeante (style, typographie, répétitions)'
-            : 'Picky mode (style, typography, repetitions)'}
-        </span>
+        <span>{t('grammarPickyLabel')}</span>
       </label>
 
       {onConfigureGrammar ? (
@@ -209,9 +204,7 @@ export function CorrectionSection({
         </button>
       ) : (
         <p style={{ opacity: 0.7, fontSize: '0.9em', marginTop: 6 }}>
-          {fr
-            ? "L'installation de LanguageTool se fait depuis l'éditeur."
-            : 'LanguageTool is installed from the editor.'}
+          {t('grammarInstallFromEditor')}
         </p>
       )}
     </div>
@@ -229,8 +222,7 @@ type UpdateStatus = 'idle' | 'checking' | 'done' | 'error';
 
 /** Section « Mises à jour » (dernière section de la fenêtre). */
 export function UpdatesSection({ open }: UpdatesSectionProps): ReactElement {
-  const { t, lang } = useI18n();
-  const fr = lang === 'fr';
+  const { t } = useI18n();
   const [version, setVersion] = useState('');
   const [status, setStatus] = useState<UpdateStatus>('idle');
 
@@ -268,11 +260,11 @@ export function UpdatesSection({ open }: UpdatesSectionProps): ReactElement {
 
   const statusText =
     status === 'checking'
-      ? fr ? 'Vérification en cours…' : 'Checking…'
+      ? t('updateChecking')
       : status === 'done'
-        ? fr ? 'Vérification terminée.' : 'Check complete.'
+        ? t('updateCheckDone')
         : status === 'error'
-          ? fr ? 'Impossible de vérifier les mises à jour.' : 'Unable to check for updates.'
+          ? t('updateCheckError')
           : '';
 
   return (
@@ -294,7 +286,7 @@ export function UpdatesSection({ open }: UpdatesSectionProps): ReactElement {
       >
         <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>
           {version
-            ? (fr ? 'Version installée : ' : 'Installed version: ') + 'v' + version
+            ? t('updateInstalledVersion') + ' v' + version
             : ''}
         </span>
 
