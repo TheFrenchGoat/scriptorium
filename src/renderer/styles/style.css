@@ -1350,4 +1350,29 @@ html.exec-format-busy .grammar-error {
 mark.grammar-error:has(.wb-mention) {
   text-decoration: none;
   background: transparent;
-}
+}/* FENÊTRE D'EXPORT (romans) : sections empilées, corps défilant, boutons fixes. */
+.export-modal { display: flex; flex-direction: column; gap: 16px; max-height: 68vh; overflow-y: auto; padding-right: 6px; }
+.export-section { border-top: 1px solid var(--border); padding-top: 14px; }
+.export-section:first-child { border-top: none; padding-top: 0; }
+.export-section h4 { margin: 0 0 12px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+.export-row { display: grid; grid-template-columns: 190px minmax(0, 1fr); align-items: center; gap: 12px; margin-bottom: 10px; }
+.export-row-label { color: var(--text-main); }
+.export-row-control { min-width: 0; }
+.modal-content .export-modal input[type="text"] { margin-bottom: 0; padding: 7px 10px; }
+.modal-content .export-modal input[type="text"]:disabled { opacity: 0.5; }
+.modal-content .export-modal input.export-number { width: 80px; }
+.export-check { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; cursor: pointer; min-width: 0; }
+.export-check span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.export-inline { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.export-inline .export-check { margin-bottom: 0; }
+.export-section > .export-inline { margin-bottom: 8px; }
+.export-hint { font-size: 12px; color: var(--text-muted); margin: 2px 0 8px; }
+.export-chapters-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+.export-chapter-tools { display: flex; gap: 6px; }
+.export-chapter-tools button { font-size: 12px; padding: 4px 10px; }
+.export-chapters { max-height: 180px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 10px; background: var(--bg-input); margin-bottom: 12px; }
+.export-chapters .export-check { margin-bottom: 6px; }
+.export-chapters .export-check:last-child { margin-bottom: 0; }
+.export-confirm { background: var(--accent); color: #fff; border-color: var(--accent); }
+.export-confirm:hover:not(:disabled) { background: var(--accent-hover); }
+.export-confirm:disabled { opacity: 0.5; cursor: not-allowed; }

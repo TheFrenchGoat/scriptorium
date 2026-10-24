@@ -138,6 +138,7 @@ export function createDefaultExportSettings(
       excludedChapters: [],
       tableOfContents: false,
       chapterOnNewPage: preset.chapterOnNewPage,
+      ignoreEmptyLines: true,
       sceneSeparators: true,
       sceneSeparator: preset.sceneSeparator,
       keepEditorFormatting: false
@@ -278,6 +279,7 @@ export function normalizeExportSettings(value: unknown): ExportSettings {
       excludedChapters: cleanNameList(content.excludedChapters),
       tableOfContents: pickBoolean(content.tableOfContents, defaults.content.tableOfContents),
       chapterOnNewPage: pickBoolean(content.chapterOnNewPage, defaults.content.chapterOnNewPage),
+      ignoreEmptyLines: pickBoolean(content.ignoreEmptyLines, defaults.content.ignoreEmptyLines),
       sceneSeparators: pickBoolean(content.sceneSeparators, defaults.content.sceneSeparators),
       sceneSeparator: pickOne(
         content.sceneSeparator,

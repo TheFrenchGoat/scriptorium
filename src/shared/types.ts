@@ -825,6 +825,11 @@ export interface ExportContentSettings {
    * (gras, italique et souligné sont toujours conservés).
    */
   keepEditorFormatting: boolean;
+  /**
+   * Vrai : les lignes laissées vides entre les paragraphes sont retirées,
+   * et les paragraphes reçoivent leur retrait de première ligne.
+   */
+  ignoreEmptyLines: boolean;
 }
 
 export interface ExportBibleSettings {

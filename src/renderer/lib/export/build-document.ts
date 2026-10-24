@@ -46,6 +46,8 @@ const FONT_SIZE_PX: Record<string, number> = {
 type RunStyle = Omit<ExportRun, 'text'>;
 
 interface ParseOptions {
+  /** Retire les lignes vides avant le calcul des retraits. */
+  ignoreEmptyLines?: boolean;
   keepFormatting: boolean;
   separators: boolean;
   separatorSymbol: string;
@@ -359,7 +361,11 @@ export function parseChapterHtml(html: string, options: ParseOptions): ExportBlo
   parsed.body.childNodes.forEach((child) => walk(child, {}, undefined, c));
   flush(c);
 
-  return finishBlocks(c.blocks);
+  return finishBlocks(
+    options.ignoreEmptyLines
+      ? c.blocks.filter((block) => block.kind !== 'empty')
+      : c.blocks
+  );
 }
 
 // ----------------------------------------------------------------------------
@@ -374,6 +380,7 @@ export function buildExportDocument(
   const excluded = new Set(settings.content.excludedChapters);
   const parseOptions: ParseOptions = {
     keepFormatting: settings.content.keepEditorFormatting,
+    ignoreEmptyLines: settings.content.ignoreEmptyLines,
     separators: settings.content.sceneSeparators,
     separatorSymbol: EXPORT_SEPARATOR_SYMBOLS[settings.content.sceneSeparator]
   };

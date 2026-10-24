@@ -4,6 +4,7 @@ import { buildExportDocument } from '../../lib/export/build-document';
 import { renderExportHtml } from '../../lib/export/render-html';
 import { renderExportMarkdown, renderExportText } from '../../lib/export/render-text';
 import { normalizeExportSettings } from '../../../shared/export-settings';
+import type { ExportSettings } from '../../../shared/types';
 import { removeGrammarMarksOnMentions } from '../../lib/grammar-check';
 import { countWordsInHtml } from '../../lib/stats';
 import { replaceLibreOfficeFontsInHtml } from './fontAliases';
@@ -262,6 +263,12 @@ export interface EditorController {
   ignoreGrammarMark(mark: HTMLElement): void;
 
   exportAs(kind: 'txt' | 'md' | 'pdf' | 'docx' | 'project'): Promise<void>;
+  /** Reglages d'export du projet (completes si besoin). */
+  getExportSettings(): ExportSettings;
+  /** Chapitres du roman, dans l'ordre de la barre laterale. */
+  exportChapterNames(): string[];
+  /** Enregistre les reglages d'export dans le projet. */
+  saveExportSettings(settings: ExportSettings): Promise<void>;
   restoreBackup(fileName: string): Promise<void>;
   recordWritingStats(): Promise<void>;
   renameProject(newName: string): Promise<boolean>;
@@ -3253,6 +3260,20 @@ export function useEditorController({
           : removeGrammarGroup(null, mark);
 
         ignoredGrammarRef.current.add(grammarIgnoreKey(ruleId, text));
+      },
+
+      getExportSettings() {
+        return normalizeExportSettings(s.projectData.exportSettings);
+      },
+
+      exportChapterNames() {
+        return Object.keys(s.projectData.chapters);
+      },
+
+      async saveExportSettings(settings) {
+        s.projectData.exportSettings = normalizeExportSettings(settings);
+        s.projects[projectName] = s.projectData;
+        await window.api.saveProjects(s.projects);
       },
 
       async exportAs(kind) {

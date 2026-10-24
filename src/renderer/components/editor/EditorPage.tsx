@@ -44,6 +44,7 @@ import {
   DropdownItem
 } from '../common/Dropdown';
 import { Modal } from '../common/Modal';
+import { ExportModal } from './modals/ExportModal';
 
 import { Sidebar } from './Sidebar';
 import { TabsBar } from './TabsBar';
@@ -274,6 +275,8 @@ export function EditorPage({
     openModal,
     setOpenModal
   ] = useState<ModalKey>(null);
+
+  const [exportModalOpen, setExportModalOpen] = useState(false);
 
   const [
     editingTypeSlug,
@@ -1149,7 +1152,23 @@ export function EditorPage({
           >
             {(close) => (
               <>
-                {exportActions.map(
+                {!controller.isScreenplayProject() && (
+                  <DropdownItem
+                    onSelect={() => {
+                      close();
+                      setExportModalOpen(true);
+                    }}
+                  >
+                    {t('exportDocumentItem')}
+                  </DropdownItem>
+                )}
+                {exportActions
+                  .filter(
+                    (action) =>
+                      controller.isScreenplayProject() ||
+                      action.key === 'project'
+                  )
+                  .map(
                   (action) => (
                     <DropdownItem
                       key={
@@ -1476,6 +1495,32 @@ export function EditorPage({
           );
         }}
       />
+
+      {exportModalOpen && (
+        <ExportModal
+          projectName={projectName}
+          chapterNames={controller.exportChapterNames()}
+          initialSettings={controller.getExportSettings()}
+          onCancel={() => {
+            setExportModalOpen(false);
+          }}
+          onExport={(settings) => {
+            setExportModalOpen(false);
+
+            void (async () => {
+              try {
+                await controller.saveExportSettings(settings);
+              } catch (error) {
+                console.error('Enregistrement des reglages d export impossible :', error);
+              }
+
+              await controller.exportAs(
+                settings.format === 'odt' ? 'pdf' : settings.format
+              );
+            })();
+          }}
+        />
+      )}
 
       <Modal
         open={
