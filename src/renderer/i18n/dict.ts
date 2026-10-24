@@ -348,6 +348,8 @@ export const fr = {
     'Icône de la fiche (change dans la sidebar et les onglets)',
   wbIconCustomPlaceholder: 'Autre…',
   wbIconCustomApply: 'OK',
+  wbIconPhotoChoose: 'Choisir une photo…',
+  wbIconPhotoRemove: 'Retirer la photo',
   wbColorLabel:
     'Couleur de surlignage dans le texte',
   wbMentionedInLabel: '📖 Mentionné dans',
@@ -1318,6 +1320,8 @@ export const en: Record<TranslationKey, string> = {
     'Sheet icon (updates in the sidebar and tabs)',
   wbIconCustomPlaceholder: 'Other…',
   wbIconCustomApply: 'OK',
+  wbIconPhotoChoose: 'Choose a photo…',
+  wbIconPhotoRemove: 'Remove photo',
   wbColorLabel:
     'Highlight color in the text',
   wbMentionedInLabel: '📖 Mentioned in',

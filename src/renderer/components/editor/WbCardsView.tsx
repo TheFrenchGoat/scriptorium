@@ -16,6 +16,7 @@
 // suivre les couleurs du thème ; ils se pilotent aussi au clavier, et un seul
 // peut être ouvert à la fois dans toute l'application.
 
+import { WbIconContent } from '../common/WbItemIcon';
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent } from 'react';
 import { useI18n } from '../../i18n';
 import type { BuiltinWbType, WbCategoryDef, WbField, WbItem } from '../../../shared/types';
@@ -590,7 +591,7 @@ export function WbCardsView({ controller }: WbCardsViewProps) {
             </span>
           )}
           <span className="wb-card-head">
-            <span className="wb-card-icon">{itemIcon(item)}</span>
+            <span className="wb-card-icon"><WbIconContent icon={itemIcon(item)} image={item.iconImage} /></span>
             <span className="wb-card-titles">
               <span className="wb-card-name">{item.name}</span>
               <span className="wb-card-type">{categoryLabel(item.wbType)}</span>

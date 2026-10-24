@@ -4,10 +4,14 @@
 // versions dupliquées. Un panneau d'emojis courants + un champ libre pour tout
 // emoji/texte non listé (le clavier système fonctionne aussi dans ce champ,
 // ex: Win+. sous Windows).
+// Pour une fiche, le panneau propose aussi une photo à la place de l'emoji
+// (props imageValue / onSelectImage).
 
 import React, { useEffect, useRef, useState } from 'react';
 import { WB_EMOJI_CHOICES } from '../../lib/wb-config';
+import { fileToIconImage } from '../../lib/icon-image';
 import { useI18n } from '../../i18n';
+import { WbIconContent } from './WbItemIcon';
 
 export interface EmojiPickerProps {
   value: string;
@@ -16,6 +20,10 @@ export interface EmojiPickerProps {
   buttonTitle?: string;
   buttonId?: string;
   buttonClassName?: string;
+  /** Photo affichée à la place de l'emoji (URL de données). */
+  imageValue?: string;
+  /** Si fourni : boutons « Choisir une photo » et « Retirer la photo ». */
+  onSelectImage?: (image: string | undefined) => void;
 }
 
 export function EmojiPicker({
@@ -24,12 +32,15 @@ export function EmojiPicker({
   disabled,
   buttonTitle,
   buttonId,
-  buttonClassName = 'wb-icon-btn'
+  buttonClassName = 'wb-icon-btn',
+  imageValue,
+  onSelectImage
 }: EmojiPickerProps): React.ReactElement {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [custom, setCustom] = useState('');
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const fileRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -49,6 +60,8 @@ export function EmojiPicker({
 
   const pick = (icon: string) => {
     onSelect(icon);
+    // Choisir un emoji remplace la photo.
+    if (imageValue && onSelectImage) onSelectImage(undefined);
     setOpen(false);
   };
 
@@ -57,6 +70,19 @@ export function EmojiPicker({
     if (!trimmed) return;
     pick(trimmed);
     setCustom('');
+  };
+
+  const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !onSelectImage) return;
+    try {
+      const image = await fileToIconImage(file);
+      onSelectImage(image);
+      setOpen(false);
+    } catch (err) {
+      console.error('[EmojiPicker] photo illisible', err);
+    }
   };
 
   return (
@@ -72,7 +98,7 @@ export function EmojiPicker({
           setOpen((v) => !v);
         }}
       >
-        {value}
+        <WbIconContent icon={value} image={imageValue} />
       </button>
 
       {/* Un clic à l'intérieur du panneau (ex: pour se placer dans le champ
@@ -114,6 +140,31 @@ export function EmojiPicker({
             {t('wbIconCustomApply')}
           </button>
         </div>
+        {onSelectImage && (
+          <div className="wb-icon-photo-row">
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              style={{ display: 'none' }}
+              onChange={(e) => void onFileChange(e)}
+            />
+            <button type="button" onClick={() => fileRef.current?.click()}>
+              {t('wbIconPhotoChoose')}
+            </button>
+            {imageValue && (
+              <button
+                type="button"
+                onClick={() => {
+                  onSelectImage(undefined);
+                  setOpen(false);
+                }}
+              >
+                {t('wbIconPhotoRemove')}
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

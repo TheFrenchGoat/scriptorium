@@ -13,6 +13,7 @@
 // Règle du projet : aucune barre oblique inverse suivie d'une parenthèse ou
 // d'un crochet dans ce fichier.
 
+import { WbIconContent } from '../common/WbItemIcon';
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useI18n } from '../../i18n';
@@ -448,7 +449,7 @@ export function WbHoverPreview({ controller }: WbHoverPreviewProps) {
         </span>
       )}
       <span className="wb-hover-head">
-        <span className="wb-hover-icon">{icon}</span>
+        <span className="wb-hover-icon"><WbIconContent icon={icon} image={item.iconImage} /></span>
         <span className="wb-hover-titles">
           <span className="wb-hover-name">{item.name}</span>
           <span className="wb-hover-type">{categoryLabel(item.wbType)}</span>

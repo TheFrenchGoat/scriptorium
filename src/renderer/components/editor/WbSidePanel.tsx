@@ -17,6 +17,7 @@
 // `openWbPanel(id)` (nom surligné dans le texte, champ « référence »...).
 // La barre latérale écoute ces demandes avec `useWbPanelListener`.
 
+import { WbIconContent } from '../common/WbItemIcon';
 import { Select } from '../common/Select';
 import { useEffect, useRef, useState, type DragEvent, type KeyboardEvent, type MouseEvent } from 'react';
 import { useI18n } from '../../i18n';
@@ -463,7 +464,7 @@ export function WbSidePanel({
                     }}
                   >
                     <span className="wb-side-panel-item-icon">
-                      {itemIcon(item)}
+                      <WbIconContent icon={itemIcon(item)} image={item.iconImage} />
                     </span>
                     <span className="wb-side-panel-item-text">
                       <span className="wb-side-panel-item-name">

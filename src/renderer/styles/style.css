@@ -472,6 +472,10 @@ input[type="text"]:focus { border-color: var(--accent); }
   border-radius: var(--radius); padding: 6px 8px; outline: none; font-size: 16px; text-align: center;
 }
 .wb-icon-custom-row button { padding: 6px 10px; font-size: 12px; }
+.wb-icon-photo { display: inline-block; width: 1.2em; height: 1.2em; border-radius: 50%; object-fit: cover; vertical-align: middle; }
+.wb-icon-btn .wb-icon-photo { width: 80%; height: 80%; }
+.wb-icon-photo-row { display: flex; gap: 6px; margin-top: 8px; }
+.wb-icon-photo-row button { flex: 1; padding: 6px 10px; font-size: 12px; }
 
 /* .wb-title-input est un input[type="text"] : la règle globale du même
    sélecteur (RESET & BASE, plus haut) a une spécificité légèrement

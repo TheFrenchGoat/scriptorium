@@ -23,6 +23,7 @@
 // (wb-history) : Ctrl+Z / Ctrl+Y, gérés par WbWorkspace, la défont ou la
 // refont. L'ouverture, la fermeture et la touche Échap sont gérées par l'atelier.
 
+import { WbIconContent } from '../common/WbItemIcon';
 import { Select } from '../common/Select';
 import {
   useEffect,
@@ -578,7 +579,7 @@ export function WbTimelineView({ controller }: WbTimelineViewProps) {
     if (onRemove) {
       return (
         <span key={item.id} className="wb-tl-chip" style={style}>
-          <span className="wb-tl-chip-icon">{itemIcon(item)}</span>
+          <span className="wb-tl-chip-icon"><WbIconContent icon={itemIcon(item)} image={item.iconImage} /></span>
           <span className="wb-tl-chip-name">{itemName(item)}</span>
           <button type="button" className="wb-tl-chip-remove" onClick={onRemove} aria-label="×">
             ×
@@ -599,7 +600,7 @@ export function WbTimelineView({ controller }: WbTimelineViewProps) {
         }}
         onDoubleClick={(event) => event.stopPropagation()}
       >
-        <span className="wb-tl-chip-icon">{itemIcon(item)}</span>
+        <span className="wb-tl-chip-icon"><WbIconContent icon={itemIcon(item)} image={item.iconImage} /></span>
         <span className="wb-tl-chip-name">{itemName(item)}</span>
       </button>
     );
@@ -892,7 +893,7 @@ export function WbTimelineView({ controller }: WbTimelineViewProps) {
                       style={{ '--wb-tl-chip-color': itemColor(item) } as CSSProperties}
                       onClick={() => toggleDraftItem(item.id)}
                     >
-                      <span className="wb-tl-chip-icon">{itemIcon(item)}</span>
+                      <span className="wb-tl-chip-icon"><WbIconContent icon={itemIcon(item)} image={item.iconImage} /></span>
                       <span>{itemName(item)}</span>
                     </button>
                   ))}

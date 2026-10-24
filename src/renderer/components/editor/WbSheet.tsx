@@ -332,6 +332,8 @@ export function WbSheet({ controller, name, compact = false }: WbSheetProps): Re
           value={data.icon || category.icon}
           disabled={readMode}
           onSelect={(icon) => controller.setWbIcon(itemId, icon)}
+          imageValue={data.iconImage}
+          onSelectImage={(image) => controller.setWbIconImage(itemId, image)}
         />
 
         <input

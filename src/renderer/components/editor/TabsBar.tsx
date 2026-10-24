@@ -15,6 +15,7 @@
 // l’identifiant stable de la fiche. Le libellé visible est son nom actuel,
 // ce qui permet à l’onglet de suivre les renommages.
 
+import { WbIconContent } from '../common/WbItemIcon';
 import React, { useEffect, useRef, useState } from 'react';
 import { useI18n } from '../../i18n';
 import { getSceneDisplayTitle } from '../../lib/screenplay';
@@ -27,6 +28,8 @@ export interface TabsBarProps {
 
 interface TabPresentation {
   icon: string;
+  /** Photo de la fiche, affichée à la place de l’icône. */
+  image?: string;
   label: string;
 }
 
@@ -58,6 +61,7 @@ function getTabPresentation(
 
     return {
       icon,
+      image: wbItem.iconImage,
       label: wbItem.name || name
     };
   }
@@ -254,7 +258,7 @@ export function TabsBar({ controller }: TabsBarProps): React.ReactElement {
             <span className="tab-label">
               {presentation.icon ? (
                 <span className="tab-icon" aria-hidden="true">
-                  {presentation.icon}
+                  <WbIconContent icon={presentation.icon} image={presentation.image} />
                 </span>
               ) : null}
 

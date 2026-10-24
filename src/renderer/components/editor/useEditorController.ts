@@ -230,6 +230,7 @@ export interface EditorController {
   reorderSidebar(type: ItemType, newOrder: string[]): void;
   updateWbField(itemId: string, fieldKey: string, value: string): void;
   setWbIcon(itemId: string, icon: string): void;
+  setWbIconImage(itemId: string, image: string | undefined): void;
   setWbColor(itemId: string, color: string): void;
   setWbAliases(itemId: string, aliases: string[]): boolean;
   /**
@@ -2631,6 +2632,26 @@ export function useEditorController({
         const wbBefore = cloneWbData(item);
 
         item.icon = icon;
+        touchWbItem(item);
+
+        recordWbItemChange('wbHistItemIcon', itemId, wbBefore);
+
+        setSaveStatus('pending');
+
+        void saveAll();
+        bump();
+      },
+
+      setWbIconImage(itemId, image) {
+        const item = s.projectData.world[itemId];
+
+        if (!item) {
+          return;
+        }
+
+        const wbBefore = cloneWbData(item);
+
+        if (image) { item.iconImage = image; } else { delete item.iconImage; }
         touchWbItem(item);
 
         recordWbItemChange('wbHistItemIcon', itemId, wbBefore);

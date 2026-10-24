@@ -186,6 +186,11 @@ export interface WbItem {
   icon?: string;
 
   /**
+   * Photo ronde affichée à la place de l’icône (URL de données, 128 px).
+   */
+  iconImage?: string;
+
+  /**
    * Couleur personnalisée ; à défaut, celle de la catégorie.
    */
   color?: string;

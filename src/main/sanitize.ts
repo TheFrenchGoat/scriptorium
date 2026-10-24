@@ -1111,6 +1111,12 @@ function sanitizeWorldItems(
       item.color = color;
     }
 
+    const iconImage = cleanImage(entry.iconImage);
+
+    if (iconImage) {
+      item.iconImage = iconImage;
+    }
+
     if (entry.readMode === true) {
       item.readMode = true;
     }

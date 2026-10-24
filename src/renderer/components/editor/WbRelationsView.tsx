@@ -1605,9 +1605,26 @@ export function WbRelationsView({ controller }: WbRelationsViewProps) {
         >
           <title>{item.name + ' — ' + categoryLabel(item.wbType)}</title>
           <circle className="wb-rel-node-circle" r={NODE_RADIUS} />
-          <text className="wb-rel-node-icon" textAnchor="middle" dy="0.35em">
-            {itemIcon(item)}
-          </text>
+          {item.iconImage ? (
+            <g className="wb-rel-node-photo">
+              <clipPath id="wbRelNodePhotoClip" clipPathUnits="objectBoundingBox">
+                <circle cx={0.5} cy={0.5} r={0.5} />
+              </clipPath>
+              <image
+                href={item.iconImage}
+                x={-(NODE_RADIUS - 3)}
+                y={-(NODE_RADIUS - 3)}
+                width={(NODE_RADIUS - 3) * 2}
+                height={(NODE_RADIUS - 3) * 2}
+                preserveAspectRatio="xMidYMid slice"
+                clipPath="url(#wbRelNodePhotoClip)"
+              />
+            </g>
+          ) : (
+            <text className="wb-rel-node-icon" textAnchor="middle" dy="0.35em">
+              {itemIcon(item)}
+            </text>
+          )}
           <text className="wb-rel-node-name" textAnchor="middle" y={NODE_RADIUS + 17}>
             {truncate(item.name, 24)}
           </text>
@@ -1658,9 +1675,26 @@ export function WbRelationsView({ controller }: WbRelationsViewProps) {
                 <title>{item.name + ' — ' + categoryLabel(item.wbType)}</title>
                 <rect className="wb-rel-tree-box" width={TREE_BOX_W} height={TREE_BOX_H} rx={8} />
                 <rect className="wb-rel-tree-band" width={6} height={TREE_BOX_H} rx={3} />
-                <text className="wb-rel-tree-icon" x={22} y={halfH} textAnchor="middle" dy="0.35em">
-                  {itemIcon(item)}
-                </text>
+                {item.iconImage ? (
+                  <g className="wb-rel-tree-photo">
+                    <clipPath id="wbRelTreePhotoClip" clipPathUnits="objectBoundingBox">
+                      <circle cx={0.5} cy={0.5} r={0.5} />
+                    </clipPath>
+                    <image
+                      href={item.iconImage}
+                      x={11}
+                      y={halfH - 11}
+                      width={22}
+                      height={22}
+                      preserveAspectRatio="xMidYMid slice"
+                      clipPath="url(#wbRelTreePhotoClip)"
+                    />
+                  </g>
+                ) : (
+                  <text className="wb-rel-tree-icon" x={22} y={halfH} textAnchor="middle" dy="0.35em">
+                    {itemIcon(item)}
+                  </text>
+                )}
                 <text className="wb-rel-tree-name" x={40} y={halfH - 8} dy="0.35em">
                   {truncate(item.name, 17)}
                 </text>
