@@ -1316,3 +1316,17 @@ html.exec-format-busy mark.grammar-error,
 html.exec-format-busy .grammar-error {
   text-decoration: none !important;
 }
+
+/* Polices LibreOffice -> equivalents Windows (memes metriques) */
+@font-face { font-family: 'Liberation Sans'; font-weight: normal; font-style: normal; src: local('Arial'), local('ArialMT'); }
+@font-face { font-family: 'Liberation Sans'; font-weight: bold; font-style: normal; src: local('Arial Bold'), local('Arial-BoldMT'); }
+@font-face { font-family: 'Liberation Sans'; font-weight: normal; font-style: italic; src: local('Arial Italic'), local('Arial-ItalicMT'); }
+@font-face { font-family: 'Liberation Sans'; font-weight: bold; font-style: italic; src: local('Arial Bold Italic'), local('Arial-BoldItalicMT'); }
+@font-face { font-family: 'Liberation Serif'; font-weight: normal; font-style: normal; src: local('Times New Roman'), local('TimesNewRomanPSMT'); }
+@font-face { font-family: 'Liberation Serif'; font-weight: bold; font-style: normal; src: local('Times New Roman Bold'), local('TimesNewRomanPS-BoldMT'); }
+@font-face { font-family: 'Liberation Serif'; font-weight: normal; font-style: italic; src: local('Times New Roman Italic'), local('TimesNewRomanPS-ItalicMT'); }
+@font-face { font-family: 'Liberation Serif'; font-weight: bold; font-style: italic; src: local('Times New Roman Bold Italic'), local('TimesNewRomanPS-BoldItalicMT'); }
+@font-face { font-family: 'Liberation Mono'; font-weight: normal; font-style: normal; src: local('Courier New'), local('CourierNewPSMT'); }
+@font-face { font-family: 'Liberation Mono'; font-weight: bold; font-style: normal; src: local('Courier New Bold'), local('CourierNewPS-BoldMT'); }
+@font-face { font-family: 'Liberation Mono'; font-weight: normal; font-style: italic; src: local('Courier New Italic'), local('CourierNewPS-ItalicMT'); }
+@font-face { font-family: 'Liberation Mono'; font-weight: bold; font-style: italic; src: local('Courier New Bold Italic'), local('CourierNewPS-BoldItalicMT'); }

@@ -1,5 +1,6 @@
 // src/renderer/components/editor/useEditorController.ts
 
+import { replaceLibreOfficeFontsInHtml } from './fontAliases';
 import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
 import type {
   ClipboardEvent as ReactClipboardEvent,
@@ -1626,7 +1627,7 @@ export function useEditorController({
       handlePaste(event) {
         event.preventDefault();
 
-        const html = event.clipboardData.getData('text/html');
+        const html = replaceLibreOfficeFontsInHtml(event.clipboardData.getData('text/html'));
         const plainText = event.clipboardData.getData('text/plain');
 
         const escapeHtml = (value: string): string =>

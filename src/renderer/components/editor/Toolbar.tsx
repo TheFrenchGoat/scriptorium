@@ -23,6 +23,7 @@
 // Chaque couleur appliquée est marquée data-user-color : le nettoyage des
 // couleurs parasites de Chromium ne la retire donc jamais.
 
+import { getFontAlias } from './fontAliases';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useI18n } from '../../i18n';
 import {
@@ -333,7 +334,22 @@ function getReadableFontName(fontFamily: string): string {
 
   const firstFont = fontFamily.split(',')[0]?.replace(/["']/g, '').trim();
 
-  return firstFont || DEFAULT_FONT;
+  if (!firstFont) {
+    return DEFAULT_FONT;
+  }
+
+  // Polices LibreOffice (Liberation Sans, Serif, Mono) : équivalent Windows.
+  const alias = getFontAlias(firstFont);
+
+  if (alias) {
+    return alias;
+  }
+
+  const listed = FONTS.find(
+    (font) => font.label.toLowerCase() === firstFont.toLowerCase()
+  );
+
+  return listed ? listed.label : firstFont;
 }
 
 function parseFontSize(value: string): number | null {
@@ -1132,6 +1148,11 @@ export function Toolbar({
     ? 'Mixte'
     : formatting.fontFamily || DEFAULT_FONT;
 
+  const isUnlistedFont =
+    !formatting.fontMixed &&
+    !!formatting.fontFamily &&
+    !FONTS.some((font) => font.label === formatting.fontFamily);
+
   const screenplayTypeLabel = getScreenplayElementLabel(
     activeScreenplayParagraphType,
     screenplayLanguage
@@ -1324,6 +1345,34 @@ export function Toolbar({
           >
             {(close) => (
               <>
+                {isUnlistedFont && (
+                  <div
+                    onMouseDown={(event) => event.preventDefault()}
+                    title={
+                      isEnglish
+                        ? 'This font is not in the list. Pick one below to harmonize the text.'
+                        : 'Cette police n’est pas dans la liste. Choisis-en une ci-dessous pour harmoniser le texte.'
+                    }
+                    style={{
+                      padding: '6px 12px 8px',
+                      marginBottom: 4,
+                      borderBottom: '1px solid var(--border-color, rgba(127, 127, 127, 0.25))',
+                      cursor: 'default'
+                    }}
+                  >
+                    <div style={{ fontSize: 11, opacity: 0.65, marginBottom: 2 }}>
+                      {isEnglish ? 'Document font' : 'Police du document'}
+                    </div>
+                    <div
+                      style={{
+                        fontFamily: `'${formatting.fontFamily}', sans-serif`,
+                        fontWeight: 600
+                      }}
+                    >
+                      {formatting.fontFamily}
+                    </div>
+                  </div>
+                )}
                 {FONTS.map((font) => (
                   <DropdownItem
                     key={font.css}

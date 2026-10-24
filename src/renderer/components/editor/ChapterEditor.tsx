@@ -12,6 +12,7 @@
 // - conserver l'emplacement du collage pendant la désinfection asynchrone ;
 // - empêcher le contenu collé de dépasser horizontalement de la page.
 
+import { replaceLibreOfficeFontsInHtml } from './fontAliases';
 import React, { useEffect, useRef } from 'react';
 import type {
   ClipboardEvent as ReactClipboardEvent,
@@ -417,7 +418,7 @@ export function ChapterEditor({
     // Les données du presse-papiers ne sont garanties que pendant
     // l'événement. Elles doivent être copiées avant de démarrer l'opération
     // asynchrone.
-    const clipboardHtml = event.clipboardData.getData('text/html');
+    const clipboardHtml = replaceLibreOfficeFontsInHtml(event.clipboardData.getData('text/html'));
     const clipboardPlain = event.clipboardData.getData('text/plain');
 
     const documentRef = editor.ownerDocument;

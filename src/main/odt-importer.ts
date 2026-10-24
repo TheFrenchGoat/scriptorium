@@ -165,6 +165,26 @@ function normalizeVisibleText(value: string): string {
 /**
  * Normalise un nom de police destiné au style HTML.
  */
+/** Remplace les polices LibreOffice par leurs équivalents Windows (mêmes métriques). */
+function mapLibreOfficeFontStack(value: string): string {
+  const first = (value.split(',')[0] ?? '').replace(/["']/g, '').trim().toLowerCase();
+
+  switch (first) {
+    case 'liberation sans':
+    case 'liberation sans narrow':
+    case 'arimo':
+      return 'Arial, sans-serif';
+    case 'liberation serif':
+    case 'tinos':
+      return "'Times New Roman', serif";
+    case 'liberation mono':
+    case 'cousine':
+      return "'Courier New', monospace";
+    default:
+      return value;
+  }
+}
+
 function normalizeFontFamily(value: string): string {
   return value
     .replace(/^["']+|["']+$/g, '')
@@ -381,7 +401,7 @@ function parseStyles(
           underlineStyle !== 'none',
         color: normalizeColor(colorRaw),
         fontFamily: fontFamilyRaw
-          ? normalizeFontFamily(fontFamilyRaw)
+          ? mapLibreOfficeFontStack(normalizeFontFamily(fontFamilyRaw))
           : undefined,
         fontSize: normalizeFontSize(fontSizeRaw),
         textAlign:
