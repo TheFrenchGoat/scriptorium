@@ -44,6 +44,7 @@ import type {
   WbTimelineEvent,
   WritingSession
 } from '../shared/types';
+import { normalizeExportSettings } from '../shared/export-settings';
 
 // ---------------------------------------------------------------------------
 // CONFIGURATION HTML
@@ -1410,6 +1411,10 @@ export function sanitizeProjectData(projectData: unknown): ProjectData {
     writingSessions: sanitizeWritingSessions(projectData.writingSessions),
     goals: sanitizeGoals(projectData.goals)
   };
+
+  if (projectData.exportSettings !== undefined) {
+    result.exportSettings = normalizeExportSettings(projectData.exportSettings);
+  }
 
   if (projectType === 'screenplay') {
     result.screenplay = sanitizeScreenplayData(projectData.screenplay);

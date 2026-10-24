@@ -763,9 +763,106 @@ export interface ProjectData {
 
   writingSessions?: WritingSession[];
   goals?: ProjectGoal[];
+
+  // --------------------------------------------------------------------------
+  // Export
+  // --------------------------------------------------------------------------
+
+  /**
+   * Réglages de la fenêtre d’export, mémorisés par projet.
+   *
+   * Absent : valeurs du modèle « Manuscrit standard ».
+   */
+  exportSettings?: ExportSettings;
+}
+// ----------------------------------------------------------------------------
+// Export (fenêtre d’export)
+// ----------------------------------------------------------------------------
+
+/** Format de fichier produit par la fenêtre d’export. */
+export type ExportFormat = 'pdf' | 'docx' | 'odt' | 'txt' | 'md';
+
+/** Modèle de mise en page appliqué à un roman. */
+export type ExportTemplateId = 'manuscript' | 'novel';
+
+export type ExportPageSize = 'a4' | 'a5' | 'letter';
+
+/** Place de la bible de l’univers dans l’export. */
+export type ExportBibleMode = 'none' | 'appendix' | 'only';
+
+/** Symbole des séparateurs de scène (voir EXPORT_SEPARATOR_SYMBOLS). */
+export type ExportSceneSeparator =
+  | 'asterism'
+  | 'stars'
+  | 'spaced-stars'
+  | 'hash'
+  | 'blank';
+
+export interface ExportTitlePageSettings {
+  enabled: boolean;
+  /** Vide : le nom du projet est utilisé. */
+  title: string;
+  subtitle: string;
+  showAuthor: boolean;
+  author: string;
 }
 
+export interface ExportContentSettings {
+  /**
+   * Chapitres décochés.
+   *
+   * On mémorise les exclusions plutôt que les inclusions : un chapitre créé
+   * après le dernier export est ainsi inclus par défaut.
+   */
+  excludedChapters: string[];
+  tableOfContents: boolean;
+  chapterOnNewPage: boolean;
+  /** Remplace les lignes « *** », « * * * », « # »… par un séparateur centré. */
+  sceneSeparators: boolean;
+  sceneSeparator: ExportSceneSeparator;
+  /**
+   * Faux : le modèle remplace polices, tailles et couleurs de l’éditeur
+   * (gras, italique et souligné sont toujours conservés).
+   */
+  keepEditorFormatting: boolean;
+}
+
+export interface ExportBibleSettings {
+  mode: ExportBibleMode;
+  /** Catégories décochées (même principe que les chapitres). */
+  excludedCategories: string[];
+  portraits: boolean;
+  relations: boolean;
+  timeline: boolean;
+}
+
+export interface ExportLayoutSettings {
+  pageSize: ExportPageSize;
+  fontFamily: string;
+  /** Taille du texte, en points. */
+  fontSize: number;
+  /** Multiplicateur d’interligne (1 = simple, 2 = double). */
+  lineHeight: number;
+  /** Marge identique sur les quatre côtés, en centimètres. */
+  marginCm: number;
+  justify: boolean;
+  /** Retrait de première ligne, en centimètres (0 = aucun). */
+  firstLineIndentCm: number;
+  pageNumbers: boolean;
+}
+
+export interface ExportSettings {
+  format: ExportFormat;
+  template: ExportTemplateId;
+  titlePage: ExportTitlePageSettings;
+  /** Auteur et titre en en-tête de page. */
+  runningHeader: boolean;
+  content: ExportContentSettings;
+  bible: ExportBibleSettings;
+  layout: ExportLayoutSettings;
+}
 export type ProjectsMap = Record<
+
   string,
   ProjectData
 >;
