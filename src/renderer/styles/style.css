@@ -18,6 +18,7 @@
   --wb-char: #ef4444;
   --wb-place: #10b981;
   --wb-obj: #3b82f6;
+  --wb-animal: #f97316;
   --wb-other: #a855f7;
 
   /* Préférences d'interface (taille/police du texte des menus, PAS de la feuille d'écriture) */
@@ -422,6 +423,7 @@ input[type="text"]:focus { border-color: var(--accent); }
 .wb-mention.type-character { color: var(--wb-char); border-color: rgba(239, 68, 68, 0.3); }
 .wb-mention.type-place { color: var(--wb-place); border-color: rgba(16, 185, 129, 0.3); }
 .wb-mention.type-object { color: var(--wb-obj); border-color: rgba(59, 130, 246, 0.3); }
+.wb-mention.type-animal { color: var(--wb-animal); border-color: rgba(249, 115, 22, 0.3); }
 .wb-mention.type-other { color: var(--wb-other); border-color: rgba(168, 85, 247, 0.3); }
 
 .wb-mention:hover { background: rgba(255, 255, 255, 0.05); }
