@@ -285,6 +285,24 @@ function collectPieces(
     return null;
   }
 
+  // Un nom de l'Atelier (mention) n'est jamais signalé comme une faute.
+  // Une erreur qui ne porte que sur ce nom (avec éventuellement des espaces
+  // ou de la ponctuation autour) est ignorée. Si elle touche aussi d'autres
+  // mots (accord d'un verbe, par exemple), elle reste signalée.
+  const insideMention = (piece: MatchPiece): boolean =>
+    Boolean(piece.node.parentElement?.closest('.wb-mention'));
+
+  if (pieces.some(insideMention)) {
+    const outsideText = pieces
+      .filter((piece) => !insideMention(piece))
+      .map((piece) => (piece.node.nodeValue ?? '').slice(piece.localStart, piece.localEnd))
+      .join('');
+
+    if (!/[0-9A-Za-z\u00C0-\u024F]/.test(outsideText)) {
+      return null;
+    }
+  }
+
   return pieces;
 }
 
@@ -322,6 +340,70 @@ function wrapPiece(piece: MatchPiece, match: GrammarMatch, groupId: string): voi
 
   target.parentNode?.insertBefore(mark, target);
   mark.appendChild(target);
+}
+
+/**
+ * Retire les soulignements du correcteur posés sur des noms de l'Atelier.
+ * Couvre les anciens soulignements enregistrés dans le texte et ceux posés
+ * avant que le nom ne soit reconnu. Une faute qui touche aussi d'autres mots
+ * (lettres ou chiffres hors du nom) est conservée.
+ */
+export function removeGrammarMarksOnMentions(root: HTMLElement): boolean {
+  const units = new Map<string, HTMLElement[]>();
+  const allMarks = Array.from(root.querySelectorAll<HTMLElement>('mark.grammar-error'));
+
+  allMarks.forEach((mark, index) => {
+    const key = mark.dataset.grammarId || `solo-${index}`;
+    const list = units.get(key) ?? [];
+    list.push(mark);
+    units.set(key, list);
+  });
+
+  let changed = false;
+
+  for (const unit of Array.from(units.values())) {
+    let touchesMention = false;
+    let outsideText = '';
+
+    for (const mark of unit) {
+      if (mark.closest('.wb-mention')) {
+        touchesMention = true;
+        continue;
+      }
+
+      const clone = mark.cloneNode(true) as HTMLElement;
+      const innerMentions = Array.from(clone.querySelectorAll('.wb-mention'));
+
+      if (innerMentions.length > 0) {
+        touchesMention = true;
+        innerMentions.forEach((element) => element.remove());
+      }
+
+      outsideText += clone.textContent ?? '';
+    }
+
+    if (!touchesMention || /[0-9A-Za-z\u00C0-\u024F]/.test(outsideText)) {
+      continue;
+    }
+
+    for (const mark of unit) {
+      const parent = mark.parentNode;
+
+      if (!parent) {
+        continue;
+      }
+
+      while (mark.firstChild) {
+        parent.insertBefore(mark.firstChild, mark);
+      }
+
+      parent.removeChild(mark);
+    }
+
+    changed = true;
+  }
+
+  return changed;
 }
 
 /** Applique les correspondances LanguageTool au contenu du conteneur.
@@ -381,6 +463,9 @@ export function applyGrammarMatches(
       wrapPiece(pieces[pieceIndex], match, groupId);
     }
   }
+
+  // Filet de sécurité : aucun soulignement sur un nom de l'Atelier.
+  removeGrammarMarksOnMentions(_root);
 }
 
 /** Tous les <mark> d'une même faute, dans l'ordre du document. */

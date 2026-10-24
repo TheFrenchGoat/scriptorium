@@ -1,5 +1,6 @@
 // src/renderer/components/editor/useEditorController.ts
 
+import { removeGrammarMarksOnMentions } from '../../lib/grammar-check';
 import { countWordsInHtml } from '../../lib/stats';
 import { replaceLibreOfficeFontsInHtml } from './fontAliases';
 import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
@@ -1653,6 +1654,9 @@ export function useEditorController({
 
           s.chapterColorSyncVersion.set(name, s.wbColorVersion);
         }
+
+        // Anciens soulignements enregistrés sur des noms de l'Atelier : retirés.
+        removeGrammarMarksOnMentions(editor);
 
         const finalHtml = editor.innerHTML;
 

@@ -1330,3 +1330,10 @@ html.exec-format-busy .grammar-error {
 @font-face { font-family: 'Liberation Mono'; font-weight: bold; font-style: normal; src: local('Courier New Bold'), local('CourierNewPS-BoldMT'); }
 @font-face { font-family: 'Liberation Mono'; font-weight: normal; font-style: italic; src: local('Courier New Italic'), local('CourierNewPS-ItalicMT'); }
 @font-face { font-family: 'Liberation Mono'; font-weight: bold; font-style: italic; src: local('Courier New Bold Italic'), local('CourierNewPS-BoldItalicMT'); }
+
+/* Noms de l'Atelier : jamais soulignes par le correcteur */
+.wb-mention mark.grammar-error,
+mark.grammar-error:has(.wb-mention) {
+  text-decoration: none;
+  background: transparent;
+}
