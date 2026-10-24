@@ -1,5 +1,6 @@
 // src/renderer/components/editor/useEditorController.ts
 
+import { buildScreenplayExportDocument } from '../../lib/screenplay-export';
 import { buildExportDocument } from '../../lib/export/build-document';
 import { renderExportHtml, type ExportPreviewSource } from '../../lib/export/render-html';
 import { renderExportMarkdown, renderExportText } from '../../lib/export/render-text';
@@ -3434,11 +3435,20 @@ export function useEditorController({
 
           if (kind === 'docx') {
             if (screenplay) {
-              showInfo(
-                getLanguage() === 'fr'
-                  ? "L’export DOCX professionnel du mode scénario sera branché sur le générateur DOCX dédié. Utilisez actuellement le PDF comme rendu de référence."
-                  : 'The professional screenplay DOCX export will be connected to the dedicated DOCX generator. For now, use PDF as the reference output.'
-              );
+              const screenplayResult = await window.api.showSaveDialog({
+                title: getLanguage() === 'fr' ? 'Exporter en DOCX' : 'Export as DOCX',
+                defaultPath: `${projectName}.docx`,
+                filters: [{ name: 'Word', extensions: ['docx'] }]
+              });
+
+              if (!screenplayResult.canceled && screenplayResult.filePath) {
+                await window.api.exportScreenplayDocx(
+                  screenplayResult.filePath,
+                  buildScreenplayExportDocument(projectName, screenplay)
+                );
+
+                showInfo(t('exportDocxSuccess'));
+              }
 
               return;
             }
@@ -3465,11 +3475,20 @@ export function useEditorController({
 
           if (kind === 'odt') {
             if (screenplay) {
-              showInfo(
-                getLanguage() === 'fr'
-                  ? "L'export ODT du mode scénario n'est pas encore disponible. Utilisez le PDF."
-                  : 'The ODT export for screenplays is not available yet. Please use PDF.'
-              );
+              const screenplayResult = await window.api.showSaveDialog({
+                title: getLanguage() === 'fr' ? 'Exporter en ODT' : 'Export as ODT',
+                defaultPath: `${projectName}.odt`,
+                filters: [{ name: 'OpenDocument', extensions: ['odt'] }]
+              });
+
+              if (!screenplayResult.canceled && screenplayResult.filePath) {
+                await window.api.exportScreenplayOdt(
+                  screenplayResult.filePath,
+                  buildScreenplayExportDocument(projectName, screenplay)
+                );
+
+                showInfo(t('exportOdtSuccess'));
+              }
 
               return;
             }

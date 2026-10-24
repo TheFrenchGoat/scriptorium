@@ -1259,6 +1259,8 @@ export interface ScriptoriumApi {
   ): Promise<boolean>;
 
   exportDocumentOdt(filePath: string, doc: import('./export-document').ExportDocument): Promise<void>;
+  exportScreenplayDocx(filePath: string, doc: import('./screenplay-export').ScreenplayExportDocument): Promise<void>;
+  exportScreenplayOdt(filePath: string, doc: import('./screenplay-export').ScreenplayExportDocument): Promise<void>;
   exportDocumentDocx(filePath: string, doc: import('./export-document').ExportDocument): Promise<void>;
   exportDocx(
     filePath: string,

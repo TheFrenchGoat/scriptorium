@@ -271,6 +271,18 @@ const api: ScriptoriumApi = {
   ) =>
     ipcRenderer.invoke('export:document-odt', { filePath, doc }),
 
+  exportScreenplayDocx: (
+    filePath: string,
+    doc: import('../shared/screenplay-export').ScreenplayExportDocument
+  ) =>
+    ipcRenderer.invoke('export:screenplay-docx', { filePath, doc }),
+
+  exportScreenplayOdt: (
+    filePath: string,
+    doc: import('../shared/screenplay-export').ScreenplayExportDocument
+  ) =>
+    ipcRenderer.invoke('export:screenplay-odt', { filePath, doc }),
+
   exportDocumentDocx: (
     filePath: string,
     doc: import('../shared/export-document').ExportDocument

@@ -72,6 +72,7 @@ export const fr = {
   exportMdItem: '📑 Markdown (.md)',
   exportPdfItem: '📕 PDF (.pdf)',
   exportDocxItem: '📝 Word (.docx)',
+  exportOdtItem: '\uD83D\uDCC4 OpenDocument (.odt)',
   exportProjectItem: '💾 Projet complet (.scriptorium)',
   displayPrefsBtn: '⚙️ Affichage',
   displayPrefsBtnTitle:
@@ -986,7 +987,7 @@ export const fr = {
   exportIndent: 'Retrait de première ligne (cm)',
   exportJustify: 'Texte justifié',
   exportPageNumbers: 'Numéros de page',
-  exportRunningHeader: 'En-tête avec auteur et titre',
+  exportRunningHeader: 'Auteur et titre en haut des pages',
   exportCancelBtn: 'Annuler',
   exportConfirmBtn: 'Exporter',
   exportPreviewTitle: 'Aperçu',
@@ -1107,6 +1108,7 @@ export const en: Record<TranslationKey, string> = {
   exportMdItem: '📑 Markdown (.md)',
   exportPdfItem: '📕 PDF (.pdf)',
   exportDocxItem: '📝 Word (.docx)',
+  exportOdtItem: '\uD83D\uDCC4 OpenDocument (.odt)',
   exportProjectItem:
     '💾 Full project (.scriptorium)',
   displayPrefsBtn: '⚙️ Display',
@@ -2005,7 +2007,7 @@ export const en: Record<TranslationKey, string> = {
   exportIndent: 'First-line indent (cm)',
   exportJustify: 'Justified text',
   exportPageNumbers: 'Page numbers',
-  exportRunningHeader: 'Header with author and title',
+  exportRunningHeader: 'Author and title at the top of pages',
   exportCancelBtn: 'Cancel',
   exportConfirmBtn: 'Export',
   exportPreviewTitle: 'Preview',

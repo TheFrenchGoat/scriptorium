@@ -27,6 +27,8 @@ import {
 
 import { generateExportDocx } from '../export-docx';
 import { generateExportOdt } from '../export-odt';
+import { generateScreenplayDocx, generateScreenplayOdt } from '../export-screenplay';
+import { normalizeScreenplayExportDocument } from '../../shared/screenplay-export';
 import type { ExportDocument } from '../../shared/export-document';
 import { normalizeExportSettings } from '../../shared/export-settings';
 
@@ -439,6 +441,38 @@ export function registerFileIpc(): void {
       await generateExportOdt(
         payload.filePath,
         sanitizeExportDocument(payload.doc)
+      );
+    }
+  );
+
+  ipcMain.handle(
+    'export:screenplay-docx',
+    async (
+      _event,
+      payload: {
+        filePath: string;
+        doc: unknown;
+      }
+    ): Promise<void> => {
+      await generateScreenplayDocx(
+        payload.filePath,
+        normalizeScreenplayExportDocument(payload.doc)
+      );
+    }
+  );
+
+  ipcMain.handle(
+    'export:screenplay-odt',
+    async (
+      _event,
+      payload: {
+        filePath: string;
+        doc: unknown;
+      }
+    ): Promise<void> => {
+      await generateScreenplayOdt(
+        payload.filePath,
+        normalizeScreenplayExportDocument(payload.doc)
       );
     }
   );
