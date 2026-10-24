@@ -89,7 +89,7 @@ export const EXPORT_TEMPLATES: Readonly<Record<ExportTemplateId, ExportTemplateP
       pageSize: 'a4',
       fontFamily: 'Times New Roman',
       fontSize: 12,
-      lineHeight: 2,
+      lineHeight: 1.5,
       marginCm: 2.5,
       justify: false,
       firstLineIndentCm: 1.25,
