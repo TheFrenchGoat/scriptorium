@@ -265,6 +265,18 @@ const api: ScriptoriumApi = {
       }
     ),
 
+  exportDocumentDocx: (
+    filePath: string,
+    doc: import('../shared/export-document').ExportDocument
+  ) =>
+    ipcRenderer.invoke(
+      'export:document-docx',
+      {
+        filePath,
+        doc
+      }
+    ),
+
   exportPdf: (
     filePath: string,
     htmlContent: string

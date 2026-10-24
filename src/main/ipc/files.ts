@@ -25,6 +25,10 @@ import {
   generateDocx
 } from '../docx-generator';
 
+import { generateExportDocx } from '../export-docx';
+import type { ExportDocument } from '../../shared/export-document';
+import { normalizeExportSettings } from '../../shared/export-settings';
+
 import {
   importOdtProject
 } from '../odt-importer';
@@ -325,6 +329,27 @@ async function preparePrintDocument(
 }
 
 /**
+ * Vérifie la forme du document d'export reçu du renderer et répare sa mise
+ * en page (police et tailles sont écrites telles quelles dans le fichier).
+ */
+function sanitizeExportDocument(value: unknown): ExportDocument {
+  if (
+    typeof value !== 'object' ||
+    value === null ||
+    !Array.isArray((value as ExportDocument).chapters)
+  ) {
+    throw new Error("Document d'export invalide.");
+  }
+
+  const doc = value as ExportDocument;
+
+  return {
+    ...doc,
+    layout: normalizeExportSettings({ layout: doc.layout }).layout
+  };
+}
+
+/**
  * Enregistre tous les gestionnaires IPC relatifs aux fichiers.
  */
 export function registerFileIpc(): void {
@@ -381,6 +406,22 @@ export function registerFileIpc(): void {
       await generateDocx(
         payload.filePath,
         payload.docxData
+      );
+    }
+  );
+
+  ipcMain.handle(
+    'export:document-docx',
+    async (
+      _event,
+      payload: {
+        filePath: string;
+        doc: ExportDocument;
+      }
+    ): Promise<void> => {
+      await generateExportDocx(
+        payload.filePath,
+        sanitizeExportDocument(payload.doc)
       );
     }
   );

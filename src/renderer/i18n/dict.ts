@@ -936,6 +936,7 @@ export const fr = {
   exportMdSuccess: 'Export Markdown réussi !',
   exportMdError:
     "Erreur lors de l'export Markdown : ",
+  exportTableOfContents: 'Table des matières',
   exportPdfSuccess: 'Export PDF réussi !',
   exportPdfError:
     "Erreur lors de l'export PDF : ",
@@ -1893,6 +1894,7 @@ export const en: Record<TranslationKey, string> = {
     'Markdown export successful!',
   exportMdError:
     'Error during Markdown export: ',
+  exportTableOfContents: 'Contents',
   exportPdfSuccess:
     'PDF export successful!',
   exportPdfError:

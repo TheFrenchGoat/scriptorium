@@ -1253,6 +1253,7 @@ export interface ScriptoriumApi {
     text: string
   ): Promise<boolean>;
 
+  exportDocumentDocx(filePath: string, doc: import('./export-document').ExportDocument): Promise<void>;
   exportDocx(
     filePath: string,
     docxData: DocxParagraph[]

@@ -1,5 +1,9 @@
 // src/renderer/components/editor/useEditorController.ts
 
+import { buildExportDocument } from '../../lib/export/build-document';
+import { renderExportHtml } from '../../lib/export/render-html';
+import { renderExportMarkdown, renderExportText } from '../../lib/export/render-text';
+import { normalizeExportSettings } from '../../../shared/export-settings';
 import { removeGrammarMarksOnMentions } from '../../lib/grammar-check';
 import { countWordsInHtml } from '../../lib/stats';
 import { replaceLibreOfficeFontsInHtml } from './fontAliases';
@@ -3274,6 +3278,17 @@ export function useEditorController({
 
         await save();
 
+        const buildNovelExportDocument = () =>
+          buildExportDocument(
+            s.projectData,
+            normalizeExportSettings(s.projectData.exportSettings),
+            {
+              projectName,
+              language: getLanguage(),
+              labels: { tableOfContents: t('exportTableOfContents') }
+            }
+          );
+
         try {
           if (kind === 'txt') {
             const result = await window.api.showSaveDialog({
@@ -3293,16 +3308,7 @@ export function useEditorController({
             if (screenplay) {
               fullText = buildScreenplayPlainText(screenplay);
             } else {
-              chapterNames.forEach((chapterName) => {
-                const temporary = document.createElement('div');
-
-                temporary.innerHTML = s.projectData.chapters[chapterName] || '';
-
-                fullText +=
-                  `--- ${chapterName} ---\n\n` +
-                  temporary.innerText +
-                  '\n\n\n';
-              });
+              fullText = renderExportText(buildNovelExportDocument());
             }
 
             await window.api.exportTxt(result.filePath, fullText);
@@ -3325,7 +3331,7 @@ export function useEditorController({
 
             const markdown = screenplay
               ? buildScreenplayPlainText(screenplay)
-              : buildMarkdown(s.projectData);
+              : renderExportMarkdown(buildNovelExportDocument());
 
             await window.api.exportTxt(result.filePath, markdown);
 
@@ -3347,7 +3353,7 @@ export function useEditorController({
 
             const html = screenplay
               ? buildBasicScreenplayPrintHtml(projectName, screenplay)
-              : buildPrintHtml(s.projectData, projectName);
+              : renderExportHtml(buildNovelExportDocument());
 
             await window.api.exportPdf(result.filePath, html);
 
@@ -3377,9 +3383,9 @@ export function useEditorController({
               return;
             }
 
-            await window.api.exportDocx(
+            await window.api.exportDocumentDocx(
               result.filePath,
-              buildDocxData(s.projectData)
+              buildNovelExportDocument()
             );
 
             showInfo(t('exportDocxSuccess'));

@@ -1,11 +1,16 @@
 // src/renderer/lib/export/render-html.ts
 // Document intermédiaire -> HTML imprimable (export PDF et aperçu).
 //
-// Les numéros de page et l'en-tête courant ne sont pas dans ce HTML : ils
-// sont ajoutés par le processus principal lors de l'impression en PDF.
+// Les numéros de page et l'en-tête courant sont des cases de marge CSS
+// (@page), masquées sur la page de titre. Elles n'apparaissent qu'à
+// l'impression (PDF), pas dans un affichage à l'écran.
 
 import type { ExportBlock, ExportDocument, ExportRun } from '../../../shared/export-document';
-import { chapterStartsNewPage, hasTableOfContents } from '../../../shared/export-document';
+import {
+  chapterStartsNewPage,
+  getRunningHeaderText,
+  hasTableOfContents
+} from '../../../shared/export-document';
 import { EXPORT_PAGE_SIZES_MM } from '../../../shared/export-settings';
 
 function escapeHtml(value: string): string {
@@ -59,13 +64,50 @@ function blockToHtml(block: ExportBlock): string {
   return `<p${attr}>${block.runs.map(runToHtml).join('')}</p>`;
 }
 
-function buildCss(doc: ExportDocument): string {
+/** Chaîne CSS entre guillemets (sans possibilité de sortir de la balise style). */
+function cssString(value: string): string {
+  const escaped = value
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+    .replace(/</g, '\\3C ')
+    .replace(/[\r\n]+/g, ' ');
+  return `"${escaped}"`;
+}
+
+/** Format de page, marges, numéros de page et en-tête courant. */
+function buildPageRules(doc: ExportDocument): string {
   const L = doc.layout;
   const page = EXPORT_PAGE_SIZES_MM[L.pageSize];
+  const boxFont =
+    `font-family: ${cssFontStack(L.fontFamily)}; ` +
+    `font-size: ${Math.max(8, L.fontSize - 2)}pt; color: #000;`;
+  const header = getRunningHeaderText(doc);
+  const boxes: string[] = [];
+
+  if (L.pageNumbers) {
+    boxes.push(`@bottom-center { content: counter(page); ${boxFont} }`);
+  }
+  if (doc.runningHeader && header !== '') {
+    boxes.push(`@top-right { content: ${cssString(header)}; ${boxFont} }`);
+  }
+
+  let css =
+    `@page { size: ${page.width}mm ${page.height}mm; margin: ${L.marginCm}cm; ` +
+    `${boxes.join(' ')} }`;
+
+  if (doc.titlePage && boxes.length > 0) {
+    css += '\n@page :first { @bottom-center { content: none; } @top-right { content: none; } }';
+  }
+
+  return css;
+}
+
+function buildCss(doc: ExportDocument): string {
+  const L = doc.layout;
   const fs = L.fontSize;
 
   return `
-@page { size: ${page.width}mm ${page.height}mm; margin: ${L.marginCm}cm; }
+${buildPageRules(doc)}
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; background: #fff; }
 body {
