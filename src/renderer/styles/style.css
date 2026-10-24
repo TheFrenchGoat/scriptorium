@@ -523,12 +523,9 @@ input[type="text"]:focus { border-color: var(--accent); }
   box-sizing: border-box;
 }
 .custom-type-field-row .custom-type-field-type {
-  width: 100% !important;
-  height: 42px;
-  box-sizing: border-box;
-  background: var(--bg-input); color: var(--text-main); border: 1px solid var(--border);
-  border-radius: var(--radius); padding: 0 8px; outline: none;
-  margin-bottom: 0 !important;
+  flex: 0 0 180px;
+  width: 180px;
+  min-width: 0;
 }
 .custom-type-field-row .btn-remove-field {
   width: 32px !important; height: 32px; padding: 0 !important;

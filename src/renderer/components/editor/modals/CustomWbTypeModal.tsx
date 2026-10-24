@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useI18n } from '../../../i18n';
 import { useDialogs } from '../../common/Dialogs';
 import { Modal } from '../../common/Modal';
+import { Select } from '../../common/Select';
 import { EmojiPicker } from '../../common/EmojiPicker';
 import { buildCustomTypeFields } from '../useEditorController';
 import type { EditorController } from '../useEditorController';
@@ -286,17 +287,20 @@ export function CustomWbTypeModal({
                   value={field.label}
                   onChange={(e) => updateField(field.id, { label: e.target.value })}
                 />
-                <select
+                <Select
+                  block
                   className="custom-type-field-type"
+                  ariaLabel={t('customTypeFieldsLabel')}
                   value={field.type}
-                  onChange={(e) => updateField(field.id, { type: e.target.value as WbFieldType })}
-                >
-                  <option value="text">{t('customTypeFieldTypeText')}</option>
-                  <option value="textarea">{t('customTypeFieldTypeTextarea')}</option>
-                  <option value="number">{t('customTypeFieldTypeNumber')}</option>
-                  <option value="select">{t('customTypeFieldTypeSelect')}</option>
-                  <option value="reference">{t('customTypeFieldTypeReference')}</option>
-                </select>
+                  options={[
+                    { value: 'text', label: t('customTypeFieldTypeText') },
+                    { value: 'textarea', label: t('customTypeFieldTypeTextarea') },
+                    { value: 'number', label: t('customTypeFieldTypeNumber') },
+                    { value: 'select', label: t('customTypeFieldTypeSelect') },
+                    { value: 'reference', label: t('customTypeFieldTypeReference') }
+                  ]}
+                  onChange={(value) => updateField(field.id, { type: value as WbFieldType })}
+                />
                 <button
                   type="button"
                   className="btn-remove-field"
@@ -329,18 +333,20 @@ export function CustomWbTypeModal({
               {field.type === 'reference' && (
                 <div style={subSettingStyle}>
                   <label style={subLabelStyle}>{t('customTypeReferenceLabel')}</label>
-                  <select
+                  <Select
+                    block
+                    ariaLabel={t('customTypeReferenceLabel')}
                     value={field.referenceCategory}
-                    onChange={(e) => updateField(field.id, { referenceCategory: e.target.value })}
-                    style={{ width: '100%' }}
-                  >
-                    <option value="">{t('customTypeReferenceAll')}</option>
-                    {categoryChoices.map((choice) => (
-                      <option key={choice.slug} value={choice.slug}>
-                        {(choice.icon ? choice.icon + ' ' : '') + choice.label}
-                      </option>
-                    ))}
-                  </select>
+                    options={[
+                      { value: '', label: t('customTypeReferenceAll') },
+                      ...categoryChoices.map((choice) => ({
+                        value: choice.slug,
+                        label: choice.label,
+                        icon: choice.icon || undefined
+                      }))
+                    ]}
+                    onChange={(value) => updateField(field.id, { referenceCategory: value })}
+                  />
                 </div>
               )}
             </div>
