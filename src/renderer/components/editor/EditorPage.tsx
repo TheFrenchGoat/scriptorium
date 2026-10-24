@@ -24,6 +24,12 @@
 // L'aperçu d'une fiche au survol d'un nom surligné (WbHoverPreview.tsx)
 // s'affiche par-dessus toute la fenêtre ; il ne modifie pas le texte.
 
+import {
+  applySidebarWidth,
+  restoreSidebarWidth,
+  saveSidebarWidth,
+  setSidebarWidthPersister
+} from './sidebarWidth';
 import React, {
   useCallback,
   useEffect,
@@ -390,6 +396,22 @@ export function EditorPage({
       return;
     }
 
+    // Largeur du panneau gauche : préférences du logiciel (fichier sur le
+    // disque), sinon stockage local de la fenêtre.
+    if (!applySidebarWidth(controller.prefs().sidebarWidth)) {
+      restoreSidebarWidth();
+    }
+
+    setSidebarWidthPersister((width) => {
+      const currentPrefs = controller.prefs();
+
+      if (currentPrefs.sidebarWidth === width) {
+        return;
+      }
+
+      controller.updatePrefs({ ...currentPrefs, sidebarWidth: width });
+    });
+
     const SIDEBAR_MIN = 160;
     const SIDEBAR_MAX = 500;
     const SECTION_MIN = 60;
@@ -499,6 +521,8 @@ export function EditorPage({
           '--sidebar-width',
           `${newWidth}px`
         );
+
+        saveSidebarWidth(newWidth);
       }
 
       if (resizingSections) {

@@ -834,6 +834,9 @@ export interface EditorPrefs {
 
   sessionConcentrationScale?: SessionRatingScale;
   sessionEnergyScale?: SessionRatingScale;
+
+  /** Largeur du panneau gauche (Chapitres / World Building), en pixels. */
+  sidebarWidth?: number;
 }
 
 // ============================================================================
