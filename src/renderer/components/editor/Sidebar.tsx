@@ -32,6 +32,7 @@ import React, {
 
 import { useI18n } from '../../i18n';
 import { Modal } from '../common/Modal';
+import { Select } from '../common/Select';
 
 import {
   getSceneDisplaySubtitle,
@@ -1616,50 +1617,25 @@ export function Sidebar({
                     : 'Intérieur / extérieur'}
                 </span>
 
-                <select
-                  value={
-                    newSceneState
-                      .interiorExterior
-                  }
-                  onChange={(event) => {
-                    const value =
-                      event.target
-                        .value as ScreenplayInteriorExterior;
-
-                    setNewSceneState(
-                      (previous) =>
-                        previous
-                          ? {
-                              ...previous,
-                              interiorExterior:
-                                value
-                            }
-                          : previous
+                <Select
+                  block
+                  ariaLabel={lang === 'en' ? 'Interior / exterior' : 'Intérieur / extérieur'}
+                  value={newSceneState.interiorExterior}
+                  options={[
+                    { value: 'INT.', label: 'INT.' },
+                    { value: 'EXT.', label: 'EXT.' },
+                    { value: 'INT./EXT.', label: 'INT./EXT.' },
+                    { value: 'EXT./INT.', label: 'EXT./INT.' },
+                    { value: 'OTHER', label: lang === 'en' ? 'Other…' : 'Autre…' }
+                  ]}
+                  onChange={(value) => {
+                    setNewSceneState((previous) =>
+                      previous
+                        ? { ...previous, interiorExterior: value as ScreenplayInteriorExterior }
+                        : previous
                     );
                   }}
-                >
-                  <option value="INT.">
-                    INT.
-                  </option>
-
-                  <option value="EXT.">
-                    EXT.
-                  </option>
-
-                  <option value="INT./EXT.">
-                    INT./EXT.
-                  </option>
-
-                  <option value="EXT./INT.">
-                    EXT./INT.
-                  </option>
-
-                  <option value="OTHER">
-                    {lang === 'en'
-                      ? 'Other…'
-                      : 'Autre…'}
-                  </option>
-                </select>
+                />
               </label>
 
               {newSceneState
