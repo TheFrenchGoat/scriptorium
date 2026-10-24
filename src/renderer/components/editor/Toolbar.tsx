@@ -72,6 +72,7 @@ interface SelectionFormatting {
   bold: boolean;
   italic: boolean;
   underline: boolean;
+  align: TextAlignment;
 }
 
 interface ActiveScreenplayElement {
@@ -114,6 +115,48 @@ const SCREENPLAY_ELEMENT_TYPES: readonly ScreenplayElementType[] = [
 const SCREENPLAY_ROOT_SELECTOR =
   '.screenplay-element-content, .screenplay-scene-heading';
 
+type TextAlignment = 'left' | 'center' | 'right' | 'justify';
+
+/**
+ * Les marques du correcteur (vague bleue) sont dessinées avec un soulignement
+ * CSS. Chromium les prend pour un vrai soulignement : la commande « underline »
+ * croit alors devoir l'enlever et ne fait rien. Pendant la commande, la classe
+ * exec-format-busy masque ces vagues (voir style.css), puis elle est retirée.
+ * Couvre le bouton U et le raccourci Ctrl+U.
+ */
+const DECORATION_COMMANDS = new Set(['underline', 'strikethrough']);
+
+function installFormatCommandGuard(): void {
+  const html = document.documentElement;
+
+  if (html.dataset.formatGuard === '1') {
+    return;
+  }
+
+  html.dataset.formatGuard = '1';
+
+  const original = document.execCommand.bind(document);
+
+  document.execCommand = (
+    commandId: string,
+    showUI?: boolean,
+    value?: string
+  ): boolean => {
+    if (!DECORATION_COMMANDS.has(String(commandId).toLowerCase())) {
+      return original(commandId, showUI, value);
+    }
+
+    html.classList.add('exec-format-busy');
+
+    try {
+      return original(commandId, showUI, value);
+    } finally {
+      html.classList.remove('exec-format-busy');
+    }
+  };
+}
+
+installFormatCommandGuard();
 const DEFAULT_FONT = 'Roboto';
 const DEFAULT_FONT_SIZE = 16;
 const MIN_FONT_SIZE = 8;
@@ -378,6 +421,64 @@ function applyInlineStyleToSelection(
   return true;
 }
 
+/**
+ * Vrai soulignement : balise <u> ou style écrit sur l'élément. Le soulignement
+ * venant d'une classe CSS (vague du correcteur) n'est pas compté.
+ */
+function hasExplicitUnderline(node: Node | null, root: HTMLElement): boolean {
+  let element = getElementFromNode(node);
+
+  while (element) {
+    if (element.tagName === 'U') {
+      return true;
+    }
+
+    const line =
+      element.style.textDecorationLine || element.style.textDecoration || '';
+
+    if (line.includes('underline')) {
+      return true;
+    }
+
+    if (element === root) {
+      break;
+    }
+
+    element = element.parentElement;
+  }
+
+  return false;
+}
+
+function isSelectionUnderlined(range: Range, root: HTMLElement): boolean {
+  if (range.collapsed) {
+    return hasExplicitUnderline(range.startContainer, root);
+  }
+
+  const parts = getSelectedTextParts(range, root);
+
+  if (parts.length === 0) {
+    return hasExplicitUnderline(range.startContainer, root);
+  }
+
+  return parts.every((part) => hasExplicitUnderline(part.textNode, root));
+}
+
+function readAlignment(value: string): TextAlignment {
+  if (value === 'center' || value === '-webkit-center') {
+    return 'center';
+  }
+
+  if (value === 'right' || value === 'end' || value === '-webkit-right') {
+    return 'right';
+  }
+
+  if (value === 'justify') {
+    return 'justify';
+  }
+
+  return 'left';
+}
 function getSelectionFormatting(root: HTMLElement): SelectionFormatting | null {
   const selection = window.getSelection();
 
@@ -436,7 +537,6 @@ function getSelectionFormatting(root: HTMLElement): SelectionFormatting | null {
   const style: CSSStyleDeclaration = firstComputedStyle;
   const fontValues = Array.from(fontFamilies);
   const sizeValues = Array.from(fontSizes);
-  const decoration = style.textDecorationLine || style.textDecoration || '';
   const numericWeight = Number.parseInt(style.fontWeight, 10);
 
   return {
@@ -448,7 +548,8 @@ function getSelectionFormatting(root: HTMLElement): SelectionFormatting | null {
       style.fontWeight === 'bold' ||
       (!Number.isNaN(numericWeight) && numericWeight >= 600),
     italic: style.fontStyle === 'italic',
-    underline: decoration.includes('underline')
+    underline: isSelectionUnderlined(range, root),
+    align: readAlignment(style.textAlign)
   };
 }
 
@@ -523,7 +624,8 @@ export function Toolbar({
     sizeMixed: false,
     bold: false,
     italic: false,
-    underline: false
+    underline: false,
+    align: 'left'
   });
 
   const [sizeDraft, setSizeDraft] = useState(String(DEFAULT_FONT_SIZE));
@@ -1363,6 +1465,7 @@ export function Toolbar({
 
           <button
             type="button"
+            className={formatting.align === 'left' ? 'active' : undefined}
             title={t('alignLeftTitle')}
             onMouseDown={preventFocusLoss}
             onClick={() => runCommand('justifyLeft')}
@@ -1372,6 +1475,7 @@ export function Toolbar({
 
           <button
             type="button"
+            className={formatting.align === 'center' ? 'active' : undefined}
             title={t('alignCenterTitle')}
             onMouseDown={preventFocusLoss}
             onClick={() => runCommand('justifyCenter')}
@@ -1381,6 +1485,7 @@ export function Toolbar({
 
           <button
             type="button"
+            className={formatting.align === 'right' ? 'active' : undefined}
             title={t('alignRightTitle')}
             onMouseDown={preventFocusLoss}
             onClick={() => runCommand('justifyRight')}
@@ -1390,6 +1495,7 @@ export function Toolbar({
 
           <button
             type="button"
+            className={formatting.align === 'justify' ? 'active' : undefined}
             title={t('alignJustifyTitle')}
             onMouseDown={preventFocusLoss}
             onClick={() => runCommand('justifyFull')}

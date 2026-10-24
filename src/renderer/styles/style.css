@@ -1302,3 +1302,17 @@ mark.grammar-error:hover { background: rgba(59, 130, 246, 0.12); }
   background: currentColor;
   transition: width 0.3s ease;
 }
+
+/* Barre d'outils : mise en forme active (gras, italique, souligné, alignement) */
+.toolbar button.active,
+.toolbar button.active:hover {
+  color: #3b82f6;
+  background: rgba(59, 130, 246, 0.14);
+  border: 1px solid rgba(59, 130, 246, 0.55);
+}
+
+/* Pendant une commande de soulignement : vagues du correcteur masquées (Toolbar.tsx) */
+html.exec-format-busy mark.grammar-error,
+html.exec-format-busy .grammar-error {
+  text-decoration: none !important;
+}
