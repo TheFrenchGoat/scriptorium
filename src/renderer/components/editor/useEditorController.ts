@@ -1,5 +1,6 @@
 // src/renderer/components/editor/useEditorController.ts
 
+import { countWordsInHtml } from '../../lib/stats';
 import { replaceLibreOfficeFontsInHtml } from './fontAliases';
 import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
 import type {
@@ -187,7 +188,8 @@ export interface EditorController {
 
   attachEditor(element: HTMLElement | null): void;
   onChapterMounted(name: string): void;
-  handleInput(): void;
+  handleInput(options?: { pasted?: boolean }): void;
+  typedWords(): { total: number; byChapter: Record<string, number>; tracked: boolean };
   handlePaste(event: ReactClipboardEvent<HTMLElement>): void;
   handleEditorClick(event: ReactMouseEvent<HTMLElement>): void;
 
@@ -601,6 +603,53 @@ export function useEditorController({
     });
   }, [s, status]);
 
+  /*
+   * Compteur des mots tapés, utilisé par les sessions d'écriture.
+   * Seules les frappes dans le chapitre ouvert comptent : ouvrir, créer
+   * ou synchroniser un chapitre ne change rien. Les mots collés sont mis
+   * de côté pour être retirés des statistiques du jour.
+   */
+  const typedWordsRef = useRef<{
+    chapter: string | null;
+    total: number;
+    byChapter: Record<string, number>;
+  }>({ chapter: null, total: 0, byChapter: {} });
+
+  const pendingPastedWordsRef = useRef(0);
+
+  const recordTypedWords = (
+    chapterName: string,
+    previousHtml: string | undefined,
+    nextHtml: string,
+    pasted: boolean
+  ): void => {
+    const tracker = typedWordsRef.current;
+
+    // Premier changement vu dans ce chapitre : on prend seulement la référence.
+    if (tracker.chapter !== chapterName) {
+      tracker.chapter = chapterName;
+      return;
+    }
+
+    if (previousHtml === undefined || previousHtml === nextHtml) {
+      return;
+    }
+
+    const delta = countWordsInHtml(nextHtml) - countWordsInHtml(previousHtml);
+
+    if (delta === 0) {
+      return;
+    }
+
+    if (pasted) {
+      pendingPastedWordsRef.current += delta;
+      return;
+    }
+
+    tracker.total += delta;
+    tracker.byChapter[chapterName] = (tracker.byChapter[chapterName] ?? 0) + delta;
+  };
+
   const recordWritingStats = useCallback(async (): Promise<void> => {
     if (renamedRef.current) {
       return;
@@ -614,6 +663,19 @@ export function useEditorController({
         const bucket = getStatsBucket(stats, projectName);
         const todayKey = getDateKey(new Date());
         const currentTotal = getProjectWordTotal(s.projectData);
+
+        // Les mots collés depuis le dernier enregistrement ne comptent pas
+        // comme des mots écrits aujourd'hui.
+        const pastedWords = pendingPastedWordsRef.current;
+        pendingPastedWordsRef.current = 0;
+
+        if (
+          pastedWords !== 0 &&
+          bucket.baselineDate === todayKey &&
+          typeof bucket.baselineWords === 'number'
+        ) {
+          bucket.baselineWords += pastedWords;
+        }
 
         if (bucket.baselineDate !== todayKey) {
           // Nouveau jour : la référence devient le dernier total enregistré
@@ -632,8 +694,9 @@ export function useEditorController({
               : bucket.baselineWords + previousWords;
 
           bucket.baselineDate = todayKey;
-          bucket.baselineWords = lastKnownTotal;
-          bucket.history[todayKey] = currentTotal - lastKnownTotal;
+          bucket.baselineWords =
+            previousWords === null ? lastKnownTotal : lastKnownTotal + pastedWords;
+          bucket.history[todayKey] = currentTotal - bucket.baselineWords;
 
           if (bucket.history[todayKey] === undefined) {
             bucket.history[todayKey] = 0;
@@ -1594,13 +1657,15 @@ export function useEditorController({
         const finalHtml = editor.innerHTML;
 
         s.projectData.chapters[name] = finalHtml;
+        // Chapitre chargé : nouvelle référence pour le compteur de frappe.
+        typedWordsRef.current.chapter = name;
 
         debouncedGrammarCheck();
         updateStats();
         updateUndoRedo();
       },
 
-      handleInput() {
+      handleInput(options?: { pasted?: boolean }) {
         const editor = s.editorEl;
         const chapterName = s.activeTab;
 
@@ -1609,6 +1674,8 @@ export function useEditorController({
         }
 
         const html = editor.innerHTML;
+
+        recordTypedWords(chapterName, s.projectData.chapters[chapterName], html, options?.pasted === true);
 
         s.projectData.chapters[chapterName] = html;
         s.projects[projectName] = s.projectData;
@@ -1622,6 +1689,16 @@ export function useEditorController({
 
         debouncedHighlight();
         debouncedGrammarCheck();
+      },
+
+      typedWords() {
+        const tracker = typedWordsRef.current;
+
+        return {
+          total: tracker.total,
+          byChapter: { ...tracker.byChapter },
+          tracked: !isScreenplayData(s.projectData)
+        };
       },
 
       handlePaste(event) {

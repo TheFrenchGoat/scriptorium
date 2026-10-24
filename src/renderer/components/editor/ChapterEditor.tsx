@@ -527,7 +527,7 @@ export function ChapterEditor({
        * - le surlignage ;
        * - la vérification grammaticale.
        */
-      controller.handleInput();
+      controller.handleInput({ pasted: true });
     })();
   };
 
