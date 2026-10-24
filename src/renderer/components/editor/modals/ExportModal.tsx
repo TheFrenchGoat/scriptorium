@@ -7,7 +7,7 @@
 // sont alors mémorisés dans le projet, puis le fichier est produit (voir
 // saveExportSettings et exportAs dans useEditorController).
 //
-// Le format .odt n'est pas encore proposé.
+// Formats proposés : PDF, Word, OpenDocument (.odt), texte brut et Markdown.
 
 import React, { useEffect, useMemo, useState } from 'react';
 
@@ -43,6 +43,7 @@ interface Choice<T> {
 const FORMAT_CHOICES: Choice<ExportFormat>[] = [
   { value: 'pdf', labelKey: 'exportFormatPdf' },
   { value: 'docx', labelKey: 'exportFormatDocx' },
+  { value: 'odt', labelKey: 'exportFormatOdt' },
   { value: 'txt', labelKey: 'exportFormatTxt' },
   { value: 'md', labelKey: 'exportFormatMd' }
 ];
@@ -190,11 +191,7 @@ export function ExportModal({
 }: ExportModalProps) {
   const { t } = useI18n();
 
-  const [settings, setSettings] = useState<ExportSettings>(() =>
-    initialSettings.format === 'odt'
-      ? { ...initialSettings, format: 'pdf' }
-      : initialSettings
-  );
+  const [settings, setSettings] = useState<ExportSettings>(initialSettings);
 
   const [customLineHeight, setCustomLineHeight] = useState(
     () => !isPresetLineHeight(initialSettings.layout.lineHeight)
@@ -231,7 +228,8 @@ export function ExportModal({
 
   const includedCount = chapterNames.filter((name) => !excluded.has(name)).length;
   const canExport = includedCount > 0;
-  const showLayout = settings.format === 'pdf' || settings.format === 'docx';
+  const showLayout =
+    settings.format === 'pdf' || settings.format === 'docx' || settings.format === 'odt';
 
   const formatOptions: SelectOption[] = FORMAT_CHOICES.map((choice) => ({
     value: choice.value,

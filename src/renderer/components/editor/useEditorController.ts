@@ -262,7 +262,7 @@ export interface EditorController {
   applyGrammarSuggestion(mark: HTMLElement, replacement: string): void;
   ignoreGrammarMark(mark: HTMLElement): void;
 
-  exportAs(kind: 'txt' | 'md' | 'pdf' | 'docx' | 'project'): Promise<void>;
+  exportAs(kind: 'txt' | 'md' | 'pdf' | 'docx' | 'odt' | 'project'): Promise<void>;
   /** Reglages d'export du projet (completes si besoin). */
   getExportSettings(): ExportSettings;
   /** Chapitres du roman, dans l'ordre de la barre laterale. */
@@ -3463,6 +3463,37 @@ export function useEditorController({
             return;
           }
 
+          if (kind === 'odt') {
+            if (screenplay) {
+              showInfo(
+                getLanguage() === 'fr'
+                  ? "L'export ODT du mode scénario n'est pas encore disponible. Utilisez le PDF."
+                  : 'The ODT export for screenplays is not available yet. Please use PDF.'
+              );
+
+              return;
+            }
+
+            const result = await window.api.showSaveDialog({
+              title: getLanguage() === 'fr' ? 'Exporter en ODT' : 'Export as ODT',
+              defaultPath: `${projectName} - Complet.odt`,
+              filters: [{ name: 'OpenDocument', extensions: ['odt'] }]
+            });
+
+            if (result.canceled || !result.filePath) {
+              return;
+            }
+
+            await window.api.exportDocumentOdt(
+              result.filePath,
+              buildNovelExportDocument()
+            );
+
+            showInfo(t('exportOdtSuccess'));
+
+            return;
+          }
+
           const result = await window.api.showSaveDialog({
             title: 'Exporter le projet complet',
             defaultPath: `${projectName}.scriptorium`,
@@ -3490,6 +3521,7 @@ export function useEditorController({
             md: 'exportMdError',
             pdf: 'exportPdfError',
             docx: 'exportDocxError',
+            odt: 'exportOdtError',
             project: 'exportProjectError'
           } as const;
 

@@ -43,7 +43,8 @@ export function ExportPreview({ settings, buildPreview }: ExportPreviewProps) {
   const [source, setSource] = useState<ExportPreviewSource | null>(null);
   const [failed, setFailed] = useState(false);
 
-  const hasLayout = settings.format === 'pdf' || settings.format === 'docx';
+  const hasLayout =
+    settings.format === 'pdf' || settings.format === 'docx' || settings.format === 'odt';
 
   useEffect(() => {
     if (!hasLayout) return;

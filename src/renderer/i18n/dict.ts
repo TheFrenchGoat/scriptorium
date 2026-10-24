@@ -994,6 +994,10 @@ export const fr = {
   exportPreviewTruncated: 'Seul le début du document est affiché.',
   exportPreviewNoLayout: "Pas d'aperçu pour le texte brut et le Markdown : ces formats n'ont pas de mise en page.",
   exportPreviewError: "L'aperçu n'a pas pu être affiché. L'export reste possible.",
+  exportFormatOdt: 'OpenDocument (.odt)',
+  exportOdtSuccess: 'Export ODT réussi !',
+  exportOdtError:
+    "Erreur lors de l'export ODT : ",
   exportPdfSuccess: 'Export PDF réussi !',
   exportPdfError:
     "Erreur lors de l'export PDF : ",
@@ -2009,6 +2013,9 @@ export const en: Record<TranslationKey, string> = {
   exportPreviewTruncated: 'Only the beginning of the document is shown.',
   exportPreviewNoLayout: 'No preview for plain text and Markdown: these formats have no layout.',
   exportPreviewError: 'The preview could not be displayed. You can still export.',
+  exportFormatOdt: 'OpenDocument (.odt)',
+  exportOdtSuccess: 'ODT export successful!',
+  exportOdtError: 'Error during ODT export: ',
   exportPdfSuccess:
     'PDF export successful!',
   exportPdfError:

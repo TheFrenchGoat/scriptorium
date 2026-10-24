@@ -1515,9 +1515,7 @@ export function EditorPage({
                 console.error('Enregistrement des reglages d export impossible :', error);
               }
 
-              await controller.exportAs(
-                settings.format === 'odt' ? 'pdf' : settings.format
-              );
+              await controller.exportAs(settings.format);
             })();
           }}
         />

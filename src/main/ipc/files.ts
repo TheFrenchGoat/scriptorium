@@ -2,7 +2,7 @@
 //
 // Gestion IPC des fichiers :
 // - boîtes de dialogue ;
-// - export TXT, DOCX et PDF ;
+// - export TXT, DOCX, ODT et PDF ;
 // - export/import des projets Scriptorium ;
 // - import ODT ;
 // - désinfection HTML ;
@@ -26,6 +26,7 @@ import {
 } from '../docx-generator';
 
 import { generateExportDocx } from '../export-docx';
+import { generateExportOdt } from '../export-odt';
 import type { ExportDocument } from '../../shared/export-document';
 import { normalizeExportSettings } from '../../shared/export-settings';
 
@@ -420,6 +421,22 @@ export function registerFileIpc(): void {
       }
     ): Promise<void> => {
       await generateExportDocx(
+        payload.filePath,
+        sanitizeExportDocument(payload.doc)
+      );
+    }
+  );
+
+  ipcMain.handle(
+    'export:document-odt',
+    async (
+      _event,
+      payload: {
+        filePath: string;
+        doc: ExportDocument;
+      }
+    ): Promise<void> => {
+      await generateExportOdt(
         payload.filePath,
         sanitizeExportDocument(payload.doc)
       );
