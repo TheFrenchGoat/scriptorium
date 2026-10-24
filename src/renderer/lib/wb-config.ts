@@ -582,9 +582,11 @@ export function createCategoryFromPreset(
  *
  * - `parent` : la source est parent de la cible ;
  * - `partner` : conjoints ou couple ;
- * - `sibling` : frères et sœurs.
+ * - `sibling` : frères et sœurs ;
+ * - `adoptiveParent` : la source est parent adoptif de la cible (pointillé) ;
+ * - `halfSibling` : demi-frères et demi-sœurs (pointillé serré).
  */
-export type WbTreeRole = 'parent' | 'partner' | 'sibling';
+export type WbTreeRole = 'parent' | 'adoptiveParent' | 'partner' | 'sibling' | 'halfSibling';
 
 export interface WbBuiltinRelationType {
   id: string;
@@ -637,9 +639,17 @@ export const WB_BUILTIN_RELATION_TYPES: WbBuiltinRelationType[] = [
     'family',
     'parent'
   ),
+  directedRelation(
+    'rel-adoptive-parent',
+    { fr: 'Parent adoptif de', en: 'Adoptive parent of' },
+    { fr: 'Enfant adoptif de', en: 'Adopted child of' },
+    'family',
+    'adoptiveParent'
+  ),
   symmetricRelation('rel-spouse', 'Conjoint(e) de', 'Spouse of', 'family', 'partner'),
   symmetricRelation('rel-partner', 'En couple avec', 'In a relationship with', 'family', 'partner'),
   symmetricRelation('rel-sibling', 'Frère ou sœur de', 'Sibling of', 'family', 'sibling'),
+  symmetricRelation('rel-half-sibling', 'Demi-frère ou demi-sœur de', 'Half-sibling of', 'family', 'halfSibling'),
   symmetricRelation('rel-relative', 'Apparenté(e) à', 'Related to', 'family'),
 
   // Relations sociales

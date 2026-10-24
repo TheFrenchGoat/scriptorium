@@ -124,6 +124,10 @@ interface FamilyMaps {
   partners: Map<string, Set<string>>;
   siblings: Map<string, Set<string>>;
   members: Set<string>;
+  /** Liens adoptifs, clé « parent|enfant ». */
+  adoptive: Set<string>;
+  /** Demi-frères et demi-sœurs, clé donnée par pairKey. */
+  halfSiblings: Set<string>;
 }
 
 interface TreeNode {
@@ -440,6 +444,52 @@ function addTo(map: Map<string, Set<string>>, key: string, value: string): void 
 /**
  * Liens familiaux (seuls les types ayant un rôle d'arbre comptent).
  */
+function pairKey(a: string, b: string): string {
+  return a < b ? a + '|' + b : b + '|' + a;
+}
+
+/**
+ * Placement des nouvelles fiches du graphe. Celles qui n'ont aucune relation
+ * visible sont rangées en grille sous le graphe : laissées à la simulation,
+ * elles étaient repoussées loin des autres, parfois hors de l'écran.
+ */
+function layoutWithLoners(ids: string[], edges: Array<[string, string]>, fixed: Record<string, Point>): Record<string, Point> {
+  const idSet = new Set(ids);
+  const linked = new Set<string>();
+  for (const edge of edges) {
+    const a = edge[0];
+    const b = edge[1];
+    if (a === b || !idSet.has(a) || !idSet.has(b)) continue;
+    linked.add(a);
+    linked.add(b);
+  }
+  const loners = ids.filter((id) => !fixed[id] && !linked.has(id));
+  if (loners.length === 0) return layoutGraph(ids, edges, fixed);
+  const lonerSet = new Set(loners);
+  const result = layoutGraph(ids.filter((id) => !lonerSet.has(id)), edges, fixed);
+  let minX = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+  for (const id of ids) {
+    const point = result[id] ?? fixed[id];
+    if (!point) continue;
+    minX = Math.min(minX, point.x);
+    maxX = Math.max(maxX, point.x);
+    maxY = Math.max(maxY, point.y);
+  }
+  const gapX = 170;
+  const gapY = 120;
+  const hasOthers = Number.isFinite(minX);
+  const centerX = hasOthers ? (minX + maxX) / 2 : 0;
+  const startY = hasOthers ? maxY + gapY + 40 : 0;
+  const cols = Math.max(1, Math.ceil(Math.sqrt(loners.length * 2)));
+  const usedCols = Math.min(cols, loners.length);
+  const startX = centerX - ((usedCols - 1) * gapX) / 2;
+  loners.forEach((id, index) => {
+    result[id] = { x: startX + (index % cols) * gapX, y: startY + Math.floor(index / cols) * gapY };
+  });
+  return result;
+}
 function buildFamily(relations: WbRelation[], roleOf: (typeId: string) => WbTreeRole | undefined): FamilyMaps {
   const family: FamilyMaps = {
     parents: new Map(),
@@ -447,21 +497,25 @@ function buildFamily(relations: WbRelation[], roleOf: (typeId: string) => WbTree
     partners: new Map(),
     siblings: new Map(),
     members: new Set(),
+    adoptive: new Set(),
+    halfSiblings: new Set(),
   };
   for (const relation of relations) {
     const role = roleOf(relation.typeId);
     if (!role) continue;
     const a = relation.sourceId;
     const b = relation.targetId;
-    if (role === 'parent') {
+    if (role === 'parent' || role === 'adoptiveParent') {
       addTo(family.parents, b, a);
       addTo(family.children, a, b);
+      if (role === 'adoptiveParent') family.adoptive.add(a + '|' + b);
     } else if (role === 'partner') {
       addTo(family.partners, a, b);
       addTo(family.partners, b, a);
     } else {
       addTo(family.siblings, a, b);
       addTo(family.siblings, b, a);
+      if (role === 'halfSibling') family.halfSiblings.add(pairKey(a, b));
     }
     family.members.add(a);
     family.members.add(b);
@@ -613,18 +667,21 @@ function buildTree(rootId: string, family: FamilyMaps): TreeLayout {
     const p1 = positions.get(first);
     const p2 = second ? positions.get(second) : undefined;
     const isCouple = parentIds.length === 2 && second !== undefined && Boolean(family.partners.get(first)?.has(second)) && p1 !== undefined && p2 !== undefined && p1.y === p2.y && p1.y < child.y;
-    if (isCouple && p1 && p2) {
+    const adoptiveFirst = family.adoptive.has(first + '|' + childId);
+    const adoptiveSecond = second !== undefined && family.adoptive.has(second + '|' + childId);
+    if (isCouple && p1 && p2 && adoptiveFirst === adoptiveSecond) {
       const startX = (p1.x + p2.x) / 2;
-      links.push({ key: 'c-' + childId, d: `M ${startX} ${p1.y} V ${midY} H ${child.x} V ${childTop}`, role: 'parent' });
+      links.push({ key: 'c-' + childId, d: `M ${startX} ${p1.y} V ${midY} H ${child.x} V ${childTop}`, role: adoptiveFirst ? 'adoptiveParent' : 'parent' });
       continue;
     }
     for (const parentId of parentIds) {
       const parent = positions.get(parentId);
       if (!parent) continue;
+      const parentRole: WbTreeRole = family.adoptive.has(parentId + '|' + childId) ? 'adoptiveParent' : 'parent';
       if (parent.y >= child.y) {
-        links.push({ key: 'c-' + parentId + '-' + childId, d: `M ${parent.x} ${parent.y} L ${child.x} ${child.y}`, role: 'parent' });
+        links.push({ key: 'c-' + parentId + '-' + childId, d: `M ${parent.x} ${parent.y} L ${child.x} ${child.y}`, role: parentRole });
       } else {
-        links.push({ key: 'c-' + parentId + '-' + childId, d: `M ${parent.x} ${parent.y + halfH} V ${midY} H ${child.x} V ${childTop}`, role: 'parent' });
+        links.push({ key: 'c-' + parentId + '-' + childId, d: `M ${parent.x} ${parent.y + halfH} V ${midY} H ${child.x} V ${childTop}`, role: parentRole });
       }
     }
   }
@@ -633,18 +690,19 @@ function buildTree(rootId: string, family: FamilyMaps): TreeLayout {
   family.siblings.forEach((set, a) => {
     set.forEach((b) => {
       if (a >= b || !inTree.has(a) || !inTree.has(b)) return;
+      const half = family.halfSiblings.has(pairKey(a, b));
       const parentsA = family.parents.get(a);
       const parentsB = family.parents.get(b);
       let shared = false;
       parentsA?.forEach((parentId) => {
         if (parentsB?.has(parentId) && inTree.has(parentId)) shared = true;
       });
-      if (shared) return;
+      if (shared && !half) return;
       const pa = positions.get(a);
       const pb = positions.get(b);
       if (!pa || !pb || pa.y !== pb.y) return;
       const top = pa.y - halfH;
-      links.push({ key: 's-' + a + '-' + b, d: `M ${pa.x} ${top} V ${top - 16} H ${pb.x} V ${top}`, role: 'sibling' });
+      links.push({ key: 's-' + a + '-' + b, d: `M ${pa.x} ${top} V ${top - (half ? 10 : 16)} H ${pb.x} V ${top}`, role: half ? 'halfSibling' : 'sibling' });
     });
   });
 
@@ -1077,7 +1135,7 @@ export function WbRelationsView({ controller }: WbRelationsViewProps) {
 
   if (tab === 'graph' && graphNodeIds.some((id) => !positionsRef.current[id])) {
     const edges: Array<[string, string]> = allRelations.map((relation) => [relation.sourceId, relation.targetId] as [string, string]);
-    const computed = layoutGraph(graphNodeIds, edges, positionsRef.current);
+    const computed = layoutWithLoners(graphNodeIds, edges, positionsRef.current);
     positionsRef.current = { ...positionsRef.current, ...computed };
     storePositions(positionsRef.current);
   }

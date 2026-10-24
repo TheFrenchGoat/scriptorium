@@ -426,6 +426,16 @@
   stroke-dasharray: 5 4;
 }
 
+.wb-rel-tree-link.role-adoptiveParent {
+  stroke: var(--wb-rel-family);
+  stroke-dasharray: 6 4;
+}
+
+.wb-rel-tree-link.role-halfSibling {
+  stroke: var(--text-muted);
+  stroke-dasharray: 2 3;
+}
+
 .wb-rel-tree-node {
   --wb-rel-color: var(--wb-char, var(--accent));
   cursor: pointer;
