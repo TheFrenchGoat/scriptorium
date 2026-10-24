@@ -192,3 +192,102 @@ ${sections.join('\n')}
 </body>
 </html>`;
 }
+
+// ----------------------------------------------------------------------------
+// Aperçu dans la fenêtre d'export
+// ----------------------------------------------------------------------------
+
+/** Début du document, préparé pour l'aperçu (voir buildExportPreview). */
+export interface ExportPreviewSource {
+  document: ExportDocument;
+  /** Tous les chapitres exportés, pour la table des matières. */
+  tocTitles: string[];
+  /** Vrai si l'aperçu ne montre que le début du texte. */
+  truncated: boolean;
+}
+
+export interface ExportPreviewOptions {
+  /** Largeur d'affichage d'une feuille, en pixels. */
+  sheetWidthPx: number;
+  /** Titres de la table des matières (par défaut : chapitres du document). */
+  tocTitles?: string[];
+}
+
+const PX_PER_MM = 96 / 25.4;
+
+/**
+ * Feuilles blanches à la bonne largeur, avec les marges, la police,
+ * l'interligne et les retraits du fichier final. Le texte n'est pas découpé
+ * en pages : une nouvelle feuille commence seulement là où le fichier final
+ * change de page (page de titre, table des matières, chapitres).
+ *
+ * Le résultat est inséré dans un shadow DOM (voir ExportPreview.tsx).
+ */
+export function renderExportPreview(
+  doc: ExportDocument,
+  options: ExportPreviewOptions
+): { css: string; html: string } {
+  const L = doc.layout;
+  const page = EXPORT_PAGE_SIZES_MM[L.pageSize];
+  const zoom = Math.min(1, options.sheetWidthPx / (page.width * PX_PER_MM));
+  const sheets: string[][] = [];
+
+  const add = (html: string, newSheet: boolean): void => {
+    if (newSheet || sheets.length === 0) sheets.push([]);
+    sheets[sheets.length - 1].push(html);
+  };
+
+  if (doc.titlePage) {
+    const parts = [`<h1 class="doc-title">${escapeHtml(doc.title)}</h1>`];
+    if (doc.subtitle) parts.push(`<p class="doc-subtitle">${escapeHtml(doc.subtitle)}</p>`);
+    if (doc.author) parts.push(`<p class="doc-author">${escapeHtml(doc.author)}</p>`);
+    add(`<section class="title-page">${parts.join('')}</section>`, true);
+  }
+
+  const tocTitles = options.tocTitles ?? doc.chapters.map((chapter) => chapter.title);
+
+  if (doc.tableOfContents && tocTitles.length > 0) {
+    const items = tocTitles.map((title) => `<li>${escapeHtml(title)}</li>`).join('');
+    add(
+      `<section class="toc">` +
+        `<h2 class="toc-title">${escapeHtml(doc.labels.tableOfContents)}</h2>` +
+        `<ul>${items}</ul></section>`,
+      true
+    );
+  }
+
+  doc.chapters.forEach((chapter, index) => {
+    const newPage = chapterStartsNewPage(doc, index);
+    add(
+      `<section class="chapter${newPage ? ' page-break' : ''}">` +
+        `<h2 class="chapter-title">${escapeHtml(chapter.title)}</h2>` +
+        chapter.blocks.map(blockToHtml).join('\n') +
+        '</section>',
+      newPage
+    );
+  });
+
+  const body = (sheets.length > 0 ? sheets : [[]])
+    .map((parts) => `<div class="sheet">${parts.join('\n')}</div>`)
+    .join('\n');
+
+  const css = `${buildCss(doc)}
+:host { all: initial; display: block; }
+.preview { zoom: ${zoom.toFixed(4)}; padding: 16px 0; }
+.sheet {
+  width: ${page.width}mm;
+  min-height: ${page.height}mm;
+  padding: ${L.marginCm}cm;
+  margin: 0 auto 16px;
+  background: #fff;
+  color: #000;
+  font-family: ${cssFontStack(L.fontFamily)};
+  font-size: ${L.fontSize}pt;
+  line-height: ${L.lineHeight};
+  overflow-wrap: break-word;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+`;
+
+  return { css, html: `<div class="preview">${body}</div>` };
+}

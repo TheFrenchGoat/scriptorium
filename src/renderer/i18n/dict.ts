@@ -989,6 +989,11 @@ export const fr = {
   exportRunningHeader: 'En-tête avec auteur et titre',
   exportCancelBtn: 'Annuler',
   exportConfirmBtn: 'Exporter',
+  exportPreviewTitle: 'Aperçu',
+  exportPreviewHint: "Aperçu approximatif : le texte n'est pas découpé en pages, et les numéros de page et l'en-tête n'apparaissent que dans le fichier final.",
+  exportPreviewTruncated: 'Seul le début du document est affiché.',
+  exportPreviewNoLayout: "Pas d'aperçu pour le texte brut et le Markdown : ces formats n'ont pas de mise en page.",
+  exportPreviewError: "L'aperçu n'a pas pu être affiché. L'export reste possible.",
   exportPdfSuccess: 'Export PDF réussi !',
   exportPdfError:
     "Erreur lors de l'export PDF : ",
@@ -1999,6 +2004,11 @@ export const en: Record<TranslationKey, string> = {
   exportRunningHeader: 'Header with author and title',
   exportCancelBtn: 'Cancel',
   exportConfirmBtn: 'Export',
+  exportPreviewTitle: 'Preview',
+  exportPreviewHint: 'Approximate preview: the text is not split into pages, and page numbers and the header only appear in the final file.',
+  exportPreviewTruncated: 'Only the beginning of the document is shown.',
+  exportPreviewNoLayout: 'No preview for plain text and Markdown: these formats have no layout.',
+  exportPreviewError: 'The preview could not be displayed. You can still export.',
   exportPdfSuccess:
     'PDF export successful!',
   exportPdfError:

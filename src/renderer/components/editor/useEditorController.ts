@@ -1,7 +1,7 @@
 // src/renderer/components/editor/useEditorController.ts
 
 import { buildExportDocument } from '../../lib/export/build-document';
-import { renderExportHtml } from '../../lib/export/render-html';
+import { renderExportHtml, type ExportPreviewSource } from '../../lib/export/render-html';
 import { renderExportMarkdown, renderExportText } from '../../lib/export/render-text';
 import { normalizeExportSettings } from '../../../shared/export-settings';
 import type { ExportSettings } from '../../../shared/types';
@@ -269,6 +269,8 @@ export interface EditorController {
   exportChapterNames(): string[];
   /** Enregistre les reglages d'export dans le projet. */
   saveExportSettings(settings: ExportSettings): Promise<void>;
+  /** Debut du document pour l'apercu de la fenetre d'export. */
+  buildExportPreview(settings: ExportSettings): ExportPreviewSource;
   restoreBackup(fileName: string): Promise<void>;
   recordWritingStats(): Promise<void>;
   renameProject(newName: string): Promise<boolean>;
@@ -3268,6 +3270,53 @@ export function useEditorController({
 
       exportChapterNames() {
         return Object.keys(s.projectData.chapters);
+      },
+
+      buildExportPreview(settings) {
+        // Seul le debut du roman est analyse : l'apercu reste fluide meme
+        // pour un long manuscrit.
+        const maxChapters = 3;
+        const maxBlocks = 150;
+
+        const normalized = normalizeExportSettings(settings);
+        const allNames = Object.keys(s.projectData.chapters);
+        const excluded = new Set(normalized.content.excludedChapters);
+        const included = allNames.filter((name) => !excluded.has(name));
+        const shown = new Set(included.slice(0, maxChapters));
+
+        const full = buildExportDocument(
+          s.projectData,
+          {
+            ...normalized,
+            content: {
+              ...normalized.content,
+              excludedChapters: allNames.filter((name) => !shown.has(name))
+            }
+          },
+          {
+            projectName,
+            language: getLanguage(),
+            labels: { tableOfContents: t('exportTableOfContents') }
+          }
+        );
+
+        let budget = maxBlocks;
+        let truncated = included.length > shown.size;
+        const chapters: typeof full.chapters = [];
+
+        for (const chapter of full.chapters) {
+          if (budget <= 0) {
+            truncated = true;
+            break;
+          }
+
+          const blocks = chapter.blocks.slice(0, budget);
+          if (blocks.length < chapter.blocks.length) truncated = true;
+          budget -= blocks.length;
+          chapters.push({ ...chapter, blocks });
+        }
+
+        return { document: { ...full, chapters }, tocTitles: included, truncated };
       },
 
       async saveExportSettings(settings) {

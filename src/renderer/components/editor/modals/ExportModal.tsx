@@ -14,6 +14,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { getLanguage, useI18n, type TranslationKey } from '../../../i18n';
 import { Modal } from '../../common/Modal';
 import { Select, type SelectOption } from '../../common/Select';
+import { ExportPreview } from './ExportPreview';
+import type { ExportPreviewSource } from '../../../lib/export/render-html';
 import {
   applyExportTemplate,
   EXPORT_FONT_FAMILIES,
@@ -174,6 +176,8 @@ export interface ExportModalProps {
   initialSettings: ExportSettings;
   onCancel: () => void;
   onExport: (settings: ExportSettings) => void;
+  /** Début du document pour l'aperçu (voir buildExportPreview). */
+  buildPreview: (settings: ExportSettings) => ExportPreviewSource;
 }
 
 export function ExportModal({
@@ -181,7 +185,8 @@ export function ExportModal({
   chapterNames,
   initialSettings,
   onCancel,
-  onExport
+  onExport,
+  buildPreview
 }: ExportModalProps) {
   const { t } = useI18n();
 
@@ -303,10 +308,11 @@ export function ExportModal({
     <Modal
       open
       title={t('exportModalTitle')}
-      width={580}
+      width="min(1080px, 95vw)"
       onCancel={onCancel}
       footer={footer}
     >
+      <div className="export-layout">
       <div className="export-modal">
         <section className="export-section">
           <h4>{t('exportSectionDocument')}</h4>
@@ -577,6 +583,8 @@ export function ExportModal({
             <p className="export-hint">{t('exportLayoutTextHint')}</p>
           )}
         </section>
+      </div>
+      <ExportPreview settings={settings} buildPreview={buildPreview} />
       </div>
     </Modal>
   );

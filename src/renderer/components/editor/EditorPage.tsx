@@ -1501,6 +1501,7 @@ export function EditorPage({
           projectName={projectName}
           chapterNames={controller.exportChapterNames()}
           initialSettings={controller.getExportSettings()}
+          buildPreview={(settings) => controller.buildExportPreview(settings)}
           onCancel={() => {
             setExportModalOpen(false);
           }}
