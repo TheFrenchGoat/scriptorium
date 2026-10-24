@@ -371,6 +371,17 @@ input[type="text"]:focus { border-color: var(--accent); }
    règle graduée ; 0 par défaut, comme un traitement de texte classique tant
    que l'utilisateur n'y a pas touché. */
 #editor > div, #editor > p { text-indent: var(--editor-indent, 0px); }
+/* Scriptorium: neutralise la mise en forme parasite que Chrome ajoute
+   quand on fusionne deux lignes (Retour arriere). Ne touche ni a la police
+   ni a la taille choisies dans la barre d'outils. */
+#editor p { margin: 0; }
+#editor span[style*="line-height"],
+#editor div[style*="line-height"],
+#editor p[style*="line-height"],
+#editor font[style*="line-height"] { line-height: inherit !important; }
+#editor span[style*="margin"],
+#editor div[style*="margin"],
+#editor p[style*="margin"] { margin: 0 !important; }
 
 /* RÈGLE GRADUÉE (façon LibreOffice/Word) : marges et retrait de première
    ligne, réglables par glisser-déposer. Voir Ruler.tsx. */
