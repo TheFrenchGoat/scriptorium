@@ -567,7 +567,7 @@ const WB_FORMAT_CURRENT = 2;
  */
 const FORBIDDEN_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 
-const BUILTIN_WB_TYPES: readonly BuiltinWbType[] = ['character', 'place', 'object', 'other'];
+const BUILTIN_WB_TYPES: readonly BuiltinWbType[] = ['character', 'place', 'object', 'animal', 'other'];
 
 const WB_FIELD_TYPES: readonly WbFieldType[] = [
   'text',

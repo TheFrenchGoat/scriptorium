@@ -156,6 +156,7 @@ export function WbSidePanel({
     character: t('wbLabel_character'),
     place: t('wbLabel_place'),
     object: t('wbLabel_object'),
+    animal: t('wbLabel_animal'),
     other: t('wbLabel_other'),
   };
 

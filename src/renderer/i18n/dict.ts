@@ -293,6 +293,7 @@ export const fr = {
   wbLabel_character: 'Personnage',
   wbLabel_place: 'Lieu',
   wbLabel_object: 'Objet',
+  wbLabel_animal: 'Animal',
   wbLabel_other: 'Autre',
 
   wbNewCustomTypeBtn: 'Nouveau type…',
@@ -1265,6 +1266,7 @@ export const en: Record<TranslationKey, string> = {
   wbLabel_character: 'Character',
   wbLabel_place: 'Place',
   wbLabel_object: 'Object',
+  wbLabel_animal: 'Animal',
   wbLabel_other: 'Other',
 
   wbNewCustomTypeBtn: 'New type…',

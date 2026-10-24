@@ -24,6 +24,7 @@ export type BuiltinWbType =
   | 'character'
   | 'place'
   | 'object'
+  | 'animal'
   | 'other';
 
 /**

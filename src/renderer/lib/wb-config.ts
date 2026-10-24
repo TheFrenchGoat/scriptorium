@@ -41,7 +41,7 @@ export const WB_UNTITLED_NAME: LocalizedText = { fr: 'Sans nom', en: 'Untitled' 
 // CATÉGORIES D'ORIGINE
 // ============================================================================
 
-export const BUILTIN_WB_TYPES: BuiltinWbType[] = ['character', 'place', 'object', 'other'];
+export const BUILTIN_WB_TYPES: BuiltinWbType[] = ['character', 'place', 'object', 'animal', 'other'];
 
 export function isBuiltinWbType(value: unknown): value is BuiltinWbType {
   return typeof value === 'string' && BUILTIN_WB_TYPES.includes(value as BuiltinWbType);
@@ -57,6 +57,7 @@ export const WB_CONFIG: Record<BuiltinWbType, WbConfigEntry> = {
   character: { label: 'Personnage', colorClass: 'type-character', icon: '👤' },
   place: { label: 'Lieu', colorClass: 'type-place', icon: '🏰' },
   object: { label: 'Objet', colorClass: 'type-object', icon: '💎' },
+  animal: { label: 'Animal', colorClass: 'type-animal', icon: '🐾' },
   other: { label: 'Autre', colorClass: 'type-other', icon: '📝' }
 };
 
@@ -64,6 +65,7 @@ export const WB_BUILTIN_LABELS: Record<BuiltinWbType, LocalizedText> = {
   character: { fr: 'Personnage', en: 'Character' },
   place: { fr: 'Lieu', en: 'Place' },
   object: { fr: 'Objet', en: 'Object' },
+  animal: { fr: 'Animal', en: 'Animal' },
   other: { fr: 'Autre', en: 'Other' }
 };
 
@@ -73,6 +75,7 @@ export const WB_DEFAULT_COLORS: Record<BuiltinWbType, string> = {
   character: '#ef4444',
   place: '#10b981',
   object: '#3b82f6',
+  animal: '#f97316',
   other: '#a855f7'
 };
 
@@ -84,6 +87,8 @@ export interface WbBuiltinFieldDef {
   key: string;
   type: WbFieldType;
   label: LocalizedText;
+  /** Catégorie des fiches proposées (champ 'reference'). */
+  referenceCategory?: string;
 }
 
 /**
@@ -145,6 +150,19 @@ export const WB_BUILTIN_FIELDS: Record<BuiltinWbType, WbBuiltinFieldDef[]> = {
     },
     { key: 'notes', type: 'textarea', label: { fr: 'Notes', en: 'Notes' } }
   ],
+  animal: [
+    { key: 'species', type: 'text', label: { fr: 'Espèce', en: 'Species' } },
+    { key: 'appearance', type: 'textarea', label: { fr: 'Apparence', en: 'Appearance' } },
+    { key: 'temperament', type: 'textarea', label: { fr: 'Caractère', en: 'Temperament' } },
+    {
+      key: 'owner',
+      type: 'reference',
+      label: { fr: 'Propriétaire / maître', en: 'Owner / master' },
+      referenceCategory: 'character'
+    },
+    { key: 'habitat', type: 'text', label: { fr: 'Habitat', en: 'Habitat' } },
+    { key: 'notes', type: 'textarea', label: { fr: 'Notes', en: 'Notes' } }
+  ],
   other: [
     {
       key: 'description',
@@ -194,7 +212,8 @@ export function createBuiltinCategory(type: BuiltinWbType): WbCategoryDef {
     fields: WB_BUILTIN_FIELDS[type].map((field) => ({
       key: field.key,
       label: '',
-      type: field.type
+      type: field.type,
+      ...(field.referenceCategory ? { referenceCategory: field.referenceCategory } : {})
     })),
     builtin: type
   };

@@ -433,7 +433,31 @@ function normalizeCategories(value: unknown): Record<string, WbCategoryDef> {
     categories[slug] = category;
   }
 
-  return categories;
+  return withAnimalCategory(categories);
+}
+
+/**
+ * Catégorie « Animal » (ajoutée en 1.3.2) : insérée entre Objet et Autre
+ * dans les projets qui ont les catégories d'origine mais pas encore celle-ci.
+ */
+function withAnimalCategory(categories: Record<string, WbCategoryDef>): Record<string, WbCategoryDef> {
+  if (hasOwn(categories, 'animal')) return categories;
+  if (!hasOwn(categories, 'object') && !hasOwn(categories, 'other')) return categories;
+  const result: Record<string, WbCategoryDef> = {};
+  let inserted = false;
+  for (const [slug, category] of Object.entries(categories)) {
+    if (!inserted && slug === 'other') {
+      result.animal = createBuiltinCategory('animal');
+      inserted = true;
+    }
+    result[slug] = category;
+    if (!inserted && slug === 'object') {
+      result.animal = createBuiltinCategory('animal');
+      inserted = true;
+    }
+  }
+  if (!inserted) result.animal = createBuiltinCategory('animal');
+  return result;
 }
 
 /**
