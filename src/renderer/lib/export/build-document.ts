@@ -95,7 +95,7 @@ function colorToHex(value: string): string | undefined {
   if (computed === sentinel && color !== sentinel) return undefined;
   if (/^#[0-9a-f]{6}$/.test(computed)) return computed.slice(1);
 
-  const match = /^rgba?$\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([\d.]+)\s*)?$$/.exec(computed);
+  const match = /^rgba?[(]\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([\d.]+)\s*)?[)]$/.exec(computed);
   if (!match) return undefined;
   if (match[4] !== undefined && parseFloat(match[4]) === 0) return undefined;
 
@@ -131,6 +131,7 @@ function isTransparentWrapper(el: HTMLElement): boolean {
 function readStyle(el: HTMLElement, parent: RunStyle, keepFormatting: boolean): RunStyle {
   const tag = el.tagName.toLowerCase();
   const style: RunStyle = { ...parent };
+  if (isTransparentWrapper(el)) return style; // mentions/fautes : aucun style propre
   const weight = el.style.fontWeight;
 
   if (
@@ -154,7 +155,7 @@ function readStyle(el: HTMLElement, parent: RunStyle, keepFormatting: boolean): 
     style.underline = true;
   }
 
-  if (!keepFormatting || isTransparentWrapper(el)) {
+  if (!keepFormatting) {
     return style;
   }
 
