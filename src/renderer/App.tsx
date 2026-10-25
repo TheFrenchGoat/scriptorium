@@ -9,6 +9,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { I18nProvider } from './i18n';
 import { DialogsProvider } from './components/common/Dialogs';
 import { ExportBusyOverlay } from './components/common/ExportBusyOverlay';
+import { WhatsNew } from './components/common/WhatsNew';
 import { UpdateNotifier } from './components/common/UpdateNotifier';
 import { ProjectsPage } from './components/menu/ProjectsPage';
 import { EditorPage } from './components/editor/EditorPage';
@@ -137,6 +138,7 @@ export function App(): React.ReactElement | null {
           />
         )}
         <ExportBusyOverlay />
+        <WhatsNew />
         <UpdateNotifier />
       </DialogsProvider>
     </I18nProvider>

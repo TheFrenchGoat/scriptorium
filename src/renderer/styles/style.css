@@ -1423,3 +1423,23 @@ mark.grammar-error:has(.wb-mention) {
 @keyframes export-busy-spin {
   to { transform: rotate(360deg); }
 }
+
+/* Fenetre "Quoi de neuf" */
+.whats-new-intro {
+  color: var(--text-main);
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 12px 0;
+}
+.whats-new-version {
+  color: var(--text-main);
+  font-size: 15px;
+  margin: 14px 0 6px;
+}
+.whats-new-list {
+  color: var(--text-main);
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 0 0 12px;
+  padding-left: 20px;
+}

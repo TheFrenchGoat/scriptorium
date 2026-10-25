@@ -1014,6 +1014,8 @@ export const fr = {
   exportBibleEmpty: 'Aucune fiche dans la bible de l’univers.',
   exportInProgress: 'Export en cours…',
   exportAlreadyRunning: 'Un export est déjà en cours. Patientez jusqu’à la fin.',
+  whatsNewTitle: 'Quoi de neuf ?',
+  whatsNewIntro: 'Scriptorium a été mis à jour. Voici les nouveautés :',
   exportPdfSuccess: 'Export PDF réussi !',
   exportPdfError:
     "Erreur lors de l'export PDF : ",
@@ -2048,6 +2050,8 @@ export const en: Record<TranslationKey, string> = {
   exportBibleEmpty: 'The world bible has no entries yet.',
   exportInProgress: 'Exporting…',
   exportAlreadyRunning: 'An export is already running. Please wait until it finishes.',
+  whatsNewTitle: 'What’s new?',
+  whatsNewIntro: 'Scriptorium has been updated. Here is what’s new:',
   exportPdfSuccess:
     'PDF export successful!',
   exportPdfError:
