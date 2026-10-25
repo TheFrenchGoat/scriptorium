@@ -10,6 +10,8 @@
 // Formats proposés : PDF, Word, OpenDocument (.odt), texte brut et Markdown.
 
 import React, { useEffect, useMemo, useState } from 'react';
+import type { ExportBibleMode, ExportBibleSettings } from '../../../../shared/types';
+import type { ExportBibleCategory } from '../../../lib/export/build-bible';
 
 import { getLanguage, useI18n, type TranslationKey } from '../../../i18n';
 import { Modal } from '../../common/Modal';
@@ -171,9 +173,13 @@ function FieldRow({ label, children }: { label: string; children: React.ReactNod
 // Fenêtre
 // ----------------------------------------------------------------------------
 
+const NO_BIBLE_CATEGORIES: ExportBibleCategory[] = [];
+
 export interface ExportModalProps {
   projectName: string;
   chapterNames: string[];
+  /** Categories de la bible de l'univers (avec nombre de fiches). */
+  bibleCategories?: ExportBibleCategory[];
   initialSettings: ExportSettings;
   onCancel: () => void;
   onExport: (settings: ExportSettings) => void;
@@ -184,6 +190,7 @@ export interface ExportModalProps {
 export function ExportModal({
   projectName,
   chapterNames,
+  bibleCategories = NO_BIBLE_CATEGORIES,
   initialSettings,
   onCancel,
   onExport,
@@ -209,6 +216,9 @@ export function ExportModal({
   const setLayout = (patch: Partial<ExportLayoutSettings>) =>
     setSettings((prev) => ({ ...prev, layout: { ...prev.layout, ...patch } }));
 
+  const setBible = (patch: Partial<ExportBibleSettings>) =>
+    setSettings((prev) => ({ ...prev, bible: { ...prev.bible, ...patch } }));
+
   const excluded = useMemo(
     () => new Set(content.excludedChapters),
     [content.excludedChapters]
@@ -227,7 +237,24 @@ export function ExportModal({
   }, [layout.fontFamily]);
 
   const includedCount = chapterNames.filter((name) => !excluded.has(name)).length;
-  const canExport = includedCount > 0;
+  const bibleSettings = settings.bible;
+  const bibleItemCount = bibleCategories
+    .filter((category) => !bibleSettings.excludedCategories.includes(category.slug))
+    .reduce((sum, category) => sum + category.count, 0);
+  const canExport = bibleSettings.mode === 'only' ? bibleItemCount > 0 : includedCount > 0;
+
+  const bibleModeOptions: SelectOption[] = [
+    { value: 'none', label: t('exportBibleModeNone') },
+    { value: 'appendix', label: t('exportBibleModeAppendix') },
+    { value: 'only', label: t('exportBibleModeOnly') }
+  ];
+
+  const toggleBibleCategory = (slug: string, checked: boolean) =>
+    setBible({
+      excludedCategories: checked
+        ? bibleSettings.excludedCategories.filter((name) => name !== slug)
+        : [...bibleSettings.excludedCategories, slug]
+    });
   const showLayout =
     settings.format === 'pdf' || settings.format === 'docx' || settings.format === 'odt';
 
@@ -477,6 +504,64 @@ export function ExportModal({
           >
             {t('exportKeepFormatting')}
           </CheckRow>
+        </section>
+
+        <section className="export-section">
+          <h4>{t('exportSectionBible')}</h4>
+
+          <FieldRow label={t('exportBibleMode')}>
+            <Select
+              block
+              value={bibleSettings.mode}
+              options={bibleModeOptions}
+              ariaLabel={t('exportBibleMode')}
+              onChange={(value) => setBible({ mode: value as ExportBibleMode })}
+            />
+          </FieldRow>
+
+          {bibleSettings.mode === 'none' ? null : bibleCategories.length === 0 ? (
+            <p className="export-hint">{t('exportBibleEmpty')}</p>
+          ) : (
+            <>
+              <p className="export-hint">{t('exportBibleCategories')}</p>
+              <div className="export-chapters">
+                {bibleCategories.map((category) => (
+                  <CheckRow
+                    key={category.slug}
+                    checked={!bibleSettings.excludedCategories.includes(category.slug)}
+                    disabled={false}
+                    onChange={(checked) => toggleBibleCategory(category.slug, checked)}
+                  >
+                    {`${category.label} (${category.count})`}
+                  </CheckRow>
+                ))}
+              </div>
+
+              <CheckRow
+                checked={bibleSettings.portraits}
+                disabled={false}
+                onChange={(checked) => setBible({ portraits: checked })}
+              >
+                {t('exportBiblePortraits')}
+              </CheckRow>
+
+              <CheckRow
+                checked={bibleSettings.relations}
+                disabled={false}
+                onChange={(checked) => setBible({ relations: checked })}
+              >
+                {t('exportBibleRelations')}
+              </CheckRow>
+
+              <CheckRow
+                checked={bibleSettings.timeline}
+                disabled={false}
+                onChange={(checked) => setBible({ timeline: checked })}
+              >
+                {t('exportBibleTimeline')}
+              </CheckRow>
+            </>
+          )}
         </section>
 
         <section className="export-section">

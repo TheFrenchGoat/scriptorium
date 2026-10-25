@@ -48,6 +48,11 @@ function runToHtml(run: ExportRun): string {
 }
 
 function blockToHtml(block: ExportBlock): string {
+  if (block.kind === 'image') {
+    const box = `max-width:${block.widthCm}cm;max-height:${block.heightCm}cm`;
+    return `<p class="bible-image"><img src="${escapeHtml(block.dataUrl)}" alt="" style="${box}"></p>`;
+  }
+
   if (block.kind === 'empty') {
     return '<p class="empty"><br></p>';
   }
@@ -147,6 +152,8 @@ p.separator { text-align: center; margin: 1em 0; }
 .toc ul { list-style: none; margin: 0; padding: 0; }
 .toc li { margin: 0.3em 0; }
 .chapter.page-break .chapter-title { padding-top: 3cm; }
+.bible-image { text-align: center; text-indent: 0; margin: 0.6em 0; }
+.bible-image img { display: inline-block; width: auto; height: auto; }
 .chapter:not(.page-break):not(:first-child) { margin-top: 3em; }
 `;
 }

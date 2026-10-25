@@ -29,7 +29,7 @@ import { generateExportDocx } from '../export-docx';
 import { generateExportOdt } from '../export-odt';
 import { generateScreenplayDocx, generateScreenplayOdt } from '../export-screenplay';
 import { normalizeScreenplayExportDocument } from '../../shared/screenplay-export';
-import type { ExportDocument } from '../../shared/export-document';
+import type { ExportBlock, ExportDocument } from '../../shared/export-document';
 import { normalizeExportSettings } from '../../shared/export-settings';
 
 import {
@@ -335,6 +335,47 @@ async function preparePrintDocument(
  * Vérifie la forme du document d'export reçu du renderer et répare sa mise
  * en page (police et tailles sont écrites telles quelles dans le fichier).
  */
+const EXPORT_IMAGE_MAX_LENGTH = 4000000;
+const EXPORT_IMAGE_PATTERN = /^data:image\/(?:jpeg|png);base64,[A-Za-z0-9+/]+={0,2}$/;
+
+function clampImageCm(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 5;
+  return Math.min(Math.max(value, 0.5), 15);
+}
+
+/** Blocs d'un chapitre : seules les images JPEG ou PNG de taille raisonnable passent. */
+function sanitizeExportBlocks(value: unknown): ExportBlock[] {
+  if (!Array.isArray(value)) return [];
+
+  const blocks: ExportBlock[] = [];
+  for (const block of value as ExportBlock[]) {
+    if (typeof block !== 'object' || block === null) continue;
+
+    if (block.kind !== 'image') {
+      blocks.push(block);
+      continue;
+    }
+
+    const dataUrl: unknown = block.dataUrl;
+    if (
+      typeof dataUrl !== 'string' ||
+      dataUrl.length > EXPORT_IMAGE_MAX_LENGTH ||
+      !EXPORT_IMAGE_PATTERN.test(dataUrl)
+    ) {
+      continue;
+    }
+
+    blocks.push({
+      kind: 'image',
+      dataUrl,
+      widthCm: clampImageCm(block.widthCm),
+      heightCm: clampImageCm(block.heightCm)
+    });
+  }
+
+  return blocks;
+}
+
 function sanitizeExportDocument(value: unknown): ExportDocument {
   if (
     typeof value !== 'object' ||
@@ -348,7 +389,11 @@ function sanitizeExportDocument(value: unknown): ExportDocument {
 
   return {
     ...doc,
-    layout: normalizeExportSettings({ layout: doc.layout }).layout
+    layout: normalizeExportSettings({ layout: doc.layout }).layout,
+    chapters: doc.chapters.map((chapter) => ({
+      ...chapter,
+      blocks: sanitizeExportBlocks(chapter?.blocks)
+    }))
   };
 }
 

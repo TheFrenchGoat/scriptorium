@@ -44,11 +44,30 @@ export interface ExportSeparatorBlock {
   symbol: string;
 }
 
-export type ExportBlock = ExportParagraphBlock | ExportEmptyBlock | ExportSeparatorBlock;
+/**
+ * Image centrée (portrait d'une fiche de la bible). widthCm et heightCm
+ * forment une boîte maximale ; prepareExportImages() les ajuste aux
+ * proportions réelles avant Word et ODT.
+ */
+export interface ExportImageBlock {
+  kind: 'image';
+  /** data:image/... en base64 (JPEG ou PNG seulement pour Word et ODT). */
+  dataUrl: string;
+  widthCm: number;
+  heightCm: number;
+}
+
+export type ExportBlock =
+  | ExportParagraphBlock
+  | ExportEmptyBlock
+  | ExportSeparatorBlock
+  | ExportImageBlock;
 
 export interface ExportChapter {
   title: string;
   blocks: ExportBlock[];
+  /** Force une nouvelle page (début de la bible), même si l'option est décochée. */
+  pageBreak?: boolean;
 }
 
 /** Textes traduits insérés dans le document. */
@@ -82,7 +101,7 @@ export function chapterStartsNewPage(doc: ExportDocument, index: number): boolea
     return doc.titlePage || hasTableOfContents(doc);
   }
 
-  return doc.chapterOnNewPage;
+  return doc.chapterOnNewPage || doc.chapters[index]?.pageBreak === true;
 }
 
 /** Texte de l'en-tête de page : « Auteur - Titre » (tiret cadratin). */

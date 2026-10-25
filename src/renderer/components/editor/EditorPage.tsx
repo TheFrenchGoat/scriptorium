@@ -1507,6 +1507,7 @@ export function EditorPage({
         <ExportModal
           projectName={projectName}
           chapterNames={controller.exportChapterNames()}
+          bibleCategories={controller.exportBibleCategories()}
           initialSettings={controller.getExportSettings()}
           buildPreview={(settings) => controller.buildExportPreview(settings)}
           onCancel={() => {

@@ -33,9 +33,10 @@ export function renderExportText(doc: ExportDocument): string {
         lines.push(block.runs.map((run) => run.text).join(''));
       } else if (block.kind === 'separator') {
         lines.push('', block.symbol, '');
-      } else {
+      } else if (block.kind === 'empty') {
         lines.push('');
       }
+      // Les images (portraits) n'ont pas d'equivalent en texte brut.
     }
   });
 

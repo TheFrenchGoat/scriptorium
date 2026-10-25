@@ -22,6 +22,7 @@ import type {
   ExportRun
 } from '../../../shared/export-document';
 import { EXPORT_SEPARATOR_SYMBOLS } from '../../../shared/export-settings';
+import { buildBibleChapters, type BibleSource } from './build-bible';
 
 const INVISIBLE_CHARS = /[\u200B-\u200D\u2060\uFEFF]/g;
 const CONTROL_CHARS = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
@@ -64,6 +65,8 @@ export interface BuildExportOptions {
   projectName: string;
   language: string;
   labels: ExportDocumentLabels;
+  /** Bible de l'univers ; absente, elle n'est jamais exportée. */
+  bible?: BibleSource;
 }
 
 // ----------------------------------------------------------------------------
@@ -386,12 +389,23 @@ export function buildExportDocument(
   };
 
   // Même ordre que la barre latérale.
-  const chapters: ExportChapter[] = Object.keys(projectData.chapters)
+  const bibleSource = settings.bible.mode === 'none' ? undefined : options.bible;
+  const novelNames: string[] =
+    bibleSource !== undefined && settings.bible.mode === 'only'
+      ? []
+      : Object.keys(projectData.chapters);
+
+  const chapters: ExportChapter[] = novelNames
     .filter((name) => !excluded.has(name))
     .map((name) => ({
       title: name,
       blocks: parseChapterHtml(projectData.chapters[name] ?? '', parseOptions)
     }));
+
+  // La bible (si elle est demandée) suit le roman.
+  if (bibleSource !== undefined) {
+    chapters.push(...buildBibleChapters(projectData, settings.bible, bibleSource));
+  }
 
   const titlePage = settings.titlePage;
 

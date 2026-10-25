@@ -2,6 +2,12 @@
 
 import { buildScreenplayExportDocument } from '../../lib/screenplay-export';
 import { buildExportDocument } from '../../lib/export/build-document';
+import {
+  createBibleSource,
+  listBibleCategories,
+  type ExportBibleCategory
+} from '../../lib/export/build-bible';
+import { prepareExportImages } from '../../lib/export/prepare-images';
 import { renderExportHtml, type ExportPreviewSource } from '../../lib/export/render-html';
 import { renderExportMarkdown, renderExportText } from '../../lib/export/render-text';
 import { normalizeExportSettings } from '../../../shared/export-settings';
@@ -268,6 +274,8 @@ export interface EditorController {
   getExportSettings(): ExportSettings;
   /** Chapitres du roman, dans l'ordre de la barre laterale. */
   exportChapterNames(): string[];
+  /** Categories de la bible (avec nombre de fiches) pour la fenetre d'export. */
+  exportBibleCategories(): ExportBibleCategory[];
   /** Enregistre les reglages d'export dans le projet. */
   saveExportSettings(settings: ExportSettings): Promise<void>;
   /** Debut du document pour l'apercu de la fenetre d'export. */
@@ -3273,6 +3281,10 @@ export function useEditorController({
         return Object.keys(s.projectData.chapters);
       },
 
+      exportBibleCategories() {
+        return listBibleCategories(s.projectData, registry);
+      },
+
       buildExportPreview(settings) {
         // Seul le debut du roman est analyse : l'apercu reste fluide meme
         // pour un long manuscrit.
@@ -3296,19 +3308,28 @@ export function useEditorController({
           },
           {
             projectName,
+            bible: createBibleSource(registry, t, getLanguage()),
             language: getLanguage(),
             labels: { tableOfContents: t('exportTableOfContents') }
           }
         );
 
         let budget = maxBlocks;
-        let truncated = included.length > shown.size;
+        const bibleOnly = normalized.bible.mode === 'only';
+        const novelShown = bibleOnly ? 0 : shown.size;
+        let truncated = !bibleOnly && included.length > shown.size;
         const chapters: typeof full.chapters = [];
 
+        let chapterIndex = -1;
         for (const chapter of full.chapters) {
+          chapterIndex += 1;
+
+          // La bible a son propre budget : elle reste visible dans l'apercu.
+          if (chapterIndex === novelShown && chapterIndex > 0) budget = maxBlocks;
+
           if (budget <= 0) {
             truncated = true;
-            break;
+            continue;
           }
 
           const blocks = chapter.blocks.slice(0, budget);
@@ -3317,7 +3338,12 @@ export function useEditorController({
           chapters.push({ ...chapter, blocks });
         }
 
-        return { document: { ...full, chapters }, tocTitles: included, truncated };
+        const tocTitles = [
+          ...(bibleOnly ? [] : included),
+          ...full.chapters.slice(novelShown).map((chapter) => chapter.title)
+        ];
+
+        return { document: { ...full, chapters }, tocTitles, truncated };
       },
 
       async saveExportSettings(settings) {
@@ -3333,7 +3359,14 @@ export function useEditorController({
 
         const chapterNames = Object.keys(s.projectData.chapters);
 
-        if (kind !== 'project' && !screenplay && chapterNames.length === 0) {
+        const bibleOnly =
+          !screenplay &&
+          normalizeExportSettings(s.projectData.exportSettings).bible.mode === 'only';
+        const hasContent = bibleOnly
+          ? Object.keys(s.projectData.world ?? {}).length > 0
+          : chapterNames.length > 0;
+
+        if (kind !== 'project' && !screenplay && !hasContent) {
           showInfo(t('nothingToExport'));
           return;
         }
@@ -3355,6 +3388,7 @@ export function useEditorController({
             normalizeExportSettings(s.projectData.exportSettings),
             {
               projectName,
+              bible: createBibleSource(registry, t, getLanguage()),
               language: getLanguage(),
               labels: { tableOfContents: t('exportTableOfContents') }
             }
@@ -3465,7 +3499,7 @@ export function useEditorController({
 
             await window.api.exportDocumentDocx(
               result.filePath,
-              buildNovelExportDocument()
+              await prepareExportImages(buildNovelExportDocument())
             );
 
             showInfo(t('exportDocxSuccess'));
@@ -3505,7 +3539,7 @@ export function useEditorController({
 
             await window.api.exportDocumentOdt(
               result.filePath,
-              buildNovelExportDocument()
+              await prepareExportImages(buildNovelExportDocument())
             );
 
             showInfo(t('exportOdtSuccess'));

@@ -23,6 +23,7 @@ import {
 } from '../shared/export-document';
 import { EXPORT_PAGE_SIZES_MM } from '../shared/export-settings';
 import { buildZip } from './zip-writer';
+import { decodeImageDataUrl } from './export-images';
 
 const ODT_MIME_TYPE = 'application/vnd.oasis.opendocument.text';
 
@@ -33,7 +34,9 @@ const NAMESPACES = [
   'xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0"',
   'xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0"',
   'xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0"',
-  'xmlns:svg="urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0"'
+  'xmlns:svg="urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0"',
+  'xmlns:draw="urn:oasis:names:tc:opendocument:xmlns:drawing:1.0"',
+  'xmlns:xlink="http://www.w3.org/1999/xlink"'
 ].join(' ');
 
 /** Taille d'un point typographique, en centimètres. */
@@ -65,6 +68,23 @@ const MANIFEST = [
   ' <manifest:file-entry manifest:full-path="meta.xml" manifest:media-type="text/xml"/>',
   '</manifest:manifest>'
 ].join('\n');
+
+/** Image du dossier Pictures/ de l'archive. */
+interface OdtPicture {
+  name: string;
+  data: Buffer;
+  mediaType: string;
+}
+
+function buildManifest(pictures: OdtPicture[]): string {
+  if (pictures.length === 0) return MANIFEST;
+
+  const entries = pictures
+    .map((picture) => ` <manifest:file-entry manifest:full-path="${picture.name}" manifest:media-type="${picture.mediaType}"/>`)
+    .join('\n');
+
+  return MANIFEST.replace('</manifest:manifest>', `${entries}\n</manifest:manifest>`);
+}
 
 function cm(value: number): string {
   return `${Math.round(value * 1000) / 1000}cm`;
@@ -194,7 +214,7 @@ function runTextProperties(run: ExportRun): string {
   return properties.length > 0 ? `<style:text-properties ${properties.join(' ')}/>` : '';
 }
 
-function buildContent(doc: ExportDocument): string {
+function buildContent(doc: ExportDocument, pictures: OdtPicture[] = []): string {
   const layout = doc.layout;
   const paragraphStyles = new AutomaticStyles('P', 'paragraph');
   const textStyles = new AutomaticStyles('T', 'text');
@@ -246,6 +266,26 @@ function buildContent(doc: ExportDocument): string {
       .join('');
 
   const renderBlock = (block: ExportBlock): string => {
+    if (block.kind === 'image') {
+      const image = decodeImageDataUrl(block.dataUrl);
+      if (image === null) return '';
+
+      const index = pictures.length + 1;
+      const name = `Pictures/image${index}.${image.extension}`;
+      pictures.push({ name, data: image.data, mediaType: image.mediaType });
+
+      const frame =
+        `<draw:frame draw:name="Image${index}" text:anchor-type="as-char" ` +
+        `svg:width="${cm(block.widthCm)}" svg:height="${cm(block.heightCm)}" draw:z-index="0">` +
+        `<draw:image xlink:href="${name}" xlink:type="simple" xlink:show="embed" xlink:actuate="onLoad"/>` +
+        '</draw:frame>';
+
+      return paragraph(
+        paragraphStyle('Text_20_body', ['fo:text-align="center"', 'fo:text-indent="0cm"'], false),
+        frame
+      );
+    }
+
     if (block.kind === 'empty') {
       return paragraph(paragraphStyle('Text_20_body', [], false), '');
     }
@@ -490,12 +530,16 @@ function buildMeta(doc: ExportDocument): string {
 }
 
 export async function generateExportOdt(filePath: string, doc: ExportDocument): Promise<void> {
+  const pictures: OdtPicture[] = [];
+  const content = buildContent(doc, pictures);
+
   const archive = buildZip([
     { name: 'mimetype', data: ODT_MIME_TYPE, store: true },
-    { name: 'META-INF/manifest.xml', data: MANIFEST },
-    { name: 'content.xml', data: buildContent(doc) },
+    { name: 'META-INF/manifest.xml', data: buildManifest(pictures) },
+    { name: 'content.xml', data: content },
     { name: 'styles.xml', data: buildStyles(doc) },
-    { name: 'meta.xml', data: buildMeta(doc) }
+    { name: 'meta.xml', data: buildMeta(doc) },
+    ...pictures.map((picture) => ({ name: picture.name, data: picture.data }))
   ]);
 
   await fs.promises.writeFile(filePath, archive);

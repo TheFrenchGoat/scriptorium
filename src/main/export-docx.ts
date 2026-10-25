@@ -11,12 +11,14 @@ import {
   Footer,
   Header,
   HeadingLevel,
+  ImageRun,
   Packer,
   PageNumber,
   Paragraph,
   TextRun,
   type ISectionOptions
 } from 'docx';
+import { decodeImageDataUrl } from './export-images';
 import type { ExportBlock, ExportDocument, ExportRun } from '../shared/export-document';
 import {
   chapterStartsNewPage,
@@ -83,6 +85,30 @@ function centered(text: string, base: BaseStyle, options: CenteredOptions): Para
 }
 
 function makeBlock(block: ExportBlock, doc: ExportDocument, base: BaseStyle): Paragraph {
+  if (block.kind === 'image') {
+    const image = decodeImageDataUrl(block.dataUrl);
+    if (image === null) {
+      return new Paragraph({ children: [] });
+    }
+
+    return new Paragraph({
+      alignment: AlignmentType.CENTER,
+      indent: { firstLine: 0 },
+      spacing: { before: 120, after: 120 },
+      keepNext: true,
+      children: [
+        new ImageRun({
+          type: image.extension,
+          data: image.data,
+          transformation: {
+            width: Math.round((block.widthCm / 2.54) * 96),
+            height: Math.round((block.heightCm / 2.54) * 96)
+          }
+        })
+      ]
+    });
+  }
+
   if (block.kind === 'empty') {
     return new Paragraph({
       spacing: { line: base.line },
