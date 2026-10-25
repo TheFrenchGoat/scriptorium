@@ -1389,3 +1389,37 @@ mark.grammar-error:has(.wb-mention) {
   .export-layout { grid-template-columns: minmax(0, 1fr); }
   .export-preview { display: none; }
 }
+
+/* Indicateur "Export en cours" */
+.export-busy-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.25);
+  cursor: progress;
+}
+.export-busy-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 22px;
+  border-radius: 10px;
+  background: rgba(30, 30, 30, 0.92);
+  color: #fff;
+  font-size: 14px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3);
+}
+.export-busy-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: export-busy-spin 0.8s linear infinite;
+}
+@keyframes export-busy-spin {
+  to { transform: rotate(360deg); }
+}

@@ -1,5 +1,6 @@
 // src/renderer/components/editor/useEditorController.ts
 
+import { isExportBusy, setExportBusy } from '../../lib/export/export-busy';
 import { buildScreenplayExportDocument } from '../../lib/screenplay-export';
 import { buildExportDocument } from '../../lib/export/build-document';
 import {
@@ -3350,6 +3351,16 @@ export function useEditorController({
       },
 
       async exportAs(kind) {
+        if (isExportBusy()) {
+          showInfo(t('exportAlreadyRunning'));
+          return;
+        }
+        const pickExportPath = async (...dialogArgs: Parameters<typeof window.api.showSaveDialog>) => {
+          const picked = await window.api.showSaveDialog(...dialogArgs);
+          if (!picked.canceled && picked.filePath) setExportBusy(true);
+          return picked;
+        };
+        try { // indicateur export : debut
         const screenplay = isScreenplayData(s.projectData)
           ? s.projectData.screenplay
           : null;
@@ -3393,7 +3404,7 @@ export function useEditorController({
 
         try {
           if (kind === 'txt') {
-            const result = await window.api.showSaveDialog({
+            const result = await pickExportPath({
               title: 'Exporter en TXT',
               defaultPath: screenplay
                 ? `${projectName}.txt`
@@ -3421,7 +3432,7 @@ export function useEditorController({
           }
 
           if (kind === 'md') {
-            const result = await window.api.showSaveDialog({
+            const result = await pickExportPath({
               title: 'Exporter en Markdown',
               defaultPath: `${projectName}.md`,
               filters: [{ name: 'Markdown', extensions: ['md'] }]
@@ -3443,7 +3454,7 @@ export function useEditorController({
           }
 
           if (kind === 'pdf') {
-            const result = await window.api.showSaveDialog({
+            const result = await pickExportPath({
               title: 'Exporter en PDF',
               defaultPath: `${projectName}.pdf`,
               filters: [{ name: 'PDF', extensions: ['pdf'] }]
@@ -3466,7 +3477,7 @@ export function useEditorController({
 
           if (kind === 'docx') {
             if (screenplay) {
-              const screenplayResult = await window.api.showSaveDialog({
+              const screenplayResult = await pickExportPath({
                 title: getLanguage() === 'fr' ? 'Exporter en DOCX' : 'Export as DOCX',
                 defaultPath: `${projectName}.docx`,
                 filters: [{ name: 'Word', extensions: ['docx'] }]
@@ -3484,7 +3495,7 @@ export function useEditorController({
               return;
             }
 
-            const result = await window.api.showSaveDialog({
+            const result = await pickExportPath({
               title: 'Exporter en DOCX',
               defaultPath: `${projectName} - Complet.docx`,
               filters: [{ name: 'Word', extensions: ['docx'] }]
@@ -3506,7 +3517,7 @@ export function useEditorController({
 
           if (kind === 'odt') {
             if (screenplay) {
-              const screenplayResult = await window.api.showSaveDialog({
+              const screenplayResult = await pickExportPath({
                 title: getLanguage() === 'fr' ? 'Exporter en ODT' : 'Export as ODT',
                 defaultPath: `${projectName}.odt`,
                 filters: [{ name: 'OpenDocument', extensions: ['odt'] }]
@@ -3524,7 +3535,7 @@ export function useEditorController({
               return;
             }
 
-            const result = await window.api.showSaveDialog({
+            const result = await pickExportPath({
               title: getLanguage() === 'fr' ? 'Exporter en ODT' : 'Export as ODT',
               defaultPath: `${projectName} - Complet.odt`,
               filters: [{ name: 'OpenDocument', extensions: ['odt'] }]
@@ -3544,7 +3555,7 @@ export function useEditorController({
             return;
           }
 
-          const result = await window.api.showSaveDialog({
+          const result = await pickExportPath({
             title: 'Exporter le projet complet',
             defaultPath: `${projectName}.scriptorium`,
             filters: [{ name: 'Projet Scriptorium', extensions: ['scriptorium'] }]
@@ -3576,6 +3587,9 @@ export function useEditorController({
           } as const;
 
           showInfo(t(prefix[kind]) + message);
+        }
+        } finally {
+          setExportBusy(false);
         }
       },
 

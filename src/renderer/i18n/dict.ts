@@ -1012,6 +1012,8 @@ export const fr = {
   exportBibleRelationsTitle: 'Relations',
   exportBibleTimelineTitle: 'Chronologie',
   exportBibleEmpty: 'Aucune fiche dans la bible de l’univers.',
+  exportInProgress: 'Export en cours…',
+  exportAlreadyRunning: 'Un export est déjà en cours. Patientez jusqu’à la fin.',
   exportPdfSuccess: 'Export PDF réussi !',
   exportPdfError:
     "Erreur lors de l'export PDF : ",
@@ -2044,6 +2046,8 @@ export const en: Record<TranslationKey, string> = {
   exportBibleRelationsTitle: 'Relations',
   exportBibleTimelineTitle: 'Timeline',
   exportBibleEmpty: 'The world bible has no entries yet.',
+  exportInProgress: 'Exporting…',
+  exportAlreadyRunning: 'An export is already running. Please wait until it finishes.',
   exportPdfSuccess:
     'PDF export successful!',
   exportPdfError:
