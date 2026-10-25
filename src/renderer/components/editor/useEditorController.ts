@@ -66,9 +66,6 @@ import {
 } from '../../lib/project-word-cache';
 import { getDateKey, getStatsBucket } from '../../lib/stats';
 import { renameWritingStatsProject } from '../../lib/writing-stats-rename';
-import { buildDocxData } from '../../lib/docx-export';
-import { buildMarkdown } from '../../lib/markdown-export';
-import { buildPrintHtml } from '../../lib/pdf-export';
 import { describeError } from '../../lib/errors';
 import {
   buildBasicScreenplayPrintHtml,

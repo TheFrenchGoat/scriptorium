@@ -21,9 +21,6 @@ import {
 
 import sanitizeHtml from 'sanitize-html';
 
-import {
-  generateDocx
-} from '../docx-generator';
 
 import { generateExportDocx } from '../export-docx';
 import { generateExportOdt } from '../export-odt';
@@ -42,7 +39,6 @@ import {
 } from '../sanitize';
 
 import type {
-  DocxParagraph,
   ImportedProject,
   OpenDialogOptions,
   ProjectData,
@@ -438,22 +434,6 @@ export function registerFileIpc(): void {
         payload.filePath,
         payload.text,
         'utf8'
-      );
-    }
-  );
-
-  ipcMain.handle(
-    'export:docx',
-    async (
-      _event,
-      payload: {
-        filePath: string;
-        docxData: DocxParagraph[];
-      }
-    ): Promise<void> => {
-      await generateDocx(
-        payload.filePath,
-        payload.docxData
       );
     }
   );

@@ -1045,48 +1045,6 @@ export interface LegacyData {
 // DOCX
 // ============================================================================
 
-export interface DocxRun {
-  text: string;
-  bold?: boolean;
-  italic?: boolean;
-  underline?: boolean;
-  font?: string;
-
-  /**
-   * Taille en points.
-   */
-  size?: number;
-
-  /**
-   * Couleur hexadécimale sans `#`.
-   */
-  color?: string;
-}
-
-export interface DocxParagraph {
-  runs?: DocxRun[];
-
-  isBlock?: boolean;
-  isPageBreak?: boolean;
-  isChapterTitle?: boolean;
-
-  /**
-   * Type de paragraphe scénario.
-   *
-   * Facultatif afin de conserver la compatibilité avec les exports de romans.
-   */
-  screenplayType?: ScreenplayParagraphType;
-
-  /**
-   * Demande au générateur DOCX de conserver ce paragraphe avec le suivant.
-   *
-   * Utilisé notamment pour les en-têtes et les noms de personnages.
-   */
-  keepWithNext?: boolean;
-
-  text?: string;
-}
-
 // ============================================================================
 // DIALOGUES NATIFS
 // ============================================================================
@@ -1262,10 +1220,6 @@ export interface ScriptoriumApi {
   exportScreenplayDocx(filePath: string, doc: import('./screenplay-export').ScreenplayExportDocument): Promise<void>;
   exportScreenplayOdt(filePath: string, doc: import('./screenplay-export').ScreenplayExportDocument): Promise<void>;
   exportDocumentDocx(filePath: string, doc: import('./export-document').ExportDocument): Promise<void>;
-  exportDocx(
-    filePath: string,
-    docxData: DocxParagraph[]
-  ): Promise<boolean>;
 
   exportPdf(
     filePath: string,

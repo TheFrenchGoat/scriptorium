@@ -1,8 +1,8 @@
 // src/main/export-docx.ts
 // Document intermédiaire d'export -> fichier Word (.docx).
 //
-// Remplacera docx-generator.ts pour les romans : format de page, marges,
-// police du modèle, interligne, retrait, en-tête courant et numéros de page.
+// Romans : format de page, marges, police du modèle, interligne, retrait,
+// en-tête courant et numéros de page.
 
 import fs from 'node:fs';
 import {

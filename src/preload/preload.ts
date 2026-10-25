@@ -11,7 +11,6 @@ import {
 } from 'electron';
 
 import type {
-  DocxParagraph,
   EditorPrefs,
   GrammarInstallProgress,
   GrammarPrefs,
@@ -250,18 +249,6 @@ const api: ScriptoriumApi = {
       {
         filePath,
         text
-      }
-    ),
-
-  exportDocx: (
-    filePath: string,
-    docxData: DocxParagraph[]
-  ) =>
-    ipcRenderer.invoke(
-      'export:docx',
-      {
-        filePath,
-        docxData
       }
     ),
 
