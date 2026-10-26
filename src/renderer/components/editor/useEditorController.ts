@@ -12,7 +12,8 @@ import { prepareExportImages } from '../../lib/export/prepare-images';
 import { renderExportHtml, type ExportPreviewSource } from '../../lib/export/render-html';
 import { renderExportMarkdown, renderExportText } from '../../lib/export/render-text';
 import { normalizeExportSettings } from '../../../shared/export-settings';
-import type { ExportSettings } from '../../../shared/types';
+import type { ChapterMeta, ChapterMetaPatch, ExportSettings } from '../../../shared/types';
+import { applyChapterMetaPatch } from '../../lib/chapter-status';
 import { removeGrammarMarksOnMentions } from '../../lib/grammar-check';
 import { countWordsInHtml } from '../../lib/stats';
 import { replaceLibreOfficeFontsInHtml } from './fontAliases';
@@ -226,6 +227,10 @@ export interface EditorController {
   setZoom(next: number): void;
   zoomBy(direction: number): void;
 
+  /** Réglages du chapitre (état, couleur, objectif) ; objet vide si rien n’est défini. */
+  getChapterMeta(name: string): ChapterMeta;
+  /** Modifie les réglages du chapitre puis sauvegarde ; null efface une valeur. */
+  setChapterMeta(name: string, patch: ChapterMetaPatch): void;
   createChapter(name: string): boolean;
   createScene(options?: CreateScreenplaySceneOptions): string | null;
   updateScreenplay(screenplay: ScreenplayProjectData): void;
@@ -378,6 +383,10 @@ function ensureProjectDefaults(projectData: ProjectData): void {
   projectData.writingSessions = Array.isArray(projectData.writingSessions)
     ? projectData.writingSessions
     : [];
+  const rawChapterMeta: unknown = projectData.chapterMeta;
+  if (rawChapterMeta !== undefined && (typeof rawChapterMeta !== 'object' || rawChapterMeta === null || Array.isArray(rawChapterMeta))) {
+    delete projectData.chapterMeta;
+  }
   projectData.goals = Array.isArray(projectData.goals) ? projectData.goals : [];
 }
 
@@ -2017,6 +2026,26 @@ export function useEditorController({
         ctrl.setZoom(s.zoom + direction * EDITOR_ZOOM_STEP);
       },
 
+      /** Réglages du chapitre (copie) ; objet vide si rien n’est défini. */
+      getChapterMeta(name: string): ChapterMeta {
+        const meta = s.projectData?.chapterMeta?.[name];
+        return meta ? { ...meta } : {};
+      },
+
+      /** Modifie l’état, la couleur ou l’objectif d’un chapitre, puis sauvegarde. */
+      setChapterMeta(name: string, patch: ChapterMetaPatch): void {
+        const data = s.projectData;
+        if (!data || !Object.prototype.hasOwnProperty.call(data.chapters, name)) return;
+        const map: Record<string, ChapterMeta> = { ...(data.chapterMeta ?? {}) };
+        const next = applyChapterMetaPatch(map[name], patch);
+        if (next) map[name] = next;
+        else delete map[name];
+        data.chapterMeta = map;
+        setSaveStatus('pending');
+        bump();
+        void saveAll();
+      },
+
       createChapter(name) {
         if (isScreenplayData(s.projectData)) {
           return false;
@@ -2277,6 +2306,7 @@ export function useEditorController({
           delete s.projectData.chapters[key];
 
           history.remove(key);
+          if (s.projectData.chapterMeta) delete s.projectData.chapterMeta[key];
           mentionIndex.removeChapter(key);
         } else {
           const wbBefore = takeWbSnapshot();
@@ -2399,6 +2429,10 @@ export function useEditorController({
           s.projectData.chapters = nextChapters;
 
           history.rename(key, trimmed);
+          if (s.projectData.chapterMeta && key !== trimmed && Object.prototype.hasOwnProperty.call(s.projectData.chapterMeta, key)) {
+            s.projectData.chapterMeta[trimmed] = s.projectData.chapterMeta[key];
+            delete s.projectData.chapterMeta[key];
+          }
           mentionIndex.renameChapter(key, trimmed);
 
           s.openTabs = s.openTabs.map((tab) =>

@@ -681,6 +681,24 @@ export interface ScreenplayProjectData {
 // PROJET
 // ============================================================================
 
+/** État d’avancement d’un chapitre. */
+export type ChapterStatus = 'todo' | 'draft' | 'revision' | 'done';
+
+/** Réglages propres à un chapitre (jamais exportés). */
+export interface ChapterMeta {
+  /** État d’avancement (à écrire si absent). */
+  status?: ChapterStatus;
+  /** Couleur libre (#rrggbb) qui remplace la couleur de l’état. */
+  color?: string;
+  /** Objectif de mots du chapitre (entier positif). */
+  targetWords?: number;
+}
+
+/** Modification partielle des réglages d’un chapitre : null efface la valeur. */
+export type ChapterMetaPatch = {
+  [K in keyof ChapterMeta]?: ChapterMeta[K] | null;
+};
+
 export interface ProjectData {
   /**
    * Type du projet.
@@ -774,6 +792,8 @@ export interface ProjectData {
    * Absent : valeurs du modèle « Manuscrit standard ».
    */
   exportSettings?: ExportSettings;
+  /** Réglages par chapitre (état, couleur, objectif), indexés par nom de chapitre. */
+  chapterMeta?: Record<string, ChapterMeta>;
 }
 // ----------------------------------------------------------------------------
 // Export (fenêtre d’export)

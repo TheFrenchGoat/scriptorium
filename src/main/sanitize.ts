@@ -17,6 +17,8 @@
 import { randomUUID } from 'node:crypto';
 import sanitizeHtml from 'sanitize-html';
 import type {
+  ChapterMeta,
+  ChapterStatus,
   BuiltinWbType,
   CustomWbTypeDef,
   LegacyWbItem,
@@ -1372,6 +1374,38 @@ function sanitizeWritingSessions(value: unknown): WritingSession[] {
   return value.filter((entry): entry is WritingSession => isRecord(entry));
 }
 
+const CHAPTER_STATUS_VALUES: readonly ChapterStatus[] = ['todo', 'draft', 'revision', 'done'];
+const CHAPTER_COLOR_PATTERN = /^#[0-9a-f]{6}$/i;
+const CHAPTER_TARGET_MAX = 10000000;
+
+/**
+ * Nettoie les réglages des chapitres : seuls les chapitres existants, les états connus,
+ * les couleurs #rrggbb et les objectifs entiers positifs sont conservés.
+ */
+function sanitizeChapterMeta(value: unknown, chapters: Record<string, string>): Record<string, ChapterMeta> | undefined {
+  if (!isRecord(value)) return undefined;
+  const result: Record<string, ChapterMeta> = {};
+  for (const [name, raw] of Object.entries(value)) {
+    if (name === '__proto__' || name === 'constructor' || name === 'prototype') continue;
+    if (!Object.prototype.hasOwnProperty.call(chapters, name) || !isRecord(raw)) continue;
+    const meta: ChapterMeta = {};
+    const status = raw['status'];
+    if (typeof status === 'string' && (CHAPTER_STATUS_VALUES as readonly string[]).includes(status)) {
+      meta.status = status as ChapterStatus;
+    }
+    const color = raw['color'];
+    if (typeof color === 'string' && CHAPTER_COLOR_PATTERN.test(color)) {
+      meta.color = color.toLowerCase();
+    }
+    const target = raw['targetWords'];
+    if (typeof target === 'number' && Number.isFinite(target) && target >= 1) {
+      meta.targetWords = Math.min(Math.floor(target), CHAPTER_TARGET_MAX);
+    }
+    if (Object.keys(meta).length > 0) result[name] = meta;
+  }
+  return Object.keys(result).length > 0 ? result : undefined;
+}
+
 function sanitizeGoals(value: unknown): ProjectGoal[] {
   if (!Array.isArray(value)) {
     return [];
@@ -1412,6 +1446,10 @@ export function sanitizeProjectData(projectData: unknown): ProjectData {
     goals: sanitizeGoals(projectData.goals)
   };
 
+  if (projectData.chapterMeta !== undefined) {
+    const chapterMeta = sanitizeChapterMeta(projectData.chapterMeta, result.chapters);
+    if (chapterMeta) result.chapterMeta = chapterMeta;
+  }
   if (projectData.exportSettings !== undefined) {
     result.exportSettings = normalizeExportSettings(projectData.exportSettings);
   }
