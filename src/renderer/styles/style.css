@@ -1565,13 +1565,13 @@ li:has(> .chapter-progress) { position: relative; }
 /* LIENS DE LA BIBLE DESACTIVES (Parametres > Ecriture, lib/wb-links.ts) :
    les mentions restent dans le texte mais s'affichent comme du texte normal.
    !important : la couleur de chaque mention est posee en style inline. */
-body.wb-links-off .wb-mention {
+html[data-wb-links="off"] .wb-mention {
   color: inherit !important;
   border-bottom-color: transparent !important;
   background: none !important;
   cursor: text !important;
 }
-body.wb-links-off .wb-mention::after {
+html[data-wb-links="off"] .wb-mention::after {
   content: none !important;
   display: none !important;
 }
@@ -1580,10 +1580,10 @@ body.wb-links-off .wb-mention::after {
    automatique recopiee par Chromium : <font color>, span colore) prend la
    couleur normale du texte au lieu d'heriter de cette couleur.
    Une couleur choisie par l'auteur (attribut data-user-color) reste respectee. */
-body.wb-links-off font[color] .wb-mention,
-body.wb-links-off [style*="color"] .wb-mention {
+html[data-wb-links="off"] font[color] .wb-mention,
+html[data-wb-links="off"] [style*="color"] .wb-mention {
   color: var(--text-main) !important;
 }
-body.wb-links-off [data-user-color] .wb-mention.wb-mention {
+html[data-wb-links="off"] [data-user-color] .wb-mention.wb-mention {
   color: inherit !important;
 }

@@ -46,7 +46,7 @@ const EXCERPT_LENGTH = 140;
 /** Touches qui ne ferment pas l'aperçu (Ctrl+clic doit rester possible). */
 const MODIFIER_KEYS = ['Control', 'Meta', 'Shift', 'Alt', 'AltGraph', 'CapsLock'];
 
-/** Classe posée sur <body> : masque l'ancienne info-bulle CSS des mentions. */
+/** Classe posée sur <html> (pas <body> : App.tsx en remplace les classes) : masque l'ancienne info-bulle CSS des mentions. */
 const BODY_CLASS = 'wb-hover-enabled';
 
 interface AnchorRect {
@@ -175,9 +175,9 @@ export function WbHoverPreview({ controller }: WbHoverPreviewProps) {
   // -------------------------------------------------------------------------
 
   useEffect(() => {
-    document.body.classList.add(BODY_CLASS);
+    document.documentElement.classList.add(BODY_CLASS);
     return () => {
-      document.body.classList.remove(BODY_CLASS);
+      document.documentElement.classList.remove(BODY_CLASS);
     };
   }, []);
 

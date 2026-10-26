@@ -6,7 +6,7 @@
    Ancienne info-bulle CSS des mentions : masquée quand l'aperçu est actif
    ------------------------------------------------------------------------ */
 
-body.wb-hover-enabled .wb-mention:hover::after {
+html.wb-hover-enabled .wb-mention:hover::after {
   content: none;
   display: none;
 }
