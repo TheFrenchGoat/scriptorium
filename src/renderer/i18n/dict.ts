@@ -1041,6 +1041,7 @@ export const fr = {
   focusModeBtnTitle: 'Mode concentration : masque tout sauf la page (F11)',
   focusModeExit: 'Quitter',
   focusModeExitTitle: 'Quitter le mode concentration (F11 ou Échap)',
+  prefFocusDimLabel: 'Mode concentration : estomper les autres paragraphes',
   exportPdfSuccess: 'Export PDF réussi !',
   exportPdfError:
     "Erreur lors de l'export PDF : ",
@@ -2102,6 +2103,7 @@ export const en: Record<TranslationKey, string> = {
   focusModeBtnTitle: 'Focus mode: hides everything but the page (F11)',
   focusModeExit: 'Exit',
   focusModeExitTitle: 'Exit focus mode (F11 or Esc)',
+  prefFocusDimLabel: 'Focus mode: dim the other paragraphs',
   exportPdfSuccess:
     'PDF export successful!',
   exportPdfError:

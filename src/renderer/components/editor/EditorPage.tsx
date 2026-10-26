@@ -262,6 +262,9 @@ export function EditorPage({
 
         // Liens de la bible dans le texte (Paramètres > Écriture).
         applyWbLinksPref(prefs.wbLinksInText !== false);
+
+        // Mode concentration : estomper les autres paragraphes (Paramètres > Écriture).
+        document.documentElement.setAttribute('data-focus-dim', prefs.focusDimParagraphs === true ? 'on' : 'off');
       },
       []
     );
@@ -715,6 +718,35 @@ export function EditorPage({
     };
     window.addEventListener('keydown', onFocusKey, true);
     return () => window.removeEventListener('keydown', onFocusKey, true);
+  }, [focusMode]);
+
+  useEffect(() => {
+    // Paragraphe du curseur (option « estomper les autres paragraphes ») :
+    // une règle CSS générée à la volée, le texte du chapitre n'est jamais modifié.
+    if (!focusMode) return undefined;
+    const styleEl = document.createElement('style');
+    styleEl.id = 'focus-dim-current';
+    document.head.appendChild(styleEl);
+    const update = () => {
+      const editorEl = document.getElementById('editor');
+      const selection = document.getSelection();
+      const anchor = selection ? selection.anchorNode : null;
+      if (!editorEl || !anchor || !editorEl.contains(anchor)) return;
+      let node: Node | null = anchor;
+      while (node && node.parentNode !== editorEl) node = node.parentNode;
+      if (!node || node.nodeType !== Node.ELEMENT_NODE) {
+        styleEl.textContent = 'html.focus-mode #editor > * { opacity: 1 !important; }';
+        return;
+      }
+      const index = Array.prototype.indexOf.call(editorEl.children, node) + 1;
+      styleEl.textContent = 'html.focus-mode #editor > :nth-child(' + index + ') { opacity: 1 !important; }';
+    };
+    update();
+    document.addEventListener('selectionchange', update);
+    return () => {
+      document.removeEventListener('selectionchange', update);
+      styleEl.remove();
+    };
   }, [focusMode]);
 
   // -----------------------------------------------------------------------

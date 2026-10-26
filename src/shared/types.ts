@@ -971,6 +971,9 @@ export interface EditorPrefs {
    * Absent = activé (comportement des versions précédentes).
    */
   wbLinksInText?: boolean;
+
+  /** Mode concentration : estomper les paragraphes autres que celui du curseur. Absent = désactivé. */
+  focusDimParagraphs?: boolean;
 }
 
 // ============================================================================

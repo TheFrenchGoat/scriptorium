@@ -204,6 +204,16 @@ export function SettingsModal({
             <label className="settings-checkbox-row">
               <input
                 type="checkbox"
+                checked={prefs.focusDimParagraphs === true}
+                onChange={(event) => patchPrefs({ focusDimParagraphs: event.target.checked })}
+              />
+
+              <span>{t('prefFocusDimLabel')}</span>
+            </label>
+
+            <label className="settings-checkbox-row">
+              <input
+                type="checkbox"
                 checked={prefs.wbLinksInText !== false}
                 onChange={(event) => patchPrefs({ wbLinksInText: event.target.checked })}
               />
