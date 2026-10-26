@@ -729,6 +729,18 @@ export function EditorPage({
     const HighlightCtor = (window as unknown as { Highlight?: new (...ranges: Range[]) => unknown }).Highlight;
     if (!registry || !HighlightCtor) return undefined;
     const NAME = 'focus-dim';
+    // Couleur pâle calculée à partir de la couleur réelle du texte (thème clair ou sombre).
+    const colorEl = document.createElement('style');
+    colorEl.id = 'focus-dim-color';
+    document.head.appendChild(colorEl);
+    let lastColor = '';
+    const applyColor = (editorEl: HTMLElement) => {
+      const match = /rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)/.exec(getComputedStyle(editorEl).color);
+      const color = match ? 'rgba(' + match[1] + ', ' + match[2] + ', ' + match[3] + ', 0.3)' : 'rgba(128, 128, 128, 0.5)';
+      if (color === lastColor) return;
+      lastColor = color;
+      colorEl.textContent = 'html.focus-mode[data-focus-dim="on"] #editor::highlight(focus-dim), html.focus-mode[data-focus-dim="on"] #editor *::highlight(focus-dim) { color: ' + color + '; }';
+    };
     const BLOCK_TAGS = new Set(['DIV', 'P', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'LI', 'UL', 'OL', 'BLOCKQUOTE', 'PRE']);
     type Point = { node: Node; offset: number };
     type Break = { end: Point; start: Point };
@@ -809,6 +821,7 @@ export function EditorPage({
         clear();
         return;
       }
+      applyColor(editorEl);
       registry.set(NAME, new HighlightCtor(...ranges));
       active = true;
     };
@@ -834,6 +847,7 @@ export function EditorPage({
       observer.disconnect();
       if (frame) window.cancelAnimationFrame(frame);
       registry.delete(NAME);
+      colorEl.remove();
     };
   }, [focusMode]);
 

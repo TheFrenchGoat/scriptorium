@@ -1667,8 +1667,10 @@ html.focus-mode .editor-scroll-container {
 }
 
 /* Mode concentration : estomper les autres paragraphes (option des Parametres).
-   Surlignage "focus-dim" pose par EditorPage (API Highlight) : le texte n'est pas modifie. */
-html.focus-mode[data-focus-dim="on"] #editor::highlight(focus-dim),
-html.focus-mode[data-focus-dim="on"] #editor *::highlight(focus-dim) {
-  color: color-mix(in srgb, var(--text-main, #888888) 30%, transparent);
+   La couleur pale du surlignage "focus-dim" est generee par EditorPage
+   (style #focus-dim-color) a partir de la couleur du texte du theme. */
+
+/* Mode concentration : la regle graduee est masquee aussi. */
+html.focus-mode .editor-ruler-section {
+  display: none !important;
 }
