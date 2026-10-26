@@ -1667,8 +1667,7 @@ html.focus-mode .editor-scroll-container {
 }
 
 /* Mode concentration : estomper les autres paragraphes (option des Parametres).
-   Le paragraphe du curseur est remis a 1 par une regle generee (EditorPage). */
+   Les autres paragraphes sont estompes par une regle generee (EditorPage). */
 html.focus-mode[data-focus-dim="on"] #editor > * {
-  opacity: 0.28;
   transition: opacity 0.25s ease;
 }

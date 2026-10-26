@@ -721,30 +721,48 @@ export function EditorPage({
   }, [focusMode]);
 
   useEffect(() => {
-    // Paragraphe du curseur (option « estomper les autres paragraphes ») :
-    // une règle CSS générée à la volée, le texte du chapitre n'est jamais modifié.
+    // Option estomper les autres paragraphes : une règle CSS générée à la volée
+    // estompe les paragraphes autres que celui du curseur. Le texte du chapitre
+    // n'est jamais modifié. Curseur hors de la page = rien n'est estompé.
     if (!focusMode) return undefined;
     const styleEl = document.createElement('style');
     styleEl.id = 'focus-dim-current';
     document.head.appendChild(styleEl);
+    let lastRule = '';
+    const setRule = (rule: string) => {
+      if (rule === lastRule) return;
+      lastRule = rule;
+      styleEl.textContent = rule;
+    };
     const update = () => {
       const editorEl = document.getElementById('editor');
       const selection = document.getSelection();
-      const anchor = selection ? selection.anchorNode : null;
-      if (!editorEl || !anchor || !editorEl.contains(anchor)) return;
+      const anchor = selection && selection.rangeCount > 0 ? selection.anchorNode : null;
+      if (!editorEl || !anchor || anchor === editorEl || !editorEl.contains(anchor)) {
+        setRule('');
+        return;
+      }
       let node: Node | null = anchor;
       while (node && node.parentNode !== editorEl) node = node.parentNode;
       if (!node || node.nodeType !== Node.ELEMENT_NODE) {
-        styleEl.textContent = 'html.focus-mode #editor > * { opacity: 1 !important; }';
+        setRule('');
         return;
       }
       const index = Array.prototype.indexOf.call(editorEl.children, node) + 1;
-      styleEl.textContent = 'html.focus-mode #editor > :nth-child(' + index + ') { opacity: 1 !important; }';
+      if (index < 1) {
+        setRule('');
+        return;
+      }
+      setRule('html.focus-mode[data-focus-dim="on"] #editor > :not(:nth-child(' + index + ')) { opacity: 0.28; }');
+    };
+    const schedule = () => {
+      window.requestAnimationFrame(update);
     };
     update();
-    document.addEventListener('selectionchange', update);
+    const eventNames = ['selectionchange', 'input', 'keyup', 'mouseup', 'focusin'];
+    eventNames.forEach((name) => document.addEventListener(name, schedule, true));
     return () => {
-      document.removeEventListener('selectionchange', update);
+      eventNames.forEach((name) => document.removeEventListener(name, schedule, true));
       styleEl.remove();
     };
   }, [focusMode]);
