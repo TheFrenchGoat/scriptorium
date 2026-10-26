@@ -2160,454 +2160,201 @@ export function StatsModal({
 
   const sessionsHistory = (
     <section>
-      <h4
-        style={{
-          marginBottom: 14
-        }}
-      >
-        {t(
-          'statsSessionHistory'
-        )}
+      <h4 className="stats-section-title">
+        {t('statsSessionHistory')}
       </h4>
 
-      {sortedSessions.length ===
-      0 ? (
+      {sortedSessions.length === 0 ? (
         <EmptyPanel>
           {t('statsNoSessions')}
         </EmptyPanel>
       ) : (
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 9
-          }}
-        >
+        <div className="stats-history">
           {sortedSessions.map(
-            (
-              session: WritingSession
-            ) => {
+            (session: WritingSession) => {
               const isSelected =
-                selectedSessionId ===
-                session.id;
+                selectedSessionId === session.id;
 
               const documentNames =
-                getSessionDocumentNames(
-                  session
-                );
+                getSessionDocumentNames(session);
 
               const documentsSummary =
                 documentNames.length > 0
-                  ? documentNames.join(
-                      ', '
-                    )
-                  : t(
-                      'sessionNoDocument'
-                    );
+                  ? documentNames.join(', ')
+                  : t('sessionNoDocument');
+
+              const wordsClass =
+                session.wordsWritten > 0
+                  ? 'stats-positive'
+                  : session.wordsWritten < 0
+                    ? 'stats-negative'
+                    : '';
+
+              const signedWords = `${
+                session.wordsWritten > 0 ? '+' : ''
+              }${session.wordsWritten}`;
+
+              const moodText = session.mood
+                ? `${getMoodEmoji(session.mood)} ${t(
+                    moodTranslationKey(session.mood)
+                  )}`
+                : '\u2014';
+
+              const concentrationText =
+                session.concentration !== undefined &&
+                session.concentration !== null &&
+                session.concentrationScale
+                  ? `${session.concentration}/${session.concentrationScale}`
+                  : '\u2014';
+
+              const energyText =
+                session.energy !== undefined &&
+                session.energy !== null &&
+                session.energyScale
+                  ? `${session.energy}/${session.energyScale}`
+                  : '\u2014';
+
+              const detailItem = (
+                label: string,
+                value: React.ReactNode
+              ): React.ReactElement => (
+                <div>
+                  <dt>{label}</dt>
+                  <dd>{value}</dd>
+                </div>
+              );
 
               return (
                 <div
                   key={session.id}
-                  style={{
-                    overflow: 'hidden',
-                    border: `1px solid ${
-                      isSelected
-                        ? 'var(--accent)'
-                        : 'var(--border)'
-                    }`,
-                    borderRadius:
-                      'var(--radius)',
-                    background:
-                      'var(--bg-input)'
-                  }}
+                  className={
+                    isSelected
+                      ? 'stats-session open'
+                      : 'stats-session'
+                  }
                 >
                   <button
                     type="button"
-                    style={{
-                      width: '100%',
-                      padding: 14,
-                      border: 'none',
-                      borderRadius: 0,
-                      background:
-                        'transparent',
-                      textAlign: 'left'
-                    }}
+                    className="stats-session-row"
+                    aria-expanded={isSelected}
                     onClick={() =>
                       setSelectedSessionId(
-                        isSelected
-                          ? null
-                          : session.id
+                        isSelected ? null : session.id
                       )
                     }
                   >
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems:
-                          'flex-start',
-                        justifyContent:
-                          'space-between',
-                        gap: 15
-                      }}
+                    <span
+                      className="stats-session-chevron"
+                      aria-hidden="true"
                     >
-                      <div
-                        style={{
-                          minWidth: 0,
-                          flex: 1
-                        }}
+                      {'\u25B8'}
+                    </span>
+
+                    <span className="stats-session-main">
+                      <span className="stats-session-date">
+                        {formatSessionDateTime(session.startedAt)}
+                      </span>
+                      <span
+                        className="stats-session-docs"
+                        title={documentsSummary}
                       >
-                        <div
-                          style={{
-                            marginBottom: 5,
-                            fontWeight: 700
-                          }}
-                        >
-                          {formatSessionDateTime(
-                            session.startedAt
-                          )}
-                        </div>
+                        {documentsSummary}
+                      </span>
+                    </span>
 
-                        <div
-                          title={
-                            documentsSummary
-                          }
-                          style={{
-                            overflow:
-                              'hidden',
-                            color:
-                              'var(--text-muted)',
-                            fontSize: 12,
-                            textOverflow:
-                              'ellipsis',
-                            whiteSpace:
-                              'nowrap'
-                          }}
-                        >
-                          {
-                            documentsSummary
-                          }
-                        </div>
-                      </div>
-
-                      <div
-                        style={{
-                          flexShrink: 0,
-                          fontSize: 12,
-                          textAlign:
-                            'right'
-                        }}
+                    {session.mood && (
+                      <span
+                        className="stats-session-mood"
+                        title={t(moodTranslationKey(session.mood))}
                       >
-                        <div>
-                          {formatDuration(
-                            session.durationSeconds
-                          )}
-                        </div>
+                        {getMoodEmoji(session.mood)}
+                      </span>
+                    )}
 
-                        <div
-                          style={{
-                            marginTop: 4,
-                            color:
-                              session.wordsWritten >
-                              0
-                                ? '#10b981'
-                                : session.wordsWritten <
-                                    0
-                                  ? '#ef4444'
-                                  : 'var(--text-muted)'
-                          }}
-                        >
-                          {session.wordsWritten >
-                          0
-                            ? '+'
-                            : ''}
-                          {
-                            session.wordsWritten
-                          }{' '}
-                          {t(
-                            'statsWordsUnit'
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                    <span className="stats-session-figures">
+                      <span>
+                        {formatDuration(session.durationSeconds)}
+                      </span>
+                      <span className={wordsClass}>
+                        {signedWords} {t('statsWordsUnit')}
+                      </span>
+                    </span>
                   </button>
 
                   {isSelected && (
-                    <div
-                      style={{
-                        padding: 14,
-                        borderTop:
-                          '1px solid var(--border)'
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: 'grid',
-                          gridTemplateColumns:
-                            'repeat(auto-fit, minmax(190px, 1fr))',
-                          gap: 10,
-                          marginBottom: 14
-                        }}
-                      >
-                        <div>
-                          <strong>
-                            {t(
-                              'statsSessionProject'
-                            )}
-                            {' : '}
-                          </strong>
-                          {
-                            session.projectName
-                          }
+                    <div className="stats-session-detail">
+                      <dl className="stats-session-grid">
+                        {detailItem(t('statsSessionProject'), session.projectName)}
+                        {detailItem(t('statsSessionStartedAt'), formatSessionDateTime(session.startedAt))}
+                        {detailItem(t('statsSessionEndedAt'), formatSessionDateTime(session.endedAt))}
+                        {detailItem(t('statsSessionDuration'), formatDuration(session.durationSeconds))}
+                        {detailItem(t('statsSessionWords'), signedWords)}
+                        {detailItem(t('statsSessionMood'), moodText)}
+                        {detailItem(t('statsSessionConcentration'), concentrationText)}
+                        {detailItem(t('statsSessionEnergy'), energyText)}
+                        {detailItem(
+                          t('statsSessionDetails'),
+                          session.source === 'pomodoro'
+                            ? t('statsSessionPomodoro')
+                            : t('statsSessionManual')
+                        )}
+                      </dl>
+
+                      <div className="stats-card">
+                        <div className="stats-card-title">
+                          {t('statsSessionDocument')}
                         </div>
-
-                        <div>
-                          <strong>
-                            {t(
-                              'statsSessionStartedAt'
-                            )}
-                            {' : '}
-                          </strong>
-                          {formatSessionDateTime(
-                            session.startedAt
-                          )}
-                        </div>
-
-                        <div>
-                          <strong>
-                            {t(
-                              'statsSessionEndedAt'
-                            )}
-                            {' : '}
-                          </strong>
-                          {formatSessionDateTime(
-                            session.endedAt
-                          )}
-                        </div>
-
-                        <div>
-                          <strong>
-                            {t(
-                              'statsSessionDuration'
-                            )}
-                            {' : '}
-                          </strong>
-                          {formatDuration(
-                            session.durationSeconds
-                          )}
-                        </div>
-
-                        <div>
-                          <strong>
-                            {t(
-                              'statsSessionWords'
-                            )}
-                            {' : '}
-                          </strong>
-                          {session.wordsWritten >
-                          0
-                            ? '+'
-                            : ''}
-                          {
-                            session.wordsWritten
-                          }
-                        </div>
-
-                        <div>
-                          <strong>
-                            {t(
-                              'statsSessionMood'
-                            )}
-                            {' : '}
-                          </strong>
-                          {session.mood
-                            ? `${getMoodEmoji(
-                                session.mood
-                              )} ${t(
-                                moodTranslationKey(
-                                  session.mood
-                                )
-                              )}`
-                            : '—'}
-                        </div>
-
-                        <div>
-                          <strong>
-                            {t(
-                              'statsSessionConcentration'
-                            )}
-                            {' : '}
-                          </strong>
-                          {session.concentration !==
-                            undefined &&
-                          session.concentration !==
-                            null &&
-                          session.concentrationScale
-                            ? `${session.concentration}/${session.concentrationScale}`
-                            : '—'}
-                        </div>
-
-                        <div>
-                          <strong>
-                            {t(
-                              'statsSessionEnergy'
-                            )}
-                            {' : '}
-                          </strong>
-                          {session.energy !==
-                            undefined &&
-                          session.energy !==
-                            null &&
-                          session.energyScale
-                            ? `${session.energy}/${session.energyScale}`
-                            : '—'}
-                        </div>
-
-                        <div>
-                          <strong>
-                            {t(
-                              'statsSessionDetails'
-                            )}
-                            {' : '}
-                          </strong>
-                          {session.source ===
-                          'pomodoro'
-                            ? t(
-                                'statsSessionPomodoro'
-                              )
-                            : t(
-                                'statsSessionManual'
-                              )}
-                        </div>
-                      </div>
-
-                      <div
-                        style={{
-                          ...CARD_STYLE,
-                          marginBottom: 14
-                        }}
-                      >
-                        <strong>
-                          {t(
-                            'statsSessionDocument'
-                          )}
-                        </strong>
-
                         <DocumentsList
                           session={session}
-                          fallback={t(
-                            'sessionNoDocument'
-                          )}
+                          fallback={t('sessionNoDocument')}
                         />
-
                         <DocumentStatsList
                           session={session}
-                          wordsLabel={t(
-                            'statsWordsUnit'
-                          )}
+                          wordsLabel={t('statsWordsUnit')}
                         />
                       </div>
 
                       {session.pomodoro && (
-                        <div
-                          style={{
-                            ...CARD_STYLE,
-                            marginBottom: 14,
-                            fontSize: 13,
-                            lineHeight: 1.7
-                          }}
-                        >
-                          <strong>
-                            {t(
-                              'statsSessionPomodoro'
-                            )}
-                          </strong>
-
-                          <div>
-                            {t(
-                              'statsSessionStartedAt'
-                            )}
-                            {' : '}
-                            {formatSessionTime(
-                              session
-                                .pomodoro
-                                .startedAt
-                            )}
+                        <div className="stats-card stats-session-pomodoro">
+                          <div className="stats-card-title">
+                            {t('statsSessionPomodoro')}
                           </div>
-
                           <div>
-                            {t(
-                              'statsSessionEndedAt'
-                            )}
+                            {t('statsSessionStartedAt')}
                             {' : '}
-                            {formatSessionTime(
-                              session
-                                .pomodoro
-                                .endedAt
-                            )}
+                            {formatSessionTime(session.pomodoro.startedAt)}
                           </div>
-
                           <div>
-                            {t(
-                              'statsSessionDuration'
-                            )}
+                            {t('statsSessionEndedAt')}
                             {' : '}
-                            {formatDuration(
-                              session
-                                .pomodoro
-                                .activeSeconds
-                            )}
+                            {formatSessionTime(session.pomodoro.endedAt)}
+                          </div>
+                          <div>
+                            {t('statsSessionDuration')}
+                            {' : '}
+                            {formatDuration(session.pomodoro.activeSeconds)}
                           </div>
                         </div>
                       )}
 
                       {session.note && (
-                        <div
-                          style={{
-                            ...CARD_STYLE,
-                            marginBottom: 14,
-                            lineHeight: 1.6,
-                            whiteSpace:
-                              'pre-wrap'
-                          }}
-                        >
-                          <strong>
-                            {t(
-                              'statsSessionNote'
-                            )}
-                            {' : '}
-                          </strong>
-
-                          <div
-                            style={{
-                              marginTop: 6
-                            }}
-                          >
-                            {session.note}
+                        <div className="stats-card stats-session-note">
+                          <div className="stats-card-title">
+                            {t('statsSessionNote')}
                           </div>
+                          <div>{session.note}</div>
                         </div>
                       )}
 
-                      <div
-                        style={{
-                          display: 'flex',
-                          justifyContent:
-                            'flex-end'
-                        }}
-                      >
+                      <div className="stats-session-actions">
                         <button
                           type="button"
-                          style={{
-                            color: '#ef4444'
-                          }}
+                          className="stats-danger-btn"
                           onClick={() =>
-                            setSessionToDelete(
-                              session
-                            )
+                            setSessionToDelete(session)
                           }
                         >
-                          {t(
-                            'statsDeleteSession'
-                          )}
+                          {t('statsDeleteSession')}
                         </button>
                       </div>
                     </div>
@@ -2623,17 +2370,10 @@ export function StatsModal({
 
   const goalsPanel = (
     <section>
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent:
-            'space-between',
-          gap: 12,
-          marginBottom: 16
-        }}
-      >
-        <h4>{t('goalsTitle')}</h4>
+      <div className="stats-section-head">
+        <h4 className="stats-section-title">
+          {t('goalsTitle')}
+        </h4>
 
         <button
           type="button"
@@ -2649,229 +2389,118 @@ export function StatsModal({
           {t('goalsNone')}
         </EmptyPanel>
       ) : (
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 12
-          }}
-        >
+        <div className="stats-goals">
           {goalProgress.map(
             (progress) => {
-              const { goal } =
-                progress;
+              const { goal } = progress;
 
-              let deadlineText = t(
-                'goalNoDeadline'
+              let deadlineText = t('goalNoDeadline');
+
+              if (progress.completed) {
+                deadlineText = t('goalCompleted');
+              } else if (progress.overdue) {
+                deadlineText = t('goalOverdue', {
+                  days: Math.abs(
+                    progress.daysRemaining ?? 0
+                  )
+                });
+              } else if (
+                progress.daysRemaining === 0
+              ) {
+                deadlineText = t('goalDueToday');
+              } else if (
+                progress.daysRemaining !== null
+              ) {
+                deadlineText = t('goalDaysRemaining', {
+                  days: progress.daysRemaining
+                });
+              }
+
+              const percent = clamp(
+                progress.percent,
+                0,
+                100
               );
 
-              if (
-                progress.completed
-              ) {
-                deadlineText = t(
-                  'goalCompleted'
-                );
-              } else if (
-                progress.overdue
-              ) {
-                deadlineText = t(
-                  'goalOverdue',
-                  {
-                    days: Math.abs(
-                      progress.daysRemaining ??
-                        0
-                    )
-                  }
-                );
-              } else if (
-                progress.daysRemaining ===
-                0
-              ) {
-                deadlineText = t(
-                  'goalDueToday'
-                );
-              } else if (
-                progress.daysRemaining !==
-                null
-              ) {
-                deadlineText = t(
-                  'goalDaysRemaining',
-                  {
-                    days:
-                      progress.daysRemaining
-                  }
-                );
-              }
+              const goalClass = progress.completed
+                ? 'stats-goal done'
+                : progress.overdue
+                  ? 'stats-goal overdue'
+                  : 'stats-goal';
 
               return (
                 <div
                   key={goal.id}
-                  style={{
-                    ...CARD_STYLE,
-                    padding: 16
-                  }}
+                  className={goalClass}
                 >
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems:
-                        'flex-start',
-                      justifyContent:
-                        'space-between',
-                      gap: 12
-                    }}
-                  >
-                    <div
-                      style={{
-                        minWidth: 0
-                      }}
-                    >
-                      <h4
-                        style={{
-                          overflowWrap:
-                            'anywhere'
-                        }}
-                      >
+                  <div className="stats-goal-head">
+                    <div className="stats-goal-info">
+                      <div className="stats-goal-title">
                         {goal.title}
-                      </h4>
-
-                      <div
-                        style={{
-                          marginTop: 5,
-                          color:
-                            progress.overdue
-                              ? '#ef4444'
-                              : progress.completed
-                                ? '#10b981'
-                                : 'var(--text-muted)',
-                          fontSize: 12
-                        }}
-                      >
+                      </div>
+                      <div className="stats-goal-deadline">
                         {goal.deadline
-                          ? `${goal.deadline} — ${deadlineText}`
+                          ? `${goal.deadline} \u2014 ${deadlineText}`
                           : deadlineText}
                       </div>
                     </div>
 
-                    <div
-                      style={{
-                        display: 'flex',
-                        flexShrink: 0,
-                        gap: 6
-                      }}
-                    >
+                    <div className="stats-goal-percent">
+                      {Math.round(progress.percent)}%
+                    </div>
+
+                    <div className="stats-goal-actions">
                       <button
                         type="button"
+                        className="stats-icon-btn"
                         title={t('edit')}
+                        aria-label={t('edit')}
                         onClick={() =>
-                          openGoalEdition(
-                            goal
-                          )
+                          openGoalEdition(goal)
                         }
                       >
-                        ✏️
+                        {'\u270F\uFE0F'}
                       </button>
 
                       <button
                         type="button"
-                        title={t(
-                          'delete'
-                        )}
-                        style={{
-                          color:
-                            '#ef4444'
-                        }}
+                        className="stats-icon-btn danger"
+                        title={t('delete')}
+                        aria-label={t('delete')}
                         onClick={() =>
-                          setGoalToDelete(
-                            goal
-                          )
+                          setGoalToDelete(goal)
                         }
                       >
-                        🗑
+                        {'\uD83D\uDDD1'}
                       </button>
                     </div>
                   </div>
 
                   <div
-                    style={{
-                      height: 14,
-                      marginTop: 15,
-                      overflow: 'hidden',
-                      border:
-                        '1px solid var(--border)',
-                      borderRadius: 999,
-                      background:
-                        'var(--bg-app)'
-                    }}
+                    className="stats-goal-bar"
+                    role="progressbar"
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={Math.round(percent)}
                   >
                     <div
-                      style={{
-                        width: `${clamp(
-                          progress.percent,
-                          0,
-                          100
-                        )}%`,
-                        height: '100%',
-                        borderRadius: 999,
-                        background:
-                          progress.completed
-                            ? '#10b981'
-                            : 'var(--accent)',
-                        transition:
-                          'width 0.2s ease'
-                      }}
+                      className="stats-goal-fill"
+                      style={{ width: `${percent}%` }}
                     />
                   </div>
 
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems:
-                        'center',
-                      justifyContent:
-                        'space-between',
-                      gap: 10,
-                      marginTop: 8,
-                      color:
-                        'var(--text-muted)',
-                      fontSize: 12
-                    }}
-                  >
-                    <span>
-                      {Math.round(
-                        progress.percent
-                      )}
-                      %
-                    </span>
-
-                    {goal.progressMode ===
-                      'words' &&
-                    progress.targetValue !==
-                      null ? (
-                      <span>
-                        {t(
-                          'goalWordsProgress',
-                          {
-                            current:
-                              progress.currentValue,
-                            target:
-                              progress.targetValue
-                          }
-                        )}
-                      </span>
-                    ) : (
-                      <span>
-                        {t(
-                          'goalManualProgressLabel',
-                          {
-                            progress:
-                              Math.round(
-                                progress.percent
-                              )
-                          }
-                        )}
-                      </span>
-                    )}
+                  <div className="stats-goal-foot">
+                    {goal.progressMode === 'words' &&
+                    progress.targetValue !== null
+                      ? t('goalWordsProgress', {
+                          current: progress.currentValue,
+                          target: progress.targetValue
+                        })
+                      : t('goalManualProgressLabel', {
+                          progress: Math.round(
+                            progress.percent
+                          )
+                        })}
                   </div>
                 </div>
               );
