@@ -17,6 +17,7 @@ import React, {
   useRef,
   useState
 } from 'react';
+import { createPortal } from 'react-dom';
 import { useI18n } from '../../i18n';
 import { Modal } from '../common/Modal';
 import {
@@ -165,6 +166,12 @@ export interface TimerProps {
   /** Fenêtre « Session et statistiques » ouverte. */
   statsOpen: boolean;
   onStatsOpenChange: (open: boolean) => void;
+
+  /**
+   * Emplacement du bouton dans la barre d'outils (fourni par Toolbar).
+   * Tant qu'il n'existe pas, le bouton reste dans l'en-tête.
+   */
+  sessionSlot?: HTMLElement | null;
 }
 
 function createSessionId(): string {
@@ -339,7 +346,7 @@ function isEmptySession(
 export function Timer({
   controller,
   statsOpen,
-  onStatsOpenChange
+  onStatsOpenChange, sessionSlot
 }: TimerProps): React.ReactElement {
   const { t } = useI18n();
 
@@ -1478,7 +1485,9 @@ export function Timer({
         )
       : [];
 
-  return (
+  // Bouton Session et encart « Temps écoulé ». Le chronomètre reste dans ce
+  // composant : la session ne repart jamais à zéro si la barre d'outils change.
+  const sessionButton = (
     <div className="session-anchor">
       <button
         id="btnSession"
@@ -1518,6 +1527,17 @@ export function Timer({
           </div>
         </div>
       )}
+
+    </div>
+  );
+
+  // Barre d'outils affichée : le bouton y est placé par un portail.
+  // Sinon, il reste ici, dans l'en-tête.
+  return (
+    <>
+      {sessionSlot
+        ? createPortal(sessionButton, sessionSlot)
+        : sessionButton}
 
       <StatsModal
         open={statsOpen}
@@ -1938,9 +1958,9 @@ export function Timer({
           />
         </div>
       </Modal>
-    </div>
+    </>
   );
 }
 
-/** Le bouton est dans l'en-tête, redessiné souvent : version mémorisée. */
+/** Rendu dans l'en-tête et redessiné souvent : version mémorisée. */
 export const MemoTimer = React.memo(Timer);

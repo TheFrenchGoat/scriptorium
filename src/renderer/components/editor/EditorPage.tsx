@@ -325,6 +325,10 @@ export function EditorPage({
       setOpenModal(statsOpen ? 'stats' : null);
     }, []);
 
+  // Emplacement du bouton Session dans la barre d'outils (rempli par Toolbar).
+  const [sessionSlot, setSessionSlot] =
+    useState<HTMLElement | null>(null);
+
   const handleBack =
     useCallback((): void => {
       void controller
@@ -1207,6 +1211,7 @@ export function EditorPage({
             controller={controller}
             statsOpen={openModal === 'stats'}
             onStatsOpenChange={setStatsOpen}
+            sessionSlot={sessionSlot}
           />
 
           <button
@@ -1225,6 +1230,7 @@ export function EditorPage({
 
       <Toolbar
         controller={controller}
+        sessionSlotRef={setSessionSlot}
         onOpenGlobalSearch={() => {
           setOpenModal(
             'globalSearch'

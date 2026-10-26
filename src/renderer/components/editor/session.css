@@ -129,3 +129,13 @@
 
 .session-presets .settings-choice-btn { min-width: 0; }
 .session-presets input { width: 110px; }
+
+/* Emplacement du bouton Session : tout à droite de la barre d'outils.
+   Le bouton y est placé par Timer (portail React). */
+.toolbar-session-slot {
+  display: inline-flex;
+  align-items: center;
+  margin-left: auto;
+}
+
+.toolbar-session-slot:empty { display: none; }

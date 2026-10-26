@@ -58,6 +58,8 @@ export interface ToolbarProps {
   controller: EditorController;
   onOpenGlobalSearch: () => void;
   onOpenReplace: () => void;
+  /** Reçoit l'emplacement où Timer affiche le bouton Session. */
+  sessionSlotRef?: (node: HTMLDivElement | null) => void;
 }
 
 interface FontChoice {
@@ -593,7 +595,8 @@ const ALIGN_JUSTIFY_PATH = 'M2 3.5H16M2 7.2H16M2 10.8H16M2 14.5H16';
 export function Toolbar({
   controller,
   onOpenGlobalSearch,
-  onOpenReplace
+  onOpenReplace,
+  sessionSlotRef
 }: ToolbarProps): React.ReactElement {
   const { t, lang } = useI18n();
   const status = useEditorStatus(controller.status);
@@ -1567,6 +1570,9 @@ export function Toolbar({
       <button type="button" title={t('replaceBtnTitle')} onClick={onOpenReplace}>
         {t('replaceBtn')}
       </button>
+
+      {/* Bouton Session (placé ici par Timer, via un portail), tout à droite. */}
+      <div className="toolbar-session-slot" ref={sessionSlotRef} />
     </div>
   );
 }
