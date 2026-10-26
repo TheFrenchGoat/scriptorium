@@ -50,14 +50,12 @@ import type {
   WritingSessionMood
 } from '../../../../shared/types';
 import type { EditorController } from '../useEditorController';
+import './stats.css';
 
 export interface StatsModalProps {
   open: boolean;
   controller: EditorController;
   onClose: () => void;
-
-  /** Bloc « Session en cours » affiché au-dessus des onglets. */
-  sessionPanel?: React.ReactNode;
 }
 
 type StatsTab =
@@ -122,10 +120,19 @@ const PERIODS: {
   }
 ];
 
-const TAB_BUTTON_STYLE: React.CSSProperties = {
-  flex: 1,
-  minWidth: 130
-};
+const STATS_TABS: {
+  value: StatsTab;
+  labelKey:
+    | 'statsTabOverview'
+    | 'statsWritingCalendar'
+    | 'statsTabSessions'
+    | 'statsTabGoals';
+}[] = [
+  { value: 'overview', labelKey: 'statsTabOverview' },
+  { value: 'calendar', labelKey: 'statsWritingCalendar' },
+  { value: 'sessions', labelKey: 'statsTabSessions' },
+  { value: 'goals', labelKey: 'statsTabGoals' }
+];
 
 const CARD_STYLE: React.CSSProperties = {
   padding: 14,
@@ -861,7 +868,6 @@ function CalendarCell({
 
 export function StatsModal({
   open,
-  sessionPanel,
   controller,
   onClose
 }: StatsModalProps): React.ReactElement {
@@ -2895,91 +2901,31 @@ export function StatsModal({
           </button>
         }
       >
-        {sessionPanel}
-
         <div
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: 8,
-            margin: '10px 0 18px'
-          }}
+          className="stats-tabs"
+          role="tablist"
         >
-          <button
-            type="button"
-            className={
-              tab === 'overview'
-                ? 'settings-choice-btn active'
-                : 'settings-choice-btn'
-            }
-            style={TAB_BUTTON_STYLE}
-            onClick={() =>
-              setTab('overview')
-            }
-          >
-            {t(
-              'statsTabOverview'
-            )}
-          </button>
-
-          <button
-            type="button"
-            className={
-              tab === 'calendar'
-                ? 'settings-choice-btn active'
-                : 'settings-choice-btn'
-            }
-            style={TAB_BUTTON_STYLE}
-            onClick={() =>
-              setTab('calendar')
-            }
-          >
-            {t(
-              'statsWritingCalendar'
-            )}
-          </button>
-
-          <button
-            type="button"
-            className={
-              tab === 'sessions'
-                ? 'settings-choice-btn active'
-                : 'settings-choice-btn'
-            }
-            style={TAB_BUTTON_STYLE}
-            onClick={() =>
-              setTab('sessions')
-            }
-          >
-            {t(
-              'statsTabSessions'
-            )}
-          </button>
-
-          <button
-            type="button"
-            className={
-              tab === 'goals'
-                ? 'settings-choice-btn active'
-                : 'settings-choice-btn'
-            }
-            style={TAB_BUTTON_STYLE}
-            onClick={() =>
-              setTab('goals')
-            }
-          >
-            {t('statsTabGoals')}
-          </button>
+          {STATS_TABS.map((item) => (
+            <button
+              key={item.value}
+              type="button"
+              role="tab"
+              aria-selected={tab === item.value}
+              className={
+                tab === item.value
+                  ? 'stats-tab active'
+                  : 'stats-tab'
+              }
+              onClick={() => setTab(item.value)}
+            >
+              {t(item.labelKey)}
+            </button>
+          ))}
         </div>
 
         {(tab === 'overview' ||
           tab === 'sessions') && (
-          <div
-            style={{
-              ...CARD_STYLE,
-              marginBottom: 20
-            }}
-          >
+          <div className="stats-period">
             <label
               className="wb-label"
               style={{
