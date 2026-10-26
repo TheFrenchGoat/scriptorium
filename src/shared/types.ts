@@ -965,6 +965,12 @@ export interface EditorPrefs {
 
   /** Largeur du panneau gauche (Chapitres / World Building), en pixels. */
   sidebarWidth?: number;
+
+  /**
+   * Liens de la bible dans le texte : noms des fiches colorés et cliquables.
+   * Absent = activé (comportement des versions précédentes).
+   */
+  wbLinksInText?: boolean;
 }
 
 // ============================================================================

@@ -1561,3 +1561,17 @@ li:has(> .chapter-progress) { position: relative; }
 .chapter-status-track { height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; }
 .chapter-status-track > span { display: block; height: 100%; border-radius: inherit; }
 .chapter-status-progress-text { margin-top: 4px; color: var(--text-muted); font-size: 12px; }
+
+/* LIENS DE LA BIBLE DESACTIVES (Parametres > Ecriture, lib/wb-links.ts) :
+   les mentions restent dans le texte mais s'affichent comme du texte normal.
+   !important : la couleur de chaque mention est posee en style inline. */
+body.wb-links-off .wb-mention {
+  color: inherit !important;
+  border-bottom-color: transparent !important;
+  background: none !important;
+  cursor: text !important;
+}
+body.wb-links-off .wb-mention::after {
+  content: none !important;
+  display: none !important;
+}

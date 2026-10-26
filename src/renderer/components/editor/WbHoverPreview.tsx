@@ -13,6 +13,7 @@
 // Règle du projet : aucune barre oblique inverse suivie d'une parenthèse ou
 // d'un crochet dans ce fichier.
 
+import { wbLinksEnabled } from '../../lib/wb-links';
 import { WbIconContent } from '../common/WbItemIcon';
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent } from 'react';
 import { createPortal } from 'react-dom';
@@ -202,7 +203,7 @@ export function WbHoverPreview({ controller }: WbHoverPreviewProps) {
       }
 
       const mention = target.closest<HTMLElement>('.wb-mention[data-wb-key]');
-      if (!mention) {
+      if (!mention || !wbLinksEnabled()) {
         scheduleHide();
         return;
       }

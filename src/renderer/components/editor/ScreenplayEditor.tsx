@@ -20,6 +20,7 @@
 // - seuls le texte et les en-têtes des scènes sont restaurés : les scènes
 //   créées, supprimées ou renommées depuis la barre latérale ne sont pas touchées.
 
+import { wbLinksEnabled } from '../../lib/wb-links';
 import React, {
   useCallback,
   useEffect,
@@ -447,7 +448,7 @@ function SceneHeadingEditor({
   const handleClick = useCallback((event: React.MouseEvent<HTMLDivElement>): void => {
     const mention = (event.target as HTMLElement).closest<HTMLElement>('.wb-mention');
 
-    if (!mention) {
+    if (!mention || !wbLinksEnabled()) {
       return;
     }
 

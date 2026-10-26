@@ -201,6 +201,20 @@ export function SettingsModal({
               />
             </div>
 
+            <label className="settings-checkbox-row">
+              <input
+                type="checkbox"
+                checked={prefs.wbLinksInText !== false}
+                onChange={(event) => patchPrefs({ wbLinksInText: event.target.checked })}
+              />
+
+              <span>{t('prefWbLinksLabel')}</span>
+            </label>
+
+            <p style={{ margin: '4px 0 16px', fontSize: 12, color: 'var(--text-muted)' }}>
+              {t('prefWbLinksHint')}
+            </p>
+
             <ReadingPreview
               fontFamily={prefs.fontFamily ?? "'Roboto', sans-serif"}
               lineHeight={prefs.lineHeight ?? 1.6}

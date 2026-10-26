@@ -24,6 +24,7 @@
 // L'aperçu d'une fiche au survol d'un nom surligné (WbHoverPreview.tsx)
 // s'affiche par-dessus toute la fenêtre ; il ne modifie pas le texte.
 
+import { applyWbLinksPref } from '../../lib/wb-links';
 import {
   applySidebarWidth,
   restoreSidebarWidth,
@@ -258,6 +259,9 @@ export function EditorPage({
             prefs.firstLineIndent ?? 0
           }px`
         );
+
+        // Liens de la bible dans le texte (Paramètres > Écriture).
+        applyWbLinksPref(prefs.wbLinksInText !== false);
       },
       []
     );

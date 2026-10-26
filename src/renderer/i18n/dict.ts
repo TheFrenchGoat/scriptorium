@@ -1027,6 +1027,9 @@ export const fr = {
   chapterTargetPlaceholder: 'Aucun',
   chapterTargetUnit: 'mots',
   chapterTargetProgress: '{words} / {target} mots ({percent} %)',
+  prefWbLinksLabel: 'Liens de la bible dans le texte',
+  prefWbLinksHint:
+    'Les noms des fiches sont colorés et cliquables, avec un aperçu au survol. Désactivé, le texte reste neutre, mais la liste « Mentionné dans » de chaque fiche continue de fonctionner.',
   exportPdfSuccess: 'Export PDF réussi !',
   exportPdfError:
     "Erreur lors de l'export PDF : ",
@@ -2074,6 +2077,9 @@ export const en: Record<TranslationKey, string> = {
   chapterTargetPlaceholder: 'None',
   chapterTargetUnit: 'words',
   chapterTargetProgress: '{words} / {target} words ({percent}%)',
+  prefWbLinksLabel: 'World bible links in the text',
+  prefWbLinksHint:
+    'Entry names are coloured and clickable, with a preview on hover. When turned off, the text stays plain, but the "Mentioned in" list of each entry keeps working.',
   exportPdfSuccess:
     'PDF export successful!',
   exportPdfError:

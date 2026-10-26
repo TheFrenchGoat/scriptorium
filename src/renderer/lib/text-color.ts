@@ -484,7 +484,8 @@ export function stripAutomaticTextColors(
 
   // Couleurs personnalisées des fiches présentes dans le chapitre.
   root.querySelectorAll<HTMLElement>('.wb-mention').forEach((mention) => {
-    const key = colorToRgbKey(window.getComputedStyle(mention).color);
+    // Couleur posée sur la mention : juste même si les liens sont masqués (wb-links-off).
+    const key = colorToRgbKey(mention.style.color || window.getComputedStyle(mention).color);
 
     if (key) {
       automaticColors.add(key);

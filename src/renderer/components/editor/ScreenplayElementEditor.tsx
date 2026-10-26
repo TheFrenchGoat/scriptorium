@@ -21,6 +21,7 @@
 // - un Ctrl+clic (Cmd+clic) envoie l'événement WB_OPEN_TAB_EVENT, que le
 //   contrôleur de l'éditeur écoute pour ouvrir la fiche dans un onglet.
 
+import { wbLinksEnabled } from '../../lib/wb-links';
 import React, {
   useCallback,
   useEffect,
@@ -790,7 +791,7 @@ export function ScreenplayElementEditor({
             '.wb-mention'
           );
 
-        if (!mention) {
+        if (!mention || !wbLinksEnabled()) {
           return;
         }
 

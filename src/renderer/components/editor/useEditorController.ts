@@ -1,5 +1,6 @@
 // src/renderer/components/editor/useEditorController.ts
 
+import { wbLinksEnabled } from '../../lib/wb-links';
 import { isExportBusy, setExportBusy } from '../../lib/export/export-busy';
 import { buildScreenplayExportDocument } from '../../lib/screenplay-export';
 import { buildExportDocument } from '../../lib/export/build-document';
@@ -1782,7 +1783,8 @@ export function useEditorController({
         const target = event.target as HTMLElement;
         const mention = target.closest<HTMLElement>('.wb-mention');
 
-        if (!mention) {
+        // Liens de la bible désactivés : le clic reste un clic normal.
+        if (!mention || !wbLinksEnabled()) {
           return;
         }
 
