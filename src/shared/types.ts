@@ -1185,6 +1185,7 @@ export interface ScriptoriumApi {
    * Ajoute une tâche à terminer avant la fermeture de la fenêtre
    * (enregistrement). Retourne la fonction qui la retire.
    */
+  setFullScreen(enabled: boolean): Promise<void>;
   onBeforeClose(
     handler: () => Promise<void> | void
   ): () => void;

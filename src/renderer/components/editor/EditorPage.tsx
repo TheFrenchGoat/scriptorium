@@ -679,6 +679,45 @@ export function EditorPage({
   }, [controller, controller.ready]);
 
   // -----------------------------------------------------------------------
+  // MODE CONCENTRATION
+  // -----------------------------------------------------------------------
+  const [focusMode, setFocusMode] = useState(false);
+
+  useEffect(() => {
+    const rootEl = document.documentElement;
+    if (focusMode) {
+      rootEl.classList.add('focus-mode');
+    } else {
+      rootEl.classList.remove('focus-mode');
+    }
+    window.api.setFullScreen(focusMode).catch(() => undefined);
+  }, [focusMode]);
+
+  useEffect(() => {
+    return () => {
+      document.documentElement.classList.remove('focus-mode');
+      window.api.setFullScreen(false).catch(() => undefined);
+    };
+  }, []);
+
+  useEffect(() => {
+    // F11 : entrer / sortir. Échap : sortir, sauf si une modale ou le panneau Session est ouvert.
+    // Phase de capture : ce gestionnaire passe en premier (avant la fermeture des modales).
+    const onFocusKey = (event: KeyboardEvent) => {
+      if (event.key === 'F11') {
+        event.preventDefault();
+        if (!event.repeat) setFocusMode((value) => !value);
+        return;
+      }
+      if (event.key !== 'Escape' || !focusMode) return;
+      if (document.querySelector('.modal, .session-pop')) return;
+      setFocusMode(false);
+    };
+    window.addEventListener('keydown', onFocusKey, true);
+    return () => window.removeEventListener('keydown', onFocusKey, true);
+  }, [focusMode]);
+
+  // -----------------------------------------------------------------------
   // RACCOURCIS CLAVIER
   // -----------------------------------------------------------------------
 
@@ -1231,6 +1270,8 @@ export function EditorPage({
       <Toolbar
         controller={controller}
         sessionSlotRef={setSessionSlot}
+        focusMode={focusMode}
+        onToggleFocusMode={() => { setFocusMode((value) => !value); }}
         onOpenGlobalSearch={() => {
           setOpenModal(
             'globalSearch'

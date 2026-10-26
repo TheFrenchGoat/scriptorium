@@ -1037,6 +1037,10 @@ export const fr = {
   sessionMoodQuestion: 'Comment s’est passée cette session ?',
   sessionSkipShort: 'Passer',
   sessionReviewHint: 'La session est déjà enregistrée. Ces détails sont facultatifs.',
+  focusModeBtn: 'Concentration',
+  focusModeBtnTitle: 'Mode concentration : masque tout sauf la page (F11)',
+  focusModeExit: 'Quitter',
+  focusModeExitTitle: 'Quitter le mode concentration (F11 ou Échap)',
   exportPdfSuccess: 'Export PDF réussi !',
   exportPdfError:
     "Erreur lors de l'export PDF : ",
@@ -2094,6 +2098,10 @@ export const en: Record<TranslationKey, string> = {
   sessionMoodQuestion: 'How did this session go?',
   sessionSkipShort: 'Skip',
   sessionReviewHint: 'The session is already saved. These details are optional.',
+  focusModeBtn: 'Focus',
+  focusModeBtnTitle: 'Focus mode: hides everything but the page (F11)',
+  focusModeExit: 'Exit',
+  focusModeExitTitle: 'Exit focus mode (F11 or Esc)',
   exportPdfSuccess:
     'PDF export successful!',
   exportPdfError:

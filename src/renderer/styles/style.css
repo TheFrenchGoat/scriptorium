@@ -1587,3 +1587,81 @@ html[data-wb-links="off"] [style*="color"] .wb-mention {
 html[data-wb-links="off"] [data-user-color] .wb-mention.wb-mention {
   color: inherit !important;
 }
+
+/* ---------- Mode concentration (F11) ---------- */
+html.focus-mode .editor-header,
+html.focus-mode .workspace .sidebar,
+html.focus-mode #sidebarResizeHandle,
+html.focus-mode .workspace .tabs-bar,
+html.focus-mode .workspace .editor-ruler-wrap,
+html.focus-mode .workspace .status {
+  display: none !important;
+}
+
+/* La barre d'outils devient deux petits boutons flottants (Session et Quitter) */
+html.focus-mode :has(> .toolbar-session-slot) {
+  position: fixed;
+  top: 10px;
+  right: 18px;
+  bottom: auto;
+  left: auto;
+  z-index: 60;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+  width: auto;
+  height: auto;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
+  opacity: 0.35;
+  transition: opacity 0.2s ease;
+}
+
+html.focus-mode :has(> .toolbar-session-slot):hover,
+html.focus-mode :has(> .toolbar-session-slot):focus-within {
+  opacity: 1;
+}
+
+html.focus-mode :has(> .toolbar-session-slot) > :not(.toolbar-session-slot):not(.toolbar-focus-btn) {
+  display: none !important;
+}
+
+html.focus-mode .toolbar-session-slot {
+  margin-left: 0;
+}
+
+html.focus-mode .editor-scroll-container {
+  padding: 56px 20px 80px;
+}
+
+.toolbar-focus-btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  margin-left: 6px;
+  padding: 0 10px;
+  border: 1px solid rgba(127, 127, 127, 0.35);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.toolbar-focus-btn:hover {
+  background: rgba(127, 127, 127, 0.14);
+}
+
+.toolbar-focus-btn.active {
+  border-color: rgba(127, 127, 127, 0.55);
+  background: rgba(127, 127, 127, 0.18);
+}

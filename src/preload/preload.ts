@@ -629,6 +629,7 @@ const api: ScriptoriumApi = {
     };
   },
 
+  setFullScreen: (enabled: boolean) => ipcRenderer.invoke('window:set-fullscreen', enabled) as Promise<void>,
   onBeforeClose: (
     handler: () => Promise<void> | void
   ) => {

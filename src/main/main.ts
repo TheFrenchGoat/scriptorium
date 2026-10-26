@@ -293,6 +293,10 @@ function setupContentSecurityPolicy(): void {
 }
 
 // --- Câblage IPC (une seule fois, avant la création de la fenêtre) ---
+ipcMain.handle('window:set-fullscreen', (_event, enabled: unknown) => {
+  const target = getWindow();
+  if (target && !target.isDestroyed()) target.setFullScreen(enabled === true);
+});
 registerPersistenceIpc(getWindow);
 registerFileIpc();
 registerBackupIpc();

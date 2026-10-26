@@ -60,6 +60,8 @@ export interface ToolbarProps {
   onOpenReplace: () => void;
   /** Reçoit l'emplacement où Timer affiche le bouton Session. */
   sessionSlotRef?: (node: HTMLDivElement | null) => void;
+  focusMode?: boolean;
+  onToggleFocusMode?: () => void;
 }
 
 interface FontChoice {
@@ -596,7 +598,9 @@ export function Toolbar({
   controller,
   onOpenGlobalSearch,
   onOpenReplace,
-  sessionSlotRef
+  sessionSlotRef,
+  focusMode = false,
+  onToggleFocusMode
 }: ToolbarProps): React.ReactElement {
   const { t, lang } = useI18n();
   const status = useEditorStatus(controller.status);
@@ -1573,6 +1577,15 @@ export function Toolbar({
 
       {/* Bouton Session (placé ici par Timer, via un portail), tout à droite. */}
       <div className="toolbar-session-slot" ref={sessionSlotRef} />
+      <button
+        type="button"
+        className={focusMode ? 'toolbar-focus-btn active' : 'toolbar-focus-btn'}
+        title={focusMode ? t('focusModeExitTitle') : t('focusModeBtnTitle')}
+        onMouseDown={(event) => { event.preventDefault(); }}
+        onClick={() => { onToggleFocusMode?.(); }}
+      >
+        {focusMode ? t('focusModeExit') : t('focusModeBtn')}
+      </button>
     </div>
   );
 }
