@@ -1575,3 +1575,15 @@ body.wb-links-off .wb-mention::after {
   content: none !important;
   display: none !important;
 }
+
+/* Liens desactives : un nom place dans un element colore (ancienne couleur
+   automatique recopiee par Chromium : <font color>, span colore) prend la
+   couleur normale du texte au lieu d'heriter de cette couleur.
+   Une couleur choisie par l'auteur (attribut data-user-color) reste respectee. */
+body.wb-links-off font[color] .wb-mention,
+body.wb-links-off [style*="color"] .wb-mention {
+  color: var(--text-main) !important;
+}
+body.wb-links-off [data-user-color] .wb-mention.wb-mention {
+  color: inherit !important;
+}
