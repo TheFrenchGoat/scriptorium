@@ -1030,6 +1030,13 @@ export const fr = {
   prefWbLinksLabel: 'Liens de la bible dans le texte',
   prefWbLinksHint:
     'Les noms des fiches sont colorés et cliquables, avec un aperçu au survol. Désactivé, le texte reste neutre, mais la liste « Mentionné dans » de chaque fiche continue de fonctionner.',
+  sessionNewTitle: 'Nouvelle session',
+  sessionPanelStatsLink: 'Statistiques et objectifs \u2192',
+  sessionCurrentDocument: 'Chapitre : {name}',
+  sessionReviewTitle: 'Bilan de la session',
+  sessionMoodQuestion: 'Comment s’est passée cette session ?',
+  sessionSkipShort: 'Passer',
+  sessionReviewHint: 'La session est déjà enregistrée. Ces détails sont facultatifs.',
   exportPdfSuccess: 'Export PDF réussi !',
   exportPdfError:
     "Erreur lors de l'export PDF : ",
@@ -2080,6 +2087,13 @@ export const en: Record<TranslationKey, string> = {
   prefWbLinksLabel: 'World bible links in the text',
   prefWbLinksHint:
     'Entry names are coloured and clickable, with a preview on hover. When turned off, the text stays plain, but the "Mentioned in" list of each entry keeps working.',
+  sessionNewTitle: 'New session',
+  sessionPanelStatsLink: 'Statistics and goals \u2192',
+  sessionCurrentDocument: 'Chapter: {name}',
+  sessionReviewTitle: 'Session review',
+  sessionMoodQuestion: 'How did this session go?',
+  sessionSkipShort: 'Skip',
+  sessionReviewHint: 'The session is already saved. These details are optional.',
   exportPdfSuccess:
     'PDF export successful!',
   exportPdfError:

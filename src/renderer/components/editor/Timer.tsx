@@ -14,6 +14,7 @@
 
 import React, {
   useEffect,
+  useLayoutEffect,
   useRef,
   useState
 } from 'react';
@@ -343,6 +344,102 @@ function isEmptySession(
   );
 }
 
+/** Position du panneau : fixe, aligné à droite sur le bouton Session. */
+interface PopoverPosition {
+  top: number;
+  right: number;
+}
+
+function measurePopover(
+  anchor: HTMLElement | null
+): PopoverPosition | null {
+  if (!anchor) {
+    return null;
+  }
+
+  const rect = anchor.getBoundingClientRect();
+
+  return {
+    top: Math.round(rect.bottom + 8),
+    right: Math.max(8, Math.round(window.innerWidth - rect.right))
+  };
+}
+
+interface RatingInputProps {
+  id: string;
+  label: string;
+  value: number;
+  scale: SessionRatingScale;
+  onChange: (value: number) => void;
+}
+
+/**
+ * Note du bilan. Echelle sur 5 : des boutons (un second clic efface la note).
+ * Sur 10 ou 20 : un curseur, 0 signifiant "pas de note".
+ */
+function RatingInput({
+  id,
+  label,
+  value,
+  scale,
+  onChange
+}: RatingInputProps): React.ReactElement {
+  if (scale === 5) {
+    return (
+      <div className="session-review-row">
+        <span className="session-review-label" id={id}>
+          {label}
+        </span>
+
+        <div
+          className="session-rating-buttons"
+          role="group"
+          aria-labelledby={id}
+        >
+          {[1, 2, 3, 4, 5].map((n) => (
+            <button
+              key={n}
+              type="button"
+              aria-pressed={value === n}
+              className={value === n ? 'settings-choice-btn active' : 'settings-choice-btn'}
+              onClick={() => {
+                onChange(value === n ? 0 : n);
+              }}
+            >
+              {n}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="session-review-row">
+      <label className="session-review-label" htmlFor={id}>
+        {label}
+      </label>
+
+      <input
+        id={id}
+        className="session-rating-range"
+        type="range"
+        min={0}
+        max={scale}
+        step={1}
+        value={value}
+        onChange={(event) => {
+          onChange(parseInt(event.target.value, 10));
+        }}
+      />
+
+      <span className="session-rating-value">
+        {value > 0 ? value : '\u2014'}/{scale}
+      </span>
+    </div>
+  );
+}
+
 export function Timer({
   controller,
   statsOpen,
@@ -450,6 +547,19 @@ export function Timer({
 
   const lastTrackedDocumentRef =
     useRef<string | null>(null);
+
+  // Petit panneau sous le bouton Session, et sa position à l'écran.
+  const [panelOpen, setPanelOpen] =
+    useState(false);
+
+  const [popPos, setPopPos] =
+    useState<PopoverPosition | null>(null);
+
+  const anchorRef =
+    useRef<HTMLDivElement | null>(null);
+
+  const popRef =
+    useRef<HTMLDivElement | null>(null);
 
   const prefs = controller.prefs();
 
@@ -1267,6 +1377,70 @@ export function Timer({
     return window.api.onBeforeClose(() => beforeCloseRef.current());
   }, []);
 
+  // Panneau ouvert : Echap ou un clic à côté le ferme.
+  useEffect(() => {
+    if (!panelOpen) {
+      return;
+    }
+
+    const onMouseDown = (event: MouseEvent): void => {
+      const target = event.target;
+
+      if (!(target instanceof Node)) {
+        return;
+      }
+
+      if (
+        anchorRef.current?.contains(target) ||
+        popRef.current?.contains(target)
+      ) {
+        return;
+      }
+
+      setPanelOpen(false);
+    };
+
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.key !== 'Escape') {
+        return;
+      }
+
+      event.preventDefault();
+      setPanelOpen(false);
+      focusEditor();
+    };
+
+    document.addEventListener('mousedown', onMouseDown);
+    document.addEventListener('keydown', onKeyDown);
+
+    return () => {
+      document.removeEventListener('mousedown', onMouseDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [panelOpen]);
+
+  // Le panneau et l'encart se placent sous le bouton (et suivent la fenêtre).
+  const popoverVisible = panelOpen || timeUp;
+
+  useLayoutEffect(() => {
+    if (!popoverVisible) {
+      return;
+    }
+
+    const update = (): void => {
+      setPopPos(measurePopover(anchorRef.current));
+    };
+
+    update();
+    window.addEventListener('resize', update);
+
+    return () => {
+      window.removeEventListener('resize', update);
+    };
+  }, [popoverVisible, sessionSlot]);
+
   const currentSession =
     activeSessionRef.current;
 
@@ -1309,18 +1483,18 @@ export function Timer({
     .filter(Boolean)
     .join(' ');
 
-  let panelClassName = 'session-panel';
   let panelState: string = t('sessionPanelIdle');
+  let panelTone = 'idle';
 
   if (currentSession) {
     if (timeUp) {
-      panelClassName = 'session-panel time-up';
+      panelTone = 'time-up';
       panelState = t('sessionStateTimeUp');
     } else if (isRunning) {
-      panelClassName = 'session-panel active';
+      panelTone = 'running';
       panelState = t('sessionStateRunning');
     } else {
-      panelClassName = 'session-panel paused';
+      panelTone = 'paused';
       panelState = t('sessionStatePaused');
     }
   }
@@ -1333,71 +1507,117 @@ export function Timer({
       ? 'settings-choice-btn active'
       : 'settings-choice-btn';
 
-  const sessionPanel = (
-    <section className={panelClassName}>
-      <div className="session-panel-head">
-        <strong>{t('sessionPanelTitle')}</strong>
-        <span className="session-panel-state">
-          {panelState}
-        </span>
+  // Progression du minuteur (0 à 100), seulement avec une durée choisie.
+  const plannedTotal = currentSession?.plannedSeconds ?? 0;
+  const progressPercent =
+    activeSource === 'pomodoro' && plannedTotal > 0
+      ? Math.min(100, (elapsedSeconds / plannedTotal) * 100)
+      : null;
+
+  const currentChapter = getCurrentChapterName(controller);
+
+  const startFromMiniPanel = (): void => {
+    setPanelOpen(false);
+    startFromPanel();
+  };
+
+  const finishFromPanel = (): void => {
+    setPanelOpen(false);
+    stopSession();
+  };
+
+  const continueFromPanel = (): void => {
+    setPanelOpen(false);
+    continueAfterTimeUp();
+  };
+
+  const openStats = (): void => {
+    setPanelOpen(false);
+    onStatsOpenChange(true);
+  };
+
+  const popStyle: React.CSSProperties | undefined = popPos
+    ? { top: popPos.top, right: popPos.right }
+    : undefined;
+
+  const chapterLine = currentChapter ? (
+    <p className="session-pop-doc" title={currentChapter}>
+      {t('sessionCurrentDocument').replace('{name}', currentChapter)}
+    </p>
+  ) : null;
+
+  // Petit panneau sous le bouton Session (affiché par-dessus la page).
+  const sessionPopover = (
+    <div
+      ref={popRef}
+      className={`session-pop session-pop-${panelTone}`}
+      role="dialog"
+      aria-label={t('sessionPanelTitle')}
+      style={popStyle}
+    >
+      <div className="session-pop-head">
+        <strong>
+          {currentSession ? t('sessionPanelTitle') : t('sessionNewTitle')}
+        </strong>
+
+        {currentSession && (
+          <span className="session-pop-state">{panelState}</span>
+        )}
       </div>
 
       {currentSession ? (
         <>
-          <div className="session-panel-figures">
-            <div className="session-figure">
-              <span>{t('sessionDurationLabel')}</span>
-              <strong>{formatTimer(elapsedSeconds)}</strong>
+          <div className="session-pop-figures">
+            <div className="session-pop-figure">
+              <strong>{displayedTime}</strong>
+              <span>
+                {showRemaining
+                  ? t('sessionRemainingLabel')
+                  : t('sessionDurationLabel')}
+              </span>
             </div>
 
-            {showRemaining && (
-              <div className="session-figure">
-                <span>{t('sessionRemainingLabel')}</span>
-                <strong>{formatTimer(timeRemaining)}</strong>
-              </div>
-            )}
-
-            <div className="session-figure">
-              <span>{t('sessionWordsLabel')}</span>
-              <strong
-                style={{
-                  color: getWordsColor(liveWords)
-                }}
-              >
+            <div className="session-pop-figure">
+              <strong style={{ color: getWordsColor(liveWords) }}>
                 {signedLiveWords}
               </strong>
+              <span>{t('sessionWordsLabel')}</span>
             </div>
           </div>
 
-          <div className="session-actions">
+          {progressPercent !== null && (
+            <div className="session-pop-progress" aria-hidden="true">
+              <div style={{ width: `${progressPercent}%` }} />
+            </div>
+          )}
+
+          {chapterLine}
+
+          <div className="session-pop-actions">
             {timeUp ? (
-              <button
-                type="button"
-                onClick={continueAfterTimeUp}
-              >
+              <button type="button" onClick={continueFromPanel}>
                 {t('sessionContinueBtn')}
+              </button>
+            ) : isRunning ? (
+              <button type="button" onClick={pauseSession}>
+                {t('sessionPauseBtn')}
               </button>
             ) : (
               <button
                 type="button"
                 onClick={() => {
-                  if (isRunning) {
-                    pauseSession();
-                  } else {
-                    resumeSession(false);
-                  }
+                  setPanelOpen(false);
+                  resumeSession(true);
                 }}
               >
-                {isRunning
-                  ? t('sessionPauseBtn')
-                  : t('sessionResumeBtn')}
+                {t('sessionResumeBtn')}
               </button>
             )}
 
             <button
               type="button"
               className="btn-primary"
-              onClick={stopSession}
+              onClick={finishFromPanel}
             >
               {t('sessionFinishBtn')}
             </button>
@@ -1405,11 +1625,11 @@ export function Timer({
         </>
       ) : (
         <>
-          <span className="session-label">
+          <span className="session-pop-label">
             {t('sessionTimerLabel')}
           </span>
 
-          <div className="session-presets">
+          <div className="session-pop-presets">
             <button
               type="button"
               className={presetClass(0)}
@@ -1425,21 +1645,25 @@ export function Timer({
               <button
                 key={preset.value}
                 type="button"
+                title={t(preset.key)}
                 className={presetClass(preset.value)}
                 onClick={() => {
                   setSelectedPreset(preset.value);
                   setCustomValue('');
                 }}
               >
-                {t(preset.key)}
+                {preset.value >= 60
+                  ? `${preset.value / 60} h`
+                  : `${preset.value} min`}
               </button>
             ))}
+          </div>
 
+          <label className="session-pop-custom">
+            <span>{t('timerCustomLabel')}</span>
             <input
               type="text"
               inputMode="numeric"
-              aria-label={t('timerCustomLabel')}
-              title={t('timerCustomLabel')}
               placeholder={t('timerCustomPlaceholder')}
               value={customValue}
               onChange={(event) => {
@@ -1448,24 +1672,68 @@ export function Timer({
               onKeyDown={(event) => {
                 if (event.key === 'Enter') {
                   event.preventDefault();
-                  startFromPanel();
+                  startFromMiniPanel();
                 }
               }}
             />
-          </div>
+          </label>
 
-          <div className="session-actions">
+          {chapterLine}
+
+          <div className="session-pop-actions">
             <button
               type="button"
               className="btn-primary"
-              onClick={startFromPanel}
+              onClick={startFromMiniPanel}
             >
               {t('sessionStartBtn')}
             </button>
           </div>
         </>
       )}
-    </section>
+
+      <button
+        type="button"
+        className="session-pop-link"
+        onClick={openStats}
+      >
+        {t('sessionPanelStatsLink')}
+      </button>
+    </div>
+  );
+
+  // Encart "Temps écoulé" : la session continue tant qu'elle n'est pas terminée.
+  const timeUpPopover = (
+    <div
+      ref={popRef}
+      className="session-pop session-pop-time-up"
+      role="alert"
+      style={popStyle}
+    >
+      <div className="session-pop-head">
+        <strong>{t('sessionStateTimeUp')}</strong>
+      </div>
+
+      <p className="session-pop-summary">
+        {formatTimer(elapsedSeconds)}
+        {' \u00B7 '}
+        {signedLiveWords} {t('statsWordsUnit')}
+      </p>
+
+      <div className="session-pop-actions">
+        <button type="button" onClick={continueAfterTimeUp}>
+          {t('sessionContinueBtn')}
+        </button>
+
+        <button
+          type="button"
+          className="btn-primary"
+          onClick={stopSession}
+        >
+          {t('sessionFinishBtn')}
+        </button>
+      </div>
+    </div>
   );
 
   const feedbackDuration =
@@ -1488,48 +1756,33 @@ export function Timer({
   // Bouton Session et encart « Temps écoulé ». Le chronomètre reste dans ce
   // composant : la session ne repart jamais à zéro si la barre d'outils change.
   const sessionButton = (
-    <div className="session-anchor">
+    <div
+      className="session-anchor"
+      ref={anchorRef}
+    >
       <button
         id="btnSession"
         type="button"
         className={buttonClassName || undefined}
         title={t('sessionBtnTitle')}
+        aria-haspopup="dialog"
+        aria-expanded={panelOpen}
         onClick={() => {
-          onStatsOpenChange(true);
+          setPanelOpen((open) => !open);
         }}
       >
         {buttonLabel}
       </button>
-
-      {timeUp && (
-        <div
-          className="session-timeup"
-          role="alert"
-        >
-          <strong>{t('timerFinishedTitle')}</strong>
-          <p>{t('sessionTimeUpMessage')}</p>
-
-          <div className="session-actions">
-            <button
-              type="button"
-              onClick={continueAfterTimeUp}
-            >
-              {t('sessionContinueBtn')}
-            </button>
-
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={stopSession}
-            >
-              {t('sessionFinishBtn')}
-            </button>
-          </div>
-        </div>
-      )}
-
     </div>
   );
+
+  // Le panneau passe en premier. Sinon, encart "Temps écoulé", masqué
+  // quand une fenêtre est ouverte par-dessus.
+  const popover = panelOpen
+    ? sessionPopover
+    : timeUp && !statsOpen && feedbackSession === null
+      ? timeUpPopover
+      : null;
 
   // Barre d'outils affichée : le bouton y est placé par un portail.
   // Sinon, il reste ici, dans l'en-tête.
@@ -1539,37 +1792,30 @@ export function Timer({
         ? createPortal(sessionButton, sessionSlot)
         : sessionButton}
 
+      {popover && popPos
+        ? createPortal(popover, document.body)
+        : null}
+
       <StatsModal
         open={statsOpen}
         controller={controller}
-        sessionPanel={sessionPanel}
         onClose={() => {
           onStatsOpenChange(false);
         }}
       />
 
       <Modal
-        open={
-          feedbackSession !== null
-        }
-        title={t(
-          'sessionFinishedTitle'
-        )}
-        width={520}
-        onCancel={
-          closeFeedbackWithoutDetails
-        }
+        open={feedbackSession !== null}
+        title={t('sessionReviewTitle')}
+        width={500}
+        onCancel={closeFeedbackWithoutDetails}
         footer={
           <>
             <button
               type="button"
-              onClick={
-                closeFeedbackWithoutDetails
-              }
+              onClick={closeFeedbackWithoutDetails}
             >
-              {t(
-                'sessionSkipFeedback'
-              )}
+              {t('sessionSkipShort')}
             </button>
 
             <button
@@ -1577,385 +1823,118 @@ export function Timer({
               className="btn-primary"
               onClick={saveFeedback}
             >
-              {t(
-                'sessionSaveFeedback'
-              )}
+              {t('sessionSaveFeedback')}
             </button>
           </>
         }
       >
-        <p
-          style={{
-            margin: '10px 0 18px',
-            color:
-              'var(--text-muted)',
-            lineHeight: 1.5
-          }}
-        >
-          {t(
-            'sessionFeedbackIntro'
-          )}
-        </p>
+        <div className="session-review">
+          <div className="session-review-summary">
+            <span className="session-review-chip">
+              {'\u23F1'} {feedbackDuration}
+            </span>
 
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns:
-              'repeat(2, minmax(0, 1fr))',
-            gap: 8,
-            marginBottom: 22
-          }}
-        >
-          <div
-            style={{
-              padding: 10,
-              border:
-                '1px solid var(--border)',
-              borderRadius:
-                'var(--radius)',
-              background:
-                'var(--bg-input)'
-            }}
-          >
-            <div
-              style={{
-                color:
-                  'var(--text-muted)',
-                fontSize: 12,
-                marginBottom: 4
-              }}
+            <span
+              className="session-review-chip"
+              style={{ color: getWordsColor(feedbackWords) }}
             >
-              {t(
-                'sessionDurationLabel'
-              )}
-            </div>
-
-            <strong>
-              {feedbackDuration}
-            </strong>
+              {formatSignedWords(feedbackWords)} {t('statsWordsUnit')}
+            </span>
           </div>
 
-          <div
-            style={{
-              padding: 10,
-              border:
-                '1px solid var(--border)',
-              borderRadius:
-                'var(--radius)',
-              background:
-                'var(--bg-input)'
-            }}
-          >
-            <div
-              style={{
-                color:
-                  'var(--text-muted)',
-                fontSize: 12,
-                marginBottom: 4
-              }}
-            >
-              {t(
-                'sessionWordsLabel'
-              )}
-            </div>
+          {feedbackDocuments.length > 0 && (
+            <ul className="session-review-docs">
+              {feedbackDocuments.map((documentName) => {
+                const stats = feedbackSession
+                  ? getDocumentStats(feedbackSession, documentName)
+                  : null;
 
-            <strong
-              style={{
-                color:
-                  getWordsColor(
-                    feedbackWords
-                  )
-              }}
-            >
-              {formatSignedWords(
-                feedbackWords
-              )}
-            </strong>
-          </div>
+                return (
+                  <li key={documentName} title={documentName}>
+                    <span className="session-review-doc-name">
+                      {documentName}
+                    </span>
 
-          <div
-            style={{
-              gridColumn: '1 / -1',
-              padding: 10,
-              border:
-                '1px solid var(--border)',
-              borderRadius:
-                'var(--radius)',
-              background:
-                'var(--bg-input)',
-              minWidth: 0
-            }}
-          >
-            <div
-              style={{
-                color:
-                  'var(--text-muted)',
-                fontSize: 12,
-                marginBottom: 7
-              }}
-            >
-              {t(
-                'sessionDocumentLabel'
-              )}
-            </div>
-
-            {feedbackDocuments.length >
-            0 ? (
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection:
-                    'column',
-                  gap: 6
-                }}
-              >
-                {feedbackDocuments.map(
-                  (documentName) => {
-                    const stats =
-                      feedbackSession
-                        ? getDocumentStats(
-                            feedbackSession,
-                            documentName
-                          )
-                        : null;
-
-                    return (
-                      <div
-                        key={documentName}
-                        title={
-                          documentName
-                        }
-                        style={{
-                          display:
-                            'flex',
-                          alignItems:
-                            'center',
-                          justifyContent:
-                            'space-between',
-                          gap: 10,
-                          width: '100%',
-                          minWidth: 0,
-                          padding:
-                            '7px 9px',
-                          borderRadius:
-                            'var(--radius)',
-                          background:
-                            'var(--bg-hover)',
-                          border:
-                            '1px solid var(--border)',
-                          fontSize: 12
-                        }}
+                    {stats && (
+                      <span
+                        className="session-review-doc-words"
+                        style={{ color: getWordsColor(stats.wordsWritten) }}
                       >
-                        <span
-                          style={{
-                            minWidth: 0,
-                            overflow:
-                              'hidden',
-                            textOverflow:
-                              'ellipsis',
-                            whiteSpace:
-                              'nowrap',
-                            fontWeight: 600
-                          }}
-                        >
-                          📄 {documentName}
-                        </span>
+                        {formatSignedWords(stats.wordsWritten)} {t('statsWordsUnit')}
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
 
-                        {stats && (
-                          <span
-                            style={{
-                              flexShrink: 0,
-                              color:
-                                getWordsColor(
-                                  stats.wordsWritten
-                                ),
-                              fontWeight: 700,
-                              whiteSpace:
-                                'nowrap'
-                            }}
-                          >
-                            {formatSignedWords(
-                              stats.wordsWritten
-                            )}{' '}
-                            {t(
-                              'statsWordsUnit'
-                            )}
-                          </span>
-                        )}
-                      </div>
-                    );
-                  }
-                )}
-              </div>
-            ) : (
-              <strong>
-                {t(
-                  'sessionNoDocument'
-                )}
-              </strong>
-            )}
+          <p className="session-review-hint">
+            {t('sessionReviewHint')}
+          </p>
+
+          <div className="session-review-block">
+            <span className="session-review-label">
+              {t('sessionMoodQuestion')}
+            </span>
+
+            <div className="session-review-moods">
+              {MOODS.map((mood) => {
+                const selected = selectedMood === mood.value;
+
+                return (
+                  <button
+                    key={mood.value}
+                    type="button"
+                    title={t(mood.key)}
+                    aria-pressed={selected}
+                    className={selected ? 'session-mood-btn active' : 'session-mood-btn'}
+                    onClick={() => {
+                      setSelectedMood(selected ? null : mood.value);
+                    }}
+                  >
+                    <span className="session-mood-emoji">{mood.emoji}</span>
+                    <span className="session-mood-text">{t(mood.key)}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
 
-        <div className="wb-form-group">
-          <label className="wb-label">
-            {t(
-              'sessionMoodLabel'
-            )}
-          </label>
-
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns:
-                'repeat(5, minmax(0, 1fr))',
-              gap: 8
-            }}
-          >
-            {MOODS.map((mood) => {
-              const selected =
-                selectedMood ===
-                mood.value;
-
-              return (
-                <button
-                  key={mood.value}
-                  type="button"
-                  title={t(mood.key)}
-                  aria-label={t(
-                    mood.key
-                  )}
-                  className={
-                    selected
-                      ? 'settings-choice-btn active'
-                      : 'settings-choice-btn'
-                  }
-                  onClick={() => {
-                    setSelectedMood(
-                      mood.value
-                    );
-                  }}
-                  style={{
-                    minWidth: 0,
-                    padding:
-                      '10px 4px',
-                    fontSize: 24
-                  }}
-                >
-                  {mood.emoji}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="wb-form-group">
-          <label
-            className="wb-label"
-            htmlFor="sessionConcentrationInput"
-          >
-            {t(
-              'sessionConcentrationLabel'
-            )}{' '}
-            :{' '}
-            {concentration > 0
-              ? `${concentration}/${concentrationScale}`
-              : `—/${concentrationScale}`}
-          </label>
-
-          <input
+          <RatingInput
             id="sessionConcentrationInput"
-            type="range"
-            min={0}
-            max={
-              concentrationScale
-            }
-            step={1}
+            label={t('sessionConcentrationLabel')}
             value={concentration}
-            onChange={(event) => {
-              setConcentration(
-                parseInt(
-                  event.target.value,
-                  10
-                )
-              );
-            }}
-            style={{
-              width: '100%',
-              accentColor:
-                'var(--accent)'
-            }}
+            scale={concentrationScale}
+            onChange={setConcentration}
           />
-        </div>
 
-        <div className="wb-form-group">
-          <label
-            className="wb-label"
-            htmlFor="sessionEnergyInput"
-          >
-            {t(
-              'sessionEnergyLabel'
-            )}{' '}
-            :{' '}
-            {energy > 0
-              ? `${energy}/${energyScale}`
-              : `—/${energyScale}`}
-          </label>
-
-          <input
+          <RatingInput
             id="sessionEnergyInput"
-            type="range"
-            min={0}
-            max={energyScale}
-            step={1}
+            label={t('sessionEnergyLabel')}
             value={energy}
-            onChange={(event) => {
-              setEnergy(
-                parseInt(
-                  event.target.value,
-                  10
-                )
-              );
-            }}
-            style={{
-              width: '100%',
-              accentColor:
-                'var(--accent)'
-            }}
+            scale={energyScale}
+            onChange={setEnergy}
           />
-        </div>
 
-        <div
-          className="wb-form-group"
-          style={{
-            marginBottom: 0
-          }}
-        >
-          <label
-            className="wb-label"
-            htmlFor="sessionNoteInput"
-          >
-            {t(
-              'sessionNoteLabel'
-            )}
-          </label>
+          <div className="session-review-block">
+            <label
+              className="session-review-label"
+              htmlFor="sessionNoteInput"
+            >
+              {t('sessionNoteLabel')}
+            </label>
 
-          <textarea
-            id="sessionNoteInput"
-            className="wb-textarea"
-            placeholder={t(
-              'sessionNotePlaceholder'
-            )}
-            value={sessionNote}
-            onChange={(event) => {
-              setSessionNote(
-                event.target.value
-              );
-            }}
-            style={{
-              minHeight: 90
-            }}
-          />
+            <textarea
+              id="sessionNoteInput"
+              className="wb-textarea session-review-note"
+              placeholder={t('sessionNotePlaceholder')}
+              value={sessionNote}
+              onChange={(event) => {
+                setSessionNote(event.target.value);
+              }}
+            />
+          </div>
         </div>
       </Modal>
     </>
