@@ -130,7 +130,11 @@ function joinsPreviousText(editor: HTMLElement, text: Text): boolean {
  * Remplace le mot qui précède le curseur s'il est dans la liste.
  * À appeler au moment où la touche est enfoncée, AVANT son insertion.
  */
-export function applyAutoReplaceBeforeCaret(editor: HTMLElement, value: unknown): AutoReplaceUndo | null {
+export function applyAutoReplaceBeforeCaret(
+  editor: HTMLElement,
+  value: unknown,
+  beforeChange?: () => void
+): AutoReplaceUndo | null {
   const settings = normalizeAutoReplace(value);
   if (!settings.enabled || settings.rules.length === 0) return null;
   const caret = caretTextPosition(editor);
@@ -148,6 +152,8 @@ export function applyAutoReplaceBeforeCaret(editor: HTMLElement, value: unknown)
   if (found === null) return null;
   const replacement = matchCase(original, found);
   if (replacement === original) return null;
+  // Juste avant de modifier le texte (ex. : figer l'historique d'annulation).
+  beforeChange?.();
   node.replaceData(start, original.length, replacement);
   window.getSelection()?.collapse(node, start + replacement.length);
   return { node, start, original, replacement };

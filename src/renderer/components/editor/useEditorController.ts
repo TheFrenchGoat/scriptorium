@@ -1753,7 +1753,15 @@ export function useEditorController({
         const chapterName = s.activeTab;
         if (!editor || !chapterName || s.activeType !== 'chapter') return;
         if (!isAutoReplaceTrigger(event)) return;
-        const done = applyAutoReplaceBeforeCaret(editor, s.projectData.autoReplace);
+        const done = applyAutoReplaceBeforeCaret(editor, s.projectData.autoReplace, () =>
+          flushPendingHistoryCommit()
+        );
+        if (done) {
+          // Le remplacement devient une étape d'annulation à part entière :
+          // des Ctrl+Z successifs finissent toujours par remettre le mot tapé.
+          historyRef.current.commit(chapterName, editor.innerHTML);
+          updateUndoRedo();
+        }
         autoReplaceRef.current = done ? { ...done, chapter: chapterName, inputs: 0 } : null;
       },
 

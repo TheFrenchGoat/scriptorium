@@ -1406,6 +1406,22 @@ function sanitizeChapterMeta(value: unknown, chapters: Record<string, string>): 
   return Object.keys(result).length > 0 ? result : undefined;
 }
 
+/** Nettoie les remplacements automatiques : seules les paires de textes sont conservées. */
+function sanitizeAutoReplace(value: unknown): ProjectData['autoReplace'] {
+  if (!isRecord(value)) return undefined;
+  const list: unknown[] = Array.isArray(value['rules']) ? value['rules'] : [];
+  const rules: { from: string; to: string }[] = [];
+  for (const raw of list) {
+    if (!isRecord(raw)) continue;
+    const from = raw['from'];
+    const to = raw['to'];
+    if (typeof from !== 'string' || typeof to !== 'string') continue;
+    if (from.length > 200 || to.length > 2000) continue;
+    rules.push({ from, to });
+    if (rules.length >= 1000) break;
+  }
+  return { enabled: value['enabled'] !== false, rules };
+}
 function sanitizeGoals(value: unknown): ProjectGoal[] {
   if (!Array.isArray(value)) {
     return [];
@@ -1449,6 +1465,10 @@ export function sanitizeProjectData(projectData: unknown): ProjectData {
   if (projectData.chapterMeta !== undefined) {
     const chapterMeta = sanitizeChapterMeta(projectData.chapterMeta, result.chapters);
     if (chapterMeta) result.chapterMeta = chapterMeta;
+  }
+  if (projectData.autoReplace !== undefined) {
+    const autoReplace = sanitizeAutoReplace(projectData.autoReplace);
+    if (autoReplace) result.autoReplace = autoReplace;
   }
   if (projectData.exportSettings !== undefined) {
     result.exportSettings = normalizeExportSettings(projectData.exportSettings);
