@@ -31,6 +31,20 @@ import React, {
 } from 'react';
 
 import { useI18n } from '../../i18n';
+import {
+  getCachedChapterStats,
+  getCachedChapterWordCounts
+} from '../../lib/project-word-cache';
+import {
+  chapterColorOf,
+  chapterProgress,
+  chapterStatusOf
+} from '../../lib/chapter-status';
+import {
+  ChapterStatusMenu,
+  chapterStatusText,
+  chapterTargetText
+} from './ChapterStatusMenu';
 import { Modal } from '../common/Modal';
 import { Select } from '../common/Select';
 
@@ -56,6 +70,7 @@ import {
 } from './WbSidePanel';
 
 import type {
+  ChapterMeta,
   ItemType,
   ScreenplayInteriorExterior,
   WbType
@@ -170,6 +185,47 @@ export function Sidebar({
 
   const chapterNames =
     Object.keys(data.chapters);
+
+  /*
+   * État des chapitres : réglages (état, couleur, objectif) et mots par
+   * chapitre. Les mots ne sont calculés que si un chapitre a un objectif ;
+   * le cache évite de recompter les chapitres inchangés.
+   */
+  const chapterMetaMap: Record<string, ChapterMeta> =
+    data.chapterMeta ?? {};
+
+  const chapterWordCounts: Record<string, number> =
+    !isScreenplay &&
+    chapterNames.some(
+      (chapterName) =>
+        (chapterMetaMap[chapterName]?.targetWords ?? 0) > 0
+    )
+      ? getCachedChapterWordCounts(data)
+      : {};
+
+  const [
+    chapterStatusMenu,
+    setChapterStatusMenu
+  ] = useState<{ name: string; anchor: HTMLElement } | null>(null);
+
+  const chapterStatusTitle = (
+    chapterName: string
+  ): string => {
+    const meta = chapterMetaMap[chapterName];
+    const label = chapterStatusText(t, chapterStatusOf(meta));
+    const target = meta?.targetWords;
+
+    if (!target) {
+      return label;
+    }
+
+    return `${label} \u2014 ${chapterTargetText(
+      t,
+      lang,
+      chapterWordCounts[chapterName] ?? 0,
+      target
+    )}`;
+  };
 
   const registry =
     controller.registry;
@@ -1080,6 +1136,25 @@ export function Sidebar({
                         key={name}
                         name={name}
                         type="chapter"
+                        statusColor={chapterColorOf(
+                          chapterMetaMap[name]
+                        )}
+                        statusTitle={chapterStatusTitle(
+                          name
+                        )}
+                        progress={chapterProgress(
+                          chapterWordCounts[name] ?? 0,
+                          chapterMetaMap[name]
+                        )}
+                        onStatusClick={(anchor) => {
+                          setChapterStatusMenu(
+                            (previous) =>
+                              previous &&
+                              previous.name === name
+                                ? null
+                                : { name, anchor }
+                          );
+                        }}
                         current={
                           activeTab ===
                             name &&
@@ -1446,6 +1521,29 @@ export function Sidebar({
       {/* ----------------------------------------------------------------- */}
       {/* NOUVEAU CHAPITRE                                                  */}
       {/* ----------------------------------------------------------------- */}
+
+      {chapterStatusMenu &&
+      data.chapters[chapterStatusMenu.name] !== undefined ? (
+        <ChapterStatusMenu
+          key={chapterStatusMenu.name}
+          anchor={chapterStatusMenu.anchor}
+          chapterName={chapterStatusMenu.name}
+          meta={chapterMetaMap[chapterStatusMenu.name] ?? {}}
+          words={getCachedChapterStats(
+            data,
+            chapterStatusMenu.name
+          ).words}
+          onChange={(chapterName, patch) => {
+            controller.setChapterMeta(
+              chapterName,
+              patch
+            );
+          }}
+          onClose={() => {
+            setChapterStatusMenu(null);
+          }}
+        />
+      ) : null}
 
       <Modal
         open={
@@ -2019,6 +2117,12 @@ interface SidebarItemProps {
   onDragStart: () => void;
   onDragEnd: () => void;
   onDropOn: () => void;
+  /** Couleur de la pastille d’état (chapitres seulement). */
+  statusColor?: string;
+  statusTitle?: string;
+  /** Progression vers l’objectif de mots, de 0 à 1 (null : pas d’objectif). */
+  progress?: number | null;
+  onStatusClick?: (anchor: HTMLElement) => void;
 }
 
 function SidebarItem({
@@ -2034,7 +2138,11 @@ function SidebarItem({
   draggable,
   onDragStart,
   onDragEnd,
-  onDropOn
+  onDropOn,
+  statusColor,
+  statusTitle,
+  progress,
+  onStatusClick
 }: SidebarItemProps): React.ReactElement {
   const {
     t,
@@ -2136,6 +2244,28 @@ function SidebarItem({
             : undefined
         }
       >
+        {statusColor ? (
+          <button
+            type="button"
+            className="chapter-status-dot"
+            style={{
+              background: statusColor
+            }}
+            title={statusTitle}
+            aria-label={statusTitle}
+            draggable={false}
+            onClick={(event) => {
+              event.stopPropagation();
+              onStatusClick?.(
+                event.currentTarget
+              );
+            }}
+            onKeyDown={(event) => {
+              event.stopPropagation();
+            }}
+          />
+        ) : null}
+
         {icon ? (
           <span className="item-icon">
             {icon}
@@ -2245,6 +2375,22 @@ function SidebarItem({
           🗑
         </button>
       </div>
+      {typeof progress === 'number' ? (
+        <span
+          className="chapter-progress"
+          aria-hidden="true"
+        >
+          <span
+            className="chapter-progress-fill"
+            style={{
+              width: `${Math.round(
+                progress * 100
+              )}%`,
+              background: statusColor
+            }}
+          />
+        </span>
+      ) : null}
     </li>
   );
 }

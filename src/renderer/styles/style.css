@@ -1443,3 +1443,121 @@ mark.grammar-error:has(.wb-mention) {
   margin: 0 0 12px;
   padding-left: 20px;
 }
+
+/* ETAT DES CHAPITRES (pastille, progression, menu) */
+button.chapter-status-dot {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 10px;
+  height: 10px;
+  min-width: 10px;
+  min-height: 10px;
+  margin: 0 8px 0 0;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  vertical-align: middle;
+  cursor: pointer;
+  opacity: 1;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25);
+}
+button.chapter-status-dot:hover,
+button.chapter-status-dot:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent);
+}
+li:has(> .chapter-progress) { position: relative; }
+.chapter-progress {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 1px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--border);
+  overflow: hidden;
+  pointer-events: none;
+}
+.chapter-progress-fill { display: block; height: 100%; border-radius: inherit; }
+.chapter-status-menu {
+  position: fixed;
+  z-index: 2000;
+  box-sizing: border-box;
+  padding: 10px;
+  background: var(--bg-panel);
+  color: var(--text-main);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  font-size: 13px;
+}
+.chapter-status-menu-title {
+  margin-bottom: 4px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chapter-status-menu-section {
+  margin: 10px 0 4px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.chapter-status-menu-list { display: grid; gap: 2px; }
+.chapter-status-menu button.chapter-status-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.chapter-status-menu button.chapter-status-option:hover,
+.chapter-status-menu button.chapter-status-option:focus-visible { outline: none; background: var(--bg-hover); }
+.chapter-status-menu button.chapter-status-option.active { background: var(--bg-hover); font-weight: 600; }
+.chapter-status-swatch { flex: 0 0 auto; width: 10px; height: 10px; border-radius: 50%; }
+.chapter-status-check { margin-left: auto; color: var(--accent); }
+.chapter-status-menu-row { display: flex; align-items: center; gap: 8px; }
+.chapter-status-color {
+  width: 36px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+}
+.chapter-status-menu button.chapter-status-link {
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.chapter-status-menu button.chapter-status-link:hover { text-decoration: underline; }
+.chapter-status-target {
+  width: 100px;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-input);
+  color: var(--text-main);
+  font: inherit;
+}
+.chapter-status-unit { color: var(--text-muted); }
+.chapter-status-progress { margin-top: 10px; }
+.chapter-status-track { height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; }
+.chapter-status-track > span { display: block; height: 100%; border-radius: inherit; }
+.chapter-status-progress-text { margin-top: 4px; color: var(--text-muted); font-size: 12px; }
