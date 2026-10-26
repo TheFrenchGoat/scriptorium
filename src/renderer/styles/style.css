@@ -1667,7 +1667,8 @@ html.focus-mode .editor-scroll-container {
 }
 
 /* Mode concentration : estomper les autres paragraphes (option des Parametres).
-   Les autres paragraphes sont estompes par une regle generee (EditorPage). */
-html.focus-mode[data-focus-dim="on"] #editor > * {
-  transition: opacity 0.25s ease;
+   Surlignage "focus-dim" pose par EditorPage (API Highlight) : le texte n'est pas modifie. */
+html.focus-mode[data-focus-dim="on"] #editor::highlight(focus-dim),
+html.focus-mode[data-focus-dim="on"] #editor *::highlight(focus-dim) {
+  color: color-mix(in srgb, var(--text-main, #888888) 30%, transparent);
 }

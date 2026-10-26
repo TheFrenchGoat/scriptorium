@@ -721,49 +721,119 @@ export function EditorPage({
   }, [focusMode]);
 
   useEffect(() => {
-    // Option estomper les autres paragraphes : une règle CSS générée à la volée
-    // estompe les paragraphes autres que celui du curseur. Le texte du chapitre
-    // n'est jamais modifié. Curseur hors de la page = rien n'est estompé.
+    // Option estomper les autres paragraphes : surlignage CSS (API Highlight),
+    // comme la sélection. Rien n'est ajouté dans le texte, le chapitre n'est jamais modifié.
+    // Un paragraphe = le texte entre deux retours (ou deux blocs). Curseur hors de la page : rien n'est estompé.
     if (!focusMode) return undefined;
-    const styleEl = document.createElement('style');
-    styleEl.id = 'focus-dim-current';
-    document.head.appendChild(styleEl);
-    let lastRule = '';
-    const setRule = (rule: string) => {
-      if (rule === lastRule) return;
-      lastRule = rule;
-      styleEl.textContent = rule;
+    const registry = (CSS as unknown as { highlights?: { set(name: string, value: unknown): void; delete(name: string): void } }).highlights;
+    const HighlightCtor = (window as unknown as { Highlight?: new (...ranges: Range[]) => unknown }).Highlight;
+    if (!registry || !HighlightCtor) return undefined;
+    const NAME = 'focus-dim';
+    const BLOCK_TAGS = new Set(['DIV', 'P', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'LI', 'UL', 'OL', 'BLOCKQUOTE', 'PRE']);
+    type Point = { node: Node; offset: number };
+    type Break = { end: Point; start: Point };
+    const before = (target: Node): Point => {
+      const parent = target.parentNode as Node;
+      return { node: parent, offset: Array.prototype.indexOf.call(parent.childNodes, target) };
+    };
+    const after = (target: Node): Point => {
+      const point = before(target);
+      return { node: point.node, offset: point.offset + 1 };
+    };
+    const collect = (parent: Node, out: Break[]): void => {
+      for (let k = 0; k < parent.childNodes.length; k++) {
+        const child = parent.childNodes[k];
+        if (child.nodeType === Node.TEXT_NODE) {
+          const text = child.textContent || '';
+          for (let i = text.indexOf('\n'); i >= 0; i = text.indexOf('\n', i + 1)) {
+            out.push({ end: { node: child, offset: i }, start: { node: child, offset: i + 1 } });
+          }
+          continue;
+        }
+        if (child.nodeType !== Node.ELEMENT_NODE) continue;
+        const tag = (child as Element).tagName;
+        if (tag === 'BR') {
+          out.push({ end: before(child), start: after(child) });
+          continue;
+        }
+        const isBlock = BLOCK_TAGS.has(tag);
+        if (isBlock) out.push({ end: before(child), start: { node: child, offset: 0 } });
+        collect(child, out);
+        if (isBlock) out.push({ end: { node: child, offset: child.childNodes.length }, start: after(child) });
+      }
+    };
+    let active = false;
+    const clear = () => {
+      if (!active) return;
+      registry.delete(NAME);
+      active = false;
     };
     const update = () => {
       const editorEl = document.getElementById('editor');
       const selection = document.getSelection();
-      const anchor = selection && selection.rangeCount > 0 ? selection.anchorNode : null;
-      if (!editorEl || !anchor || anchor === editorEl || !editorEl.contains(anchor)) {
-        setRule('');
+      if (document.documentElement.getAttribute('data-focus-dim') !== 'on' || !editorEl || !selection || selection.rangeCount === 0) {
+        clear();
         return;
       }
-      let node: Node | null = anchor;
-      while (node && node.parentNode !== editorEl) node = node.parentNode;
-      if (!node || node.nodeType !== Node.ELEMENT_NODE) {
-        setRule('');
+      const current = selection.getRangeAt(0);
+      if (!editorEl.contains(current.startContainer)) {
+        clear();
         return;
       }
-      const index = Array.prototype.indexOf.call(editorEl.children, node) + 1;
-      if (index < 1) {
-        setRule('');
+      const caret = document.createRange();
+      caret.setStart(current.startContainer, current.startOffset);
+      caret.collapse(true);
+      const breaks: Break[] = [];
+      collect(editorEl, breaks);
+      let paraStart: Point = { node: editorEl, offset: 0 };
+      let paraEnd: Point = { node: editorEl, offset: editorEl.childNodes.length };
+      for (let b = 0; b < breaks.length; b++) {
+        const item = breaks[b];
+        if (caret.comparePoint(item.start.node, item.start.offset) <= 0) {
+          paraStart = item.start;
+          continue;
+        }
+        paraEnd = item.end;
+        break;
+      }
+      const ranges: Range[] = [];
+      const head = document.createRange();
+      head.setStart(editorEl, 0);
+      head.setEnd(paraStart.node, paraStart.offset);
+      if (!head.collapsed) ranges.push(head);
+      const tail = document.createRange();
+      tail.setStart(paraEnd.node, paraEnd.offset);
+      tail.setEnd(editorEl, editorEl.childNodes.length);
+      if (!tail.collapsed) ranges.push(tail);
+      if (ranges.length === 0) {
+        clear();
         return;
       }
-      setRule('html.focus-mode[data-focus-dim="on"] #editor > :not(:nth-child(' + index + ')) { opacity: 0.28; }');
+      registry.set(NAME, new HighlightCtor(...ranges));
+      active = true;
     };
+    let frame = 0;
     const schedule = () => {
-      window.requestAnimationFrame(update);
+      if (frame) return;
+      frame = window.requestAnimationFrame(() => {
+        frame = 0;
+        try {
+          update();
+        } catch {
+          clear();
+        }
+      });
     };
-    update();
+    schedule();
     const eventNames = ['selectionchange', 'input', 'keyup', 'mouseup', 'focusin'];
     eventNames.forEach((name) => document.addEventListener(name, schedule, true));
+    const observer = new MutationObserver(schedule);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-focus-dim'] });
     return () => {
       eventNames.forEach((name) => document.removeEventListener(name, schedule, true));
-      styleEl.remove();
+      observer.disconnect();
+      if (frame) window.cancelAnimationFrame(frame);
+      registry.delete(NAME);
     };
   }, [focusMode]);
 
