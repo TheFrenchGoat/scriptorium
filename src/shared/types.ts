@@ -794,6 +794,20 @@ export interface ProjectData {
   exportSettings?: ExportSettings;
   /** Réglages par chapitre (état, couleur, objectif), indexés par nom de chapitre. */
   chapterMeta?: Record<string, ChapterMeta>;
+  /** Remplacements automatiques pendant la frappe (propres à ce livre). */
+  autoReplace?: AutoReplaceSettings;
+}
+
+/** Remplacement automatique : mot tapé -> texte inséré à sa place. */
+export interface AutoReplaceRule {
+  from: string;
+  to: string;
+}
+
+/** Remplacements automatiques d’un livre (appliqués pendant la frappe). */
+export interface AutoReplaceSettings {
+  enabled: boolean;
+  rules: AutoReplaceRule[];
 }
 // ----------------------------------------------------------------------------
 // Export (fenêtre d’export)

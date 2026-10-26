@@ -540,6 +540,7 @@ export function ChapterEditor({
       spellCheck={nativeSpellcheck}
       style={editorStyle}
       onInput={() => controller.handleInput()}
+      onKeyDown={(event) => controller.handleEditorKeyDown(event.nativeEvent)}
       onCopy={handleCopy}
       onPaste={handlePaste}
       onClick={(event) => controller.handleEditorClick(event)}

@@ -1674,3 +1674,22 @@ html.focus-mode .editor-scroll-container {
 html.focus-mode .editor-ruler-section {
   display: none !important;
 }
+
+/* REMPLACEMENTS AUTOMATIQUES (modals/ReplaceModal.tsx) */
+.autorep-tabs { display: flex; gap: 4px; margin: 0 0 16px; border-bottom: 1px solid rgba(128, 128, 128, 0.3); }
+.autorep-tabs .autorep-tab { width: auto; margin: 0 0 -1px; padding: 8px 12px; background: transparent; border: none; border-bottom: 2px solid transparent; border-radius: 0; color: var(--text-muted); font-size: 13px; cursor: pointer; box-shadow: none; }
+.autorep-tabs .autorep-tab:hover { color: var(--text-main); background: transparent; }
+.autorep-tabs .autorep-tab.active { color: var(--text-main); border-bottom-color: currentColor; font-weight: 600; }
+.autorep-panel .autorep-toggle { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; font-size: 13px; cursor: pointer; }
+.autorep-panel .autorep-toggle input[type="checkbox"] { width: auto; margin: 0; }
+.autorep-panel .autorep-hint { margin: 0 0 14px; font-size: 12px; line-height: 1.45; color: var(--text-muted); }
+.autorep-panel .autorep-empty { margin: 0 0 12px; font-size: 13px; font-style: italic; color: var(--text-muted); }
+.autorep-panel .autorep-list { display: flex; flex-direction: column; gap: 6px; max-height: 45vh; overflow-y: auto; margin: 0 0 12px; padding-right: 2px; }
+.autorep-panel .autorep-head, .autorep-panel .autorep-row { display: grid; grid-template-columns: minmax(0, 1fr) 20px minmax(0, 1.4fr) 32px; gap: 6px; align-items: center; }
+.autorep-panel .autorep-head { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
+.autorep-panel .autorep-row input[type="text"] { width: 100%; min-width: 0; margin: 0; box-sizing: border-box; }
+.autorep-panel .autorep-arrow { text-align: center; color: var(--text-muted); }
+.autorep-panel .autorep-row .autorep-del { width: 32px; height: 32px; margin: 0; padding: 0; display: inline-flex; align-items: center; justify-content: center; background: transparent; border: 1px solid transparent; border-radius: 6px; color: var(--text-muted); cursor: pointer; box-shadow: none; }
+.autorep-panel .autorep-row .autorep-del:hover { color: #e5484d; border-color: currentColor; }
+.autorep-panel .autorep-warn { margin: 2px 0 0; font-size: 11px; color: #d97706; }
+.autorep-panel .autorep-add { width: auto; }

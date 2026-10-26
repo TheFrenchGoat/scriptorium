@@ -26,6 +26,14 @@ import type {
 
 import { getLanguage, t } from '../../i18n';
 import { createEditHistory, type EditHistory } from '../../lib/edit-history';
+import {
+  applyAutoReplaceBeforeCaret,
+  isAutoReplaceTrigger,
+  normalizeAutoReplace,
+  revertAutoReplace,
+  type AutoReplaceSettings,
+  type AutoReplaceUndo
+} from '../../lib/auto-replace';
 import { createMentionIndex, type MentionIndex } from '../../lib/mention-index';
 import {
   createWbRegistry,
@@ -202,6 +210,12 @@ export interface EditorController {
   attachEditor(element: HTMLElement | null): void;
   onChapterMounted(name: string): void;
   handleInput(options?: { pasted?: boolean }): void;
+  /** Remplacements automatiques : appelé à chaque touche dans l’éditeur de chapitre. */
+  handleEditorKeyDown(event: KeyboardEvent): void;
+  /** Remplacements automatiques du livre (copie normalisée). */
+  getAutoReplace(): AutoReplaceSettings;
+  /** Enregistre les remplacements automatiques du livre. */
+  setAutoReplace(next: AutoReplaceSettings): void;
   typedWords(): { total: number; byChapter: Record<string, number>; tracked: boolean };
   handlePaste(event: ReactClipboardEvent<HTMLElement>): void;
   handleEditorClick(event: ReactMouseEvent<HTMLElement>): void;
@@ -446,6 +460,8 @@ export function useEditorController({
 
   /** Instantané en attente d'enregistrement dans l'historique. */
   const pendingHistoryRef = useRef<PendingHistoryCommit | null>(null);
+  // Dernier remplacement automatique, pour que Ctrl+Z puisse le défaire.
+  const autoReplaceRef = useRef<(AutoReplaceUndo & { chapter: string; inputs: number }) | null>(null);
 
   /**
    * Fautes ignorées pendant la session (clé : règle + texte fautif). Sans
@@ -1701,6 +1717,12 @@ export function useEditorController({
       },
 
       handleInput(options?: { pasted?: boolean }) {
+        // Un remplacement automatique ne se défait que juste après (la frappe du séparateur compte pour 1).
+        const autoUndo = autoReplaceRef.current;
+        if (autoUndo) {
+          autoUndo.inputs += 1;
+          if (autoUndo.inputs > 1) autoReplaceRef.current = null;
+        }
         const editor = s.editorEl;
         const chapterName = s.activeTab;
 
@@ -1726,6 +1748,27 @@ export function useEditorController({
         debouncedGrammarCheck();
       },
 
+      handleEditorKeyDown(event: KeyboardEvent) {
+        const editor = s.editorEl;
+        const chapterName = s.activeTab;
+        if (!editor || !chapterName || s.activeType !== 'chapter') return;
+        if (!isAutoReplaceTrigger(event)) return;
+        const done = applyAutoReplaceBeforeCaret(editor, s.projectData.autoReplace);
+        autoReplaceRef.current = done ? { ...done, chapter: chapterName, inputs: 0 } : null;
+      },
+
+      getAutoReplace(): AutoReplaceSettings {
+        return normalizeAutoReplace(s.projectData?.autoReplace);
+      },
+
+      setAutoReplace(next: AutoReplaceSettings): void {
+        const data = s.projectData;
+        if (!data) return;
+        data.autoReplace = normalizeAutoReplace(next);
+        setSaveStatus('pending');
+        bump();
+        void saveAll();
+      },
       typedWords() {
         const tracker = typedWordsRef.current;
 
@@ -2004,6 +2047,19 @@ export function useEditorController({
       },
 
       undo() {
+        // Ctrl+Z juste après un remplacement automatique : on remet le mot tapé.
+        const autoUndo = autoReplaceRef.current;
+        autoReplaceRef.current = null;
+        if (
+          autoUndo &&
+          s.editorEl &&
+          s.activeType === 'chapter' &&
+          s.activeTab === autoUndo.chapter &&
+          revertAutoReplace(s.editorEl, autoUndo)
+        ) {
+          ctrl.handleInput();
+          return;
+        }
         jumpInHistory('undo');
       },
 
