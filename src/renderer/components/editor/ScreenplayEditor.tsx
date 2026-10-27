@@ -661,9 +661,14 @@ export function ScreenplayEditor({
   );
 
   const changeElementHtml = useCallback(
-    (sceneId: string, elementId: string, html: string): void => {
+    (sceneId: string, elementId: string, html: string, options?: { newStep?: boolean }): void => {
       const scene = (screenplayRef.current.scenes ?? []).find((entry) => entry.id === sceneId);
       const previous = scene?.elements.find((element) => element.id === elementId);
+
+      // Remplacement automatique : toujours une nouvelle étape d'annulation.
+      if (options?.newStep) {
+        lastGroupRef.current = null;
+      }
 
       // Seules les balises changent (couleurs) : pas d'étape d'annulation.
       const textChanged =
@@ -948,6 +953,7 @@ export function ScreenplayEditor({
               <div className="screenplay-scene-elements">
                 {scene.elements.map((element, elementIndex) => (
                   <ScreenplayElementEditor
+                    autoReplace={projectData?.autoReplace}
                     key={element.id}
                     element={element}
                     conventionLanguage={language}
@@ -959,8 +965,8 @@ export function ScreenplayEditor({
                     onFocus={() => {
                       selectElement(scene, sceneIndex, element, elementIndex);
                     }}
-                    onChangeHtml={(elementId, html) => {
-                      changeElementHtml(scene.id, elementId, html);
+                    onChangeHtml={(elementId, html, options) => {
+                      changeElementHtml(scene.id, elementId, html, options);
                     }}
                     onChangeType={(elementId, type) => {
                       changeElementType(scene.id, elementId, type);

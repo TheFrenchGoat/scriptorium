@@ -22,6 +22,7 @@
 //   contrôleur de l'éditeur écoute pour ouvrir la fiche dans un onglet.
 
 import { wbLinksEnabled } from '../../lib/wb-links';
+import { applyAutoReplaceBeforeCaret, isAutoReplaceTrigger } from '../../lib/auto-replace';
 import React, {
   useCallback,
   useEffect,
@@ -85,11 +86,15 @@ export interface ScreenplayElementEditorProps {
   /** Change dès qu'une fiche change (nom, alias, couleur, catégorie). */
   worldSignature?: string;
 
+  /** Remplacements automatiques du livre (réglages bruts). */
+  autoReplace?: unknown;
+
   onFocus: () => void;
 
   onChangeHtml: (
     elementId: string,
-    html: string
+    html: string,
+    options?: { newStep?: boolean }
   ) => void;
 
   onChangeType: (
@@ -107,6 +112,13 @@ export interface ScreenplayElementEditorProps {
     elementId: string
   ) => void;
 }
+
+/** Paragraphes où s'appliquent les remplacements automatiques (texte libre). */
+const AUTO_REPLACE_TYPES: ReadonlySet<ScreenplayElementType> = new Set<ScreenplayElementType>([
+  'action',
+  'dialogue',
+  'parenthetical'
+]);
 
 const TAB_ORDER: readonly ScreenplayElementType[] = [
   'action',
@@ -330,6 +342,7 @@ export function ScreenplayElementEditor({
   projectData,
   wbRegistry,
   worldSignature,
+  autoReplace,
   onFocus,
   onChangeHtml,
   onChangeType,
@@ -368,6 +381,13 @@ export function ScreenplayElementEditor({
 
   registryRef.current =
     wbRegistry;
+
+  // Remplacements automatiques du livre (toujours la version la plus récente).
+  const autoReplaceRef =
+    useRef(autoReplace);
+
+  autoReplaceRef.current =
+    autoReplace;
 
   const availableTypes =
     useMemo(
@@ -928,6 +948,34 @@ export function ScreenplayElementEditor({
         onPaste={handlePaste}
         onClick={handleClick}
         onKeyDown={(event) => {
+          // Remplacement automatique AVANT l'insertion de la touche (et avant la coupe par Entrée).
+          if (
+            AUTO_REPLACE_TYPES.has(element.type) &&
+            !composingRef.current &&
+            isAutoReplaceTrigger(event.nativeEvent)
+          ) {
+            const editor =
+              editorRef.current;
+
+            if (
+              editor &&
+              applyAutoReplaceBeforeCaret(
+                editor,
+                autoReplaceRef.current
+              )
+            ) {
+              // Étape d'annulation à part : Ctrl+Z remet le mot tapé.
+              lastReportedHtmlRef.current =
+                editor.innerHTML;
+
+              onChangeHtml(
+                element.id,
+                editor.innerHTML,
+                { newStep: true }
+              );
+            }
+          }
+
           if (
             event.key === 'Tab'
           ) {
