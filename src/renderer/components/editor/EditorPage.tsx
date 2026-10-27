@@ -699,7 +699,7 @@ export function EditorPage({
   useEffect(() => {
     const onCommentKey = (event: KeyboardEvent): void => {
       if (!(event.ctrlKey || event.metaKey) || !event.altKey || event.shiftKey) return;
-      if (event.code !== 'KeyM') return;
+      if (!(event.key.toLowerCase() === 'm' || (event.key.length !== 1 && event.code === 'KeyM'))) return;
       if (document.documentElement.classList.contains('focus-mode')) return;
       const target = event.target instanceof Element ? event.target : null;
       if (target?.closest('.notes-panel')) return;
