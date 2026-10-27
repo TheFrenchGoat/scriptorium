@@ -67,7 +67,7 @@ import {
   removeGrammarGroup,
   replaceGrammarGroup
 } from '../../lib/grammar-check';
-import { debounce, replaceInHtmlString } from '../../lib/dom';
+import { countInHtmlString, debounce, replaceInHtmlString, type ReplaceMatchInfo, type ReplaceOptions } from '../../lib/dom';
 import { withPreservedSelection } from '../../lib/selection';
 import {
   captureHistoryCaretState,
@@ -291,7 +291,9 @@ export interface EditorController {
   /** Identifiants des fiches de cette catégorie. */
   itemsUsingType(slug: string): string[];
 
-  replaceAll(findText: string, replacementText: string, wholeProject: boolean): void;
+  replaceAll(findText: string, replacementText: string, wholeProject: boolean, options?: ReplaceOptions): void;
+  /** Nombre d'occurrences que replaceAll remplacerait (meme portee, memes options). */
+  countMatches(findText: string, wholeProject: boolean, options?: ReplaceOptions): ReplaceMatchInfo;
 
   updatePrefs(prefs: EditorPrefs): void;
   setNativeSpellcheck(enabled: boolean): Promise<void>;
@@ -3199,7 +3201,46 @@ export function useEditorController({
         await saveAll();
       },
 
-      replaceAll(findText, replacementText, wholeProject) {
+      countMatches(findText, wholeProject, options) {
+        const info: ReplaceMatchInfo = { count: 0, places: 0, scenes: false, noChapter: false };
+        if (!findText) return info;
+
+        if (s.activeType === 'scene' && isScreenplayData(s.projectData)) {
+          info.scenes = true;
+          for (const scene of s.projectData.screenplay.scenes) {
+            if (!wholeProject && scene.id !== s.activeTab) continue;
+            let n = 0;
+            for (const element of scene.elements) n += countInHtmlString(element.html, findText, options);
+            if (n > 0) {
+              info.count += n;
+              info.places += 1;
+            }
+          }
+          return info;
+        }
+
+        const addChapter = (html: string | undefined): void => {
+          const n = countInHtmlString(html, findText, options);
+          if (n > 0) {
+            info.count += n;
+            info.places += 1;
+          }
+        };
+
+        if (!wholeProject) {
+          if (s.activeType !== 'chapter' || !s.activeTab) {
+            info.noChapter = true;
+            return info;
+          }
+          addChapter(s.projectData.chapters[s.activeTab]);
+          return info;
+        }
+
+        for (const html of Object.values(s.projectData.chapters)) addChapter(html);
+        return info;
+      },
+
+      replaceAll(findText, replacementText, wholeProject, options) {
         if (!findText) {
           return;
         }
@@ -3218,7 +3259,8 @@ export function useEditorController({
               const result = replaceInHtmlString(
                 element.html,
                 findText,
-                replacementText
+                replacementText,
+                options
               );
 
               totalCount += result.count;
@@ -3272,7 +3314,8 @@ export function useEditorController({
           const { html: newHtml, count } = replaceInHtmlString(
             oldHtml,
             findText,
-            replacementText
+            replacementText,
+            options
           );
 
           if (count === 0) {
@@ -3323,7 +3366,8 @@ export function useEditorController({
           const { html: newHtml, count } = replaceInHtmlString(
             oldHtml,
             findText,
-            replacementText
+            replacementText,
+            options
           );
 
           if (count === 0) {

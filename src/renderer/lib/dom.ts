@@ -186,30 +186,78 @@ export function placeCaretAtEnd(el: HTMLElement): void {
 export function replaceInHtmlString(
   html: string | undefined,
   findStr: string,
-  repStr: string
+  repStr: string,
+  options?: ReplaceOptions
 ): { html: string; count: number } {
   const source = html || '';
 
-  // Une recherche vide remplacerait entre chaque caractère : on l'ignore.
+  // Une recherche vide remplacerait entre chaque caractere : on l'ignore.
   if (!findStr) return { html: source, count: 0 };
 
+  const pattern = buildFindPattern(findStr, options);
   const template = parseHtmlFragment(source);
-
   const walker = document.createTreeWalker(template.content, NodeFilter.SHOW_TEXT);
-  const nodesToUpdate: Text[] = [];
-  while (walker.nextNode()) {
-    const node = walker.currentNode as Text;
-    if (node.nodeValue?.includes(findStr)) nodesToUpdate.push(node);
-  }
-
-  if (nodesToUpdate.length === 0) return { html: source, count: 0 };
 
   let count = 0;
-  nodesToUpdate.forEach((n) => {
-    const parts = (n.nodeValue ?? '').split(findStr);
-    count += parts.length - 1;
-    n.nodeValue = parts.join(repStr);
-  });
+  while (walker.nextNode()) {
+    const node = walker.currentNode as Text;
+    const value = node.nodeValue ?? '';
+    pattern.lastIndex = 0;
+    if (!pattern.test(value)) continue;
+    pattern.lastIndex = 0;
+    // Fonction de remplacement : "$" dans le texte de remplacement reste un simple caractere.
+    node.nodeValue = value.replace(pattern, () => {
+      count += 1;
+      return repStr;
+    });
+  }
 
+  if (count === 0) return { html: source, count: 0 };
   return { html: template.innerHTML, count };
+}
+
+/** Options de Rechercher / Remplacer. Par defaut : majuscules respectees, pas de mot entier. */
+export interface ReplaceOptions {
+  wholeWord?: boolean;
+  matchCase?: boolean;
+}
+
+/** Resultat du comptage avant remplacement. */
+export interface ReplaceMatchInfo {
+  count: number;
+  /** Nombre de chapitres (ou de scenes) concernes. */
+  places: number;
+  scenes: boolean;
+  /** Portee "chapitre" alors qu'aucun chapitre n'est ouvert. */
+  noChapter: boolean;
+}
+
+/** Caractere de mot : lettres (accents compris), chiffres, soulignement. L'apostrophe et le trait d'union separent les mots. */
+const FIND_WORD_CHAR = '[\\p{L}\\p{N}\\p{M}_]';
+
+function buildFindPattern(findStr: string, options?: ReplaceOptions): RegExp {
+  const matchCase = options?.matchCase ?? true;
+  const core = findStr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const source = options?.wholeWord
+    ? '(?<!' + FIND_WORD_CHAR + ')' + core + '(?!' + FIND_WORD_CHAR + ')'
+    : core;
+  return new RegExp(source, matchCase ? 'gu' : 'giu');
+}
+
+/** Compte les occurrences dans le texte d'un fragment HTML (jamais dans les balises). */
+export function countInHtmlString(
+  html: string | undefined,
+  findStr: string,
+  options?: ReplaceOptions
+): number {
+  if (!html || !findStr) return 0;
+  const pattern = buildFindPattern(findStr, options);
+  const template = parseHtmlFragment(html);
+  const walker = document.createTreeWalker(template.content, NodeFilter.SHOW_TEXT);
+  let count = 0;
+  while (walker.nextNode()) {
+    const matches = (walker.currentNode.nodeValue ?? '').match(pattern);
+    if (matches) count += matches.length;
+  }
+  return count;
 }

@@ -1747,3 +1747,11 @@ html.focus-mode #editor [data-comment-id] { background: none !important; border-
 .comment-bubble-btn:hover { background: rgba(127, 127, 127, 0.14); }
 .notes-comment.flash { border-color: #d97706; box-shadow: 0 0 0 2px rgba(217, 119, 6, 0.35); }
 html.focus-mode .comment-bubble { display: none; }
+
+/* Rechercher / Remplacer : options et nombre d occurrences */
+.replace-options { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: -12px 0 10px; }
+.replace-option { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-muted); cursor: pointer; }
+.modal-content .replace-option input[type="checkbox"] { width: auto; margin: 0; padding: 0; }
+.replace-count { min-height: 18px; margin: 0; font-size: 13px; color: var(--text-muted); }
+.replace-count.none { color: #d97706; }
+.replace-run-btn:disabled { opacity: 0.5; cursor: not-allowed; }

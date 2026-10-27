@@ -1085,6 +1085,13 @@ export const fr = {
   commentErrLost: 'Le texte a changé entre-temps : sélectionnez de nouveau le passage.',
   commentBubbleLabel: 'Commentaire',
   commentBubbleShow: 'Voir dans le panneau',
+  replaceWholeWord: 'Mot entier',
+  replaceMatchCase: 'Respecter les majuscules',
+  replaceCountNone: 'Aucune occurrence.',
+  replaceCountChapter: '{count} occurrence(s) dans ce chapitre.',
+  replaceCountScene: '{count} occurrence(s) dans cette sc\u00E8ne.',
+  replaceCountChapters: '{count} occurrence(s) dans {places} chapitre(s).',
+  replaceCountScenes: '{count} occurrence(s) dans {places} sc\u00E8ne(s).',
   exportPdfSuccess: 'Export PDF réussi !',
   exportPdfError:
     "Erreur lors de l'export PDF : ",
@@ -2190,6 +2197,13 @@ export const en: Record<TranslationKey, string> = {
   commentErrLost: 'The text changed in the meantime: select the passage again.',
   commentBubbleLabel: 'Comment',
   commentBubbleShow: 'Show in panel',
+  replaceWholeWord: 'Whole word',
+  replaceMatchCase: 'Match case',
+  replaceCountNone: 'No matches.',
+  replaceCountChapter: '{count} match(es) in this chapter.',
+  replaceCountScene: '{count} match(es) in this scene.',
+  replaceCountChapters: '{count} match(es) in {places} chapter(s).',
+  replaceCountScenes: '{count} match(es) in {places} scene(s).',
   exportPdfSuccess:
     'PDF export successful!',
   exportPdfError:

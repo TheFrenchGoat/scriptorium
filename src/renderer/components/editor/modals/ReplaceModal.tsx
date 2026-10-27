@@ -9,6 +9,7 @@ import { useI18n } from '../../../i18n';
 import { Modal } from '../../common/Modal';
 import type { EditorController } from '../useEditorController';
 import { isAutoReplaceWord, type AutoReplaceRule } from '../../../lib/auto-replace';
+import type { ReplaceMatchInfo } from '../../../lib/dom';
 
 export interface ReplaceModalProps {
   open: boolean;
@@ -20,6 +21,27 @@ type ReplaceTab = 'search' | 'auto';
 
 const ARROW = String.fromCharCode(0x2192);
 const CROSS = String.fromCharCode(0x2715);
+
+// Options de recherche : gardees d'une fois sur l'autre.
+const WHOLE_WORD_KEY = 'scriptorium.replaceWholeWord';
+const MATCH_CASE_KEY = 'scriptorium.replaceMatchCase';
+
+function readOption(key: string, fallback: boolean): boolean {
+  try {
+    const value = window.localStorage.getItem(key);
+    return value === null ? fallback : value === '1';
+  } catch {
+    return fallback;
+  }
+}
+
+function saveOption(key: string, value: boolean): void {
+  try {
+    window.localStorage.setItem(key, value ? '1' : '0');
+  } catch {
+    // Stockage indisponible : l'option vaut pour cette fois seulement.
+  }
+}
 
 function isBlankRule(rule: AutoReplaceRule): boolean {
   return rule.from.trim() === '' && rule.to.trim() === '';
@@ -35,6 +57,21 @@ export function ReplaceModal({ open, controller, onClose }: ReplaceModalProps): 
   const [rules, setRules] = useState<AutoReplaceRule[]>([]);
   const [dirty, setDirty] = useState(false);
   const [focusIndex, setFocusIndex] = useState<number | null>(null);
+  const [wholeWord, setWholeWord] = useState<boolean>(() => readOption(WHOLE_WORD_KEY, false));
+  const [matchCase, setMatchCase] = useState<boolean>(() => readOption(MATCH_CASE_KEY, true));
+  const [matchInfo, setMatchInfo] = useState<ReplaceMatchInfo | null>(null);
+
+  // Nombre d'occurrences, recalcule peu apres chaque changement.
+  useEffect(() => {
+    setMatchInfo(null);
+    if (!open || tab !== 'search' || !findStr) return undefined;
+    const timer = window.setTimeout(() => {
+      setMatchInfo(controller.countMatches(findStr, wholeProject, { wholeWord, matchCase }));
+    }, 200);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [open, tab, findStr, wholeProject, wholeWord, matchCase, controller]);
 
   // À chaque ouverture, on recharge la liste du livre ouvert.
   useEffect(() => {
@@ -68,7 +105,8 @@ export function ReplaceModal({ open, controller, onClose }: ReplaceModalProps): 
   };
 
   const runReplace = () => {
-    controller.replaceAll(findStr, repStr, wholeProject);
+    if (!findStr || (matchInfo !== null && matchInfo.count === 0)) return;
+    controller.replaceAll(findStr, repStr, wholeProject, { wholeWord, matchCase });
     close();
   };
 
@@ -111,11 +149,20 @@ export function ReplaceModal({ open, controller, onClose }: ReplaceModalProps): 
     return null;
   };
 
+  let countLabel = '';
+  if (findStr && matchInfo) {
+    if (matchInfo.noChapter) countLabel = t('replaceNoChapterOpen');
+    else if (matchInfo.count === 0) countLabel = t('replaceCountNone');
+    else if (!wholeProject) countLabel = t(matchInfo.scenes ? 'replaceCountScene' : 'replaceCountChapter', { count: matchInfo.count });
+    else countLabel = t(matchInfo.scenes ? 'replaceCountScenes' : 'replaceCountChapters', { count: matchInfo.count, places: matchInfo.places });
+  }
+  const nothingToReplace = !findStr || (matchInfo !== null && matchInfo.count === 0);
+
   const footer =
     tab === 'search' ? (
       <>
         <button onClick={close}>{t('close')}</button>
-        <button onClick={runReplace}>{t('replaceAllBtn')}</button>
+        <button className="replace-run-btn" onClick={runReplace} disabled={nothingToReplace}>{t('replaceAllBtn')}</button>
       </>
     ) : (
       <button onClick={close}>{t('close')}</button>
@@ -184,6 +231,31 @@ export function ReplaceModal({ open, controller, onClose }: ReplaceModalProps): 
             />
             <span>{t('replaceScopeAllLabel')}</span>
           </label>
+          <div className="replace-options">
+            <label className="replace-option">
+              <input
+                type="checkbox"
+                checked={wholeWord}
+                onChange={(e) => {
+                  setWholeWord(e.target.checked);
+                  saveOption(WHOLE_WORD_KEY, e.target.checked);
+                }}
+              />
+              <span>{t('replaceWholeWord')}</span>
+            </label>
+            <label className="replace-option">
+              <input
+                type="checkbox"
+                checked={matchCase}
+                onChange={(e) => {
+                  setMatchCase(e.target.checked);
+                  saveOption(MATCH_CASE_KEY, e.target.checked);
+                }}
+              />
+              <span>{t('replaceMatchCase')}</span>
+            </label>
+          </div>
+          <p className={`replace-count${matchInfo && matchInfo.count === 0 ? ' none' : ''}`} aria-live="polite">{countLabel}</p>
         </>
       ) : (
         <div className="autorep-panel">
