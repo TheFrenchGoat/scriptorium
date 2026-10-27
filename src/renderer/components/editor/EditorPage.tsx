@@ -52,6 +52,7 @@ import { TabsBar } from './TabsBar';
 import { Ruler } from './Ruler';
 import { Toolbar } from './Toolbar';
 import { StatusBar } from './StatusBar';
+import { NotesPanel, readNotesPanelOpen, saveNotesPanelOpen } from './NotesPanel';
 import { ChapterEditor } from './ChapterEditor';
 import { ScreenplayEditor } from './ScreenplayEditor';
 import { WbSheet } from './WbSheet';
@@ -685,6 +686,12 @@ export function EditorPage({
   // MODE CONCENTRATION
   // -----------------------------------------------------------------------
   const [focusMode, setFocusMode] = useState(false);
+
+  // Panneau Notes (romans) : reste ouvert ou ferme comme l'auteur l'a laisse.
+  const [notesOpen, setNotesOpen] = useState<boolean>(() => readNotesPanelOpen());
+  useEffect(() => {
+    saveNotesPanelOpen(notesOpen);
+  }, [notesOpen]);
 
   useEffect(() => {
     const rootEl = document.documentElement;
@@ -1406,6 +1413,9 @@ export function EditorPage({
         sessionSlotRef={setSessionSlot}
         focusMode={focusMode}
         onToggleFocusMode={() => { setFocusMode((value) => !value); }}
+        notesOpen={notesOpen}
+        notesHasContent={Boolean(activeTab && activeType === 'chapter' && controller.getChapterNote(activeTab).trim())}
+        onToggleNotes={controller.isScreenplayProject() ? undefined : () => { setNotesOpen((value) => !value); }}
         onOpenGlobalSearch={() => {
           setOpenModal(
             'globalSearch'
@@ -1617,6 +1627,14 @@ export function EditorPage({
             }
           />
         </main>
+
+        {notesOpen && !controller.isScreenplayProject() && (
+          <NotesPanel
+            controller={controller}
+            chapterName={activeTab && activeType === 'chapter' ? activeTab : null}
+            onClose={() => { setNotesOpen(false); }}
+          />
+        )}
       </div>
 
       <ReplaceModal

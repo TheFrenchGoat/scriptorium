@@ -246,6 +246,10 @@ export interface EditorController {
   getChapterMeta(name: string): ChapterMeta;
   /** Modifie les réglages du chapitre puis sauvegarde ; null efface une valeur. */
   setChapterMeta(name: string, patch: ChapterMetaPatch): void;
+  /** Note libre du chapitre (texte simple) ; vide si aucune. */
+  getChapterNote(name: string): string;
+  /** Modifie la note du chapitre puis sauvegarde ; un texte vide supprime la note. */
+  setChapterNote(name: string, text: string): void;
   createChapter(name: string): boolean;
   createScene(options?: CreateScreenplaySceneOptions): string | null;
   updateScreenplay(screenplay: ScreenplayProjectData): void;
@@ -401,6 +405,10 @@ function ensureProjectDefaults(projectData: ProjectData): void {
   const rawChapterMeta: unknown = projectData.chapterMeta;
   if (rawChapterMeta !== undefined && (typeof rawChapterMeta !== 'object' || rawChapterMeta === null || Array.isArray(rawChapterMeta))) {
     delete projectData.chapterMeta;
+  }
+  const rawChapterNotes: unknown = projectData.chapterNotes;
+  if (rawChapterNotes !== undefined && (typeof rawChapterNotes !== 'object' || rawChapterNotes === null || Array.isArray(rawChapterNotes))) {
+    delete projectData.chapterNotes;
   }
   projectData.goals = Array.isArray(projectData.goals) ? projectData.goals : [];
 }
@@ -2112,6 +2120,29 @@ export function useEditorController({
         void saveAll();
       },
 
+      /** Note libre du chapitre (texte simple) ; vide si aucune. */
+      getChapterNote(name: string): string {
+        const note = s.projectData?.chapterNotes?.[name];
+        return typeof note === 'string' ? note : '';
+      },
+
+      /** Modifie la note du chapitre puis sauvegarde ; un texte vide supprime la note. */
+      setChapterNote(name: string, text: string): void {
+        const data = s.projectData;
+        if (!data || !Object.prototype.hasOwnProperty.call(data.chapters, name)) return;
+        const nextText = text.trim().length > 0 ? text : '';
+        const before = data.chapterNotes?.[name] ?? '';
+        if (before === nextText) return;
+        const map: Record<string, string> = { ...(data.chapterNotes ?? {}) };
+        if (nextText) map[name] = nextText;
+        else delete map[name];
+        if (Object.keys(map).length > 0) data.chapterNotes = map;
+        else delete data.chapterNotes;
+        setSaveStatus('pending');
+        bump();
+        void saveAll();
+      },
+
       createChapter(name) {
         if (isScreenplayData(s.projectData)) {
           return false;
@@ -2373,6 +2404,7 @@ export function useEditorController({
 
           history.remove(key);
           if (s.projectData.chapterMeta) delete s.projectData.chapterMeta[key];
+          if (s.projectData.chapterNotes) delete s.projectData.chapterNotes[key];
           mentionIndex.removeChapter(key);
         } else {
           const wbBefore = takeWbSnapshot();
@@ -2498,6 +2530,10 @@ export function useEditorController({
           if (s.projectData.chapterMeta && key !== trimmed && Object.prototype.hasOwnProperty.call(s.projectData.chapterMeta, key)) {
             s.projectData.chapterMeta[trimmed] = s.projectData.chapterMeta[key];
             delete s.projectData.chapterMeta[key];
+          }
+          if (s.projectData.chapterNotes && key !== trimmed && Object.prototype.hasOwnProperty.call(s.projectData.chapterNotes, key)) {
+            s.projectData.chapterNotes[trimmed] = s.projectData.chapterNotes[key];
+            delete s.projectData.chapterNotes[key];
           }
           mentionIndex.renameChapter(key, trimmed);
 

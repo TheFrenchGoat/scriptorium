@@ -62,6 +62,10 @@ export interface ToolbarProps {
   sessionSlotRef?: (node: HTMLDivElement | null) => void;
   focusMode?: boolean;
   onToggleFocusMode?: () => void;
+  /** Panneau Notes (romans seulement) : sans onToggleNotes, le bouton est cache. */
+  notesOpen?: boolean;
+  notesHasContent?: boolean;
+  onToggleNotes?: () => void;
 }
 
 interface FontChoice {
@@ -600,6 +604,9 @@ export function Toolbar({
   onOpenReplace,
   sessionSlotRef,
   focusMode = false,
+  notesOpen = false,
+  notesHasContent = false,
+  onToggleNotes,
   onToggleFocusMode
 }: ToolbarProps): React.ReactElement {
   const { t, lang } = useI18n();
@@ -1574,6 +1581,20 @@ export function Toolbar({
       <button type="button" title={t('replaceBtnTitle')} onClick={onOpenReplace}>
         {t('replaceBtn')}
       </button>
+
+      {onToggleNotes && (
+        <button
+          type="button"
+          className={notesOpen ? 'toolbar-notes-btn active' : 'toolbar-notes-btn'}
+          title={t('notesBtnTitle')}
+          aria-pressed={notesOpen}
+          onMouseDown={(event) => { event.preventDefault(); }}
+          onClick={() => { onToggleNotes(); }}
+        >
+          {'\u{1F5D2}\u{FE0F} '}{t('notesBtn')}
+          {notesHasContent && <span className="toolbar-notes-dot" aria-hidden="true" />}
+        </button>
+      )}
 
       {/* Bouton Session (placé ici par Timer, via un portail), tout à droite. */}
       <div className="toolbar-session-slot" ref={sessionSlotRef} />

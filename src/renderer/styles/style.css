@@ -1694,3 +1694,21 @@ html.focus-mode .editor-ruler-section {
 .autorep-panel .autorep-row .autorep-del:hover { color: #e5484d; border-color: currentColor; }
 .autorep-panel .autorep-warn { margin: 2px 0 0; font-size: 11px; color: #d97706; }
 .autorep-panel .autorep-add { width: auto; }
+
+/* ---------- Panneau Notes (1.4.2) ---------- */
+.toolbar-notes-btn { position: relative; flex: 0 0 auto; display: inline-flex; align-items: center; gap: 4px; height: 28px; margin-left: 6px; padding: 0 10px; border: 1px solid rgba(127, 127, 127, 0.35); border-radius: 6px; background: transparent; color: inherit; font: inherit; font-size: 12px; white-space: nowrap; cursor: pointer; }
+.toolbar-notes-btn:hover { background: rgba(127, 127, 127, 0.14); }
+.toolbar-notes-btn.active { border-color: rgba(127, 127, 127, 0.55); background: rgba(127, 127, 127, 0.18); }
+.toolbar-notes-dot { position: absolute; top: 3px; right: 3px; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+.notes-panel { width: 300px; flex-shrink: 0; display: flex; flex-direction: column; background: var(--bg-panel); border-left: 1px solid var(--border); overflow: hidden; }
+.notes-panel-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+.notes-panel-title { font-weight: 600; }
+.notes-panel-close { width: 26px; height: 26px; margin: 0; padding: 0; display: inline-flex; align-items: center; justify-content: center; background: transparent; border: 1px solid transparent; border-radius: 6px; color: var(--text-muted); cursor: pointer; box-shadow: none; }
+.notes-panel-close:hover { color: var(--text-main); border-color: var(--border); }
+.notes-panel-body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 6px; padding: 12px; }
+.notes-panel-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
+.notes-panel-chapter { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.notes-panel-textarea { flex: 1; min-height: 160px; width: 100%; box-sizing: border-box; margin: 0; padding: 8px; resize: none; font: inherit; line-height: 1.5; color: var(--text-main); background: var(--bg-app); border: 1px solid var(--border); border-radius: 6px; }
+.notes-panel-hint, .notes-panel-empty { margin: 0; font-size: 11px; color: var(--text-muted); }
+.notes-panel-empty { padding: 12px; }
+html.focus-mode .notes-panel { display: none !important; }

@@ -1422,6 +1422,18 @@ function sanitizeAutoReplace(value: unknown): ProjectData['autoReplace'] {
   }
   return { enabled: value['enabled'] !== false, rules };
 }
+/** Nettoie les notes de chapitre : texte simple, uniquement pour des chapitres existants. */
+function sanitizeChapterNotes(value: unknown, chapters: Record<string, string>): Record<string, string> | undefined {
+  if (!isRecord(value)) return undefined;
+  const result: Record<string, string> = {};
+  for (const [name, raw] of Object.entries(value)) {
+    if (name === '__proto__' || name === 'constructor' || name === 'prototype') continue;
+    if (!Object.prototype.hasOwnProperty.call(chapters, name)) continue;
+    if (typeof raw !== 'string' || raw.trim().length === 0) continue;
+    result[name] = raw.length > 200000 ? raw.slice(0, 200000) : raw;
+  }
+  return Object.keys(result).length > 0 ? result : undefined;
+}
 function sanitizeGoals(value: unknown): ProjectGoal[] {
   if (!Array.isArray(value)) {
     return [];
@@ -1469,6 +1481,10 @@ export function sanitizeProjectData(projectData: unknown): ProjectData {
   if (projectData.autoReplace !== undefined) {
     const autoReplace = sanitizeAutoReplace(projectData.autoReplace);
     if (autoReplace) result.autoReplace = autoReplace;
+  }
+  if (projectData.chapterNotes !== undefined) {
+    const chapterNotes = sanitizeChapterNotes(projectData.chapterNotes, result.chapters);
+    if (chapterNotes) result.chapterNotes = chapterNotes;
   }
   if (projectData.exportSettings !== undefined) {
     result.exportSettings = normalizeExportSettings(projectData.exportSettings);

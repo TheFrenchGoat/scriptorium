@@ -796,6 +796,8 @@ export interface ProjectData {
   chapterMeta?: Record<string, ChapterMeta>;
   /** Remplacements automatiques pendant la frappe (propres à ce livre). */
   autoReplace?: AutoReplaceSettings;
+  /** Note libre de chaque chapitre (texte simple), indexee par nom de chapitre. Jamais exportee. */
+  chapterNotes?: Record<string, string>;
 }
 
 /** Remplacement automatique : mot tapé -> texte inséré à sa place. */
