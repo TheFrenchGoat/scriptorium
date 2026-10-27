@@ -1755,3 +1755,139 @@ html.focus-mode .comment-bubble { display: none; }
 .replace-count { min-height: 18px; margin: 0; font-size: 13px; color: var(--text-muted); }
 .replace-count.none { color: #d97706; }
 .replace-run-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* === Rechercher / Remplacer : presentation 1.4.2 === */
+.modal-content:has(.autorep-tabs) {
+  width: 480px;
+  max-width: calc(100vw - 40px);
+}
+.replace-search {
+  display: flex;
+  flex-direction: column;
+}
+.replace-search .replace-field-label {
+  display: block;
+  margin: 0 0 6px;
+  font-size: 0.85em;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.replace-search input[type=text] {
+  margin-bottom: 16px;
+}
+.replace-find-wrap {
+  position: relative;
+  margin-bottom: 16px;
+}
+.replace-search .replace-find-wrap input[type=text] {
+  margin-bottom: 0;
+  padding-right: 64px;
+}
+.replace-badge {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  min-width: 26px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--bg-hover);
+  color: var(--text-main);
+  font-size: 0.8em;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+.replace-badge.none {
+  background: rgba(217, 119, 6, 0.15);
+  color: #d97706;
+}
+.replace-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 4px 0 14px;
+}
+.replace-scope {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.replace-scope .replace-seg {
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  padding: 6px 12px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.9em;
+}
+.replace-scope .replace-seg + .replace-seg {
+  border-left: 1px solid var(--border);
+}
+.replace-scope .replace-seg:hover {
+  background: var(--bg-hover);
+  color: var(--text-main);
+}
+.replace-scope .replace-seg.active,
+.replace-scope .replace-seg.active:hover {
+  background: var(--accent);
+  color: #fff;
+}
+.replace-toggles {
+  display: inline-flex;
+  gap: 6px;
+}
+.replace-toggles .replace-toggle {
+  margin: 0;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.9em;
+}
+.replace-toggles .replace-toggle:hover {
+  background: var(--bg-hover);
+  color: var(--text-main);
+}
+.replace-toggles .replace-toggle.active,
+.replace-toggles .replace-toggle.active:hover {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--text-main);
+}
+.replace-scope .replace-seg:focus-visible,
+.replace-toggles .replace-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.replace-search .replace-count {
+  margin: 0;
+  min-height: 1.4em;
+  font-size: 0.85em;
+}
+button.replace-close-btn {
+  background: transparent;
+  color: var(--text-muted);
+}
+button.replace-close-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-main);
+}
+button.btn-primary.replace-run-btn {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+button.btn-primary.replace-run-btn:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+button.btn-primary.replace-run-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

@@ -158,11 +158,25 @@ export function ReplaceModal({ open, controller, onClose }: ReplaceModalProps): 
   }
   const nothingToReplace = !findStr || (matchInfo !== null && matchInfo.count === 0);
 
+  const isScreenplay = controller.isScreenplayProject();
+  const countBadge: number | null =
+    findStr.length > 0 && matchInfo && !matchInfo.noChapter ? matchInfo.count : null;
+  const toggleWholeWord = () => {
+    const next = !wholeWord;
+    setWholeWord(next);
+    saveOption(WHOLE_WORD_KEY, next);
+  };
+  const toggleMatchCase = () => {
+    const next = !matchCase;
+    setMatchCase(next);
+    saveOption(MATCH_CASE_KEY, next);
+  };
+
   const footer =
     tab === 'search' ? (
       <>
-        <button onClick={close}>{t('close')}</button>
-        <button className="replace-run-btn" onClick={runReplace} disabled={nothingToReplace}>{t('replaceAllBtn')}</button>
+        <button className="replace-close-btn" onClick={close}>{t('close')}</button>
+        <button className="btn-primary replace-run-btn" onClick={runReplace} disabled={nothingToReplace}>{t('replaceAllBtn')}</button>
       </>
     ) : (
       <button onClick={close}>{t('close')}</button>
@@ -199,63 +213,79 @@ export function ReplaceModal({ open, controller, onClose }: ReplaceModalProps): 
 
       {tab === 'search' ? (
         <>
-          <input
-            type="text"
-            placeholder={t('findPlaceholder')}
-            value={findStr}
-            onChange={(e) => setFindStr(e.target.value)}
-            autoFocus
-          />
-          <input
-            type="text"
-            placeholder={t('replacePlaceholder')}
-            value={repStr}
-            onChange={(e) => setRepStr(e.target.value)}
-          />
-          <label
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              margin: '-10px 0 20px',
-              fontSize: 13,
-              color: 'var(--text-muted)',
-              cursor: 'pointer'
-            }}
-          >
+          <div className="replace-search">
+            <label className="replace-field-label" htmlFor="replace-find-input">
+              {t('replaceFindLabel')}
+            </label>
+            <div className="replace-find-wrap">
+              <input
+                id="replace-find-input"
+                type="text"
+                value={findStr}
+                onChange={(e) => setFindStr(e.target.value)}
+                placeholder={t('findPlaceholder')}
+                spellCheck={false}
+                autoFocus
+              />
+              {countBadge !== null && (
+                <span className={`replace-badge${countBadge === 0 ? ' none' : ''}`} aria-hidden="true">
+                  {countBadge}
+                </span>
+              )}
+            </div>
+            <label className="replace-field-label" htmlFor="replace-rep-input">
+              {t('replaceWithLabel')}
+            </label>
             <input
-              type="checkbox"
-              style={{ width: 'auto' }}
-              checked={wholeProject}
-              onChange={(e) => setWholeProject(e.target.checked)}
+              id="replace-rep-input"
+              type="text"
+              value={repStr}
+              onChange={(e) => setRepStr(e.target.value)}
+              placeholder={t('replacePlaceholder')}
+              spellCheck={false}
             />
-            <span>{t('replaceScopeAllLabel')}</span>
-          </label>
-          <div className="replace-options">
-            <label className="replace-option">
-              <input
-                type="checkbox"
-                checked={wholeWord}
-                onChange={(e) => {
-                  setWholeWord(e.target.checked);
-                  saveOption(WHOLE_WORD_KEY, e.target.checked);
-                }}
-              />
-              <span>{t('replaceWholeWord')}</span>
-            </label>
-            <label className="replace-option">
-              <input
-                type="checkbox"
-                checked={matchCase}
-                onChange={(e) => {
-                  setMatchCase(e.target.checked);
-                  saveOption(MATCH_CASE_KEY, e.target.checked);
-                }}
-              />
-              <span>{t('replaceMatchCase')}</span>
-            </label>
+            <div className="replace-row">
+              <div className="replace-scope" role="group" aria-label={t('replaceScopeGroup')}>
+                <button
+                  type="button"
+                  className={`replace-seg${wholeProject ? '' : ' active'}`}
+                  aria-pressed={!wholeProject}
+                  onClick={() => setWholeProject(false)}
+                >
+                  {isScreenplay ? t('replaceScopeScene') : t('replaceScopeChapter')}
+                </button>
+                <button
+                  type="button"
+                  className={`replace-seg${wholeProject ? ' active' : ''}`}
+                  aria-pressed={wholeProject}
+                  onClick={() => setWholeProject(true)}
+                >
+                  {isScreenplay ? t('replaceScopeScreenplay') : t('replaceScopeProject')}
+                </button>
+              </div>
+              <div className="replace-toggles">
+                <button
+                  type="button"
+                  className={`replace-toggle${wholeWord ? ' active' : ''}`}
+                  aria-pressed={wholeWord}
+                  title={t('replaceWholeWordHint')}
+                  onClick={toggleWholeWord}
+                >
+                  {t('replaceWholeWord')}
+                </button>
+                <button
+                  type="button"
+                  className={`replace-toggle${matchCase ? ' active' : ''}`}
+                  aria-pressed={matchCase}
+                  title={t('replaceMatchCaseHint')}
+                  onClick={toggleMatchCase}
+                >
+                  {t('replaceMatchCase')}
+                </button>
+              </div>
+            </div>
+            <p className={`replace-count${matchInfo && matchInfo.count === 0 ? ' none' : ''}`} aria-live="polite">{countLabel}</p>
           </div>
-          <p className={`replace-count${matchInfo && matchInfo.count === 0 ? ' none' : ''}`} aria-live="polite">{countLabel}</p>
         </>
       ) : (
         <div className="autorep-panel">
