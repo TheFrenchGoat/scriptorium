@@ -163,3 +163,24 @@ export function selectCommentPassage(editor: HTMLElement, id: string): boolean {
   }
   return true;
 }
+
+/** Retire les marques de commentaire (copier-coller) ; garde le texte et sa mise en forme. */
+export function stripCommentMarks(root: ParentNode): void {
+  root.querySelectorAll<HTMLElement>(`[${COMMENT_ATTR}]`).forEach((element) => {
+    element.removeAttribute(COMMENT_ATTR);
+    if (element.tagName !== 'SPAN' || element.attributes.length > 0) return;
+    const parent = element.parentNode;
+    if (!parent) return;
+    while (element.firstChild) parent.insertBefore(element.firstChild, element);
+    parent.removeChild(element);
+  });
+}
+
+/** Meme chose sur du HTML (texte colle). */
+export function stripCommentMarksInHtml(html: string): string {
+  if (html.indexOf(COMMENT_ATTR) === -1) return html;
+  const template = document.createElement('template');
+  template.innerHTML = html;
+  stripCommentMarks(template.content);
+  return template.innerHTML;
+}

@@ -1083,6 +1083,8 @@ export const fr = {
   commentErrNoSelection: 'Sélectionnez d’abord un passage du chapitre.',
   commentErrOverlap: 'Ce passage touche un passage déjà commenté. Choisissez un autre passage.',
   commentErrLost: 'Le texte a changé entre-temps : sélectionnez de nouveau le passage.',
+  commentBubbleLabel: 'Commentaire',
+  commentBubbleShow: 'Voir dans le panneau',
   exportPdfSuccess: 'Export PDF réussi !',
   exportPdfError:
     "Erreur lors de l'export PDF : ",
@@ -2186,6 +2188,8 @@ export const en: Record<TranslationKey, string> = {
   commentErrNoSelection: 'Select a passage of the chapter first.',
   commentErrOverlap: 'This passage overlaps a passage that already has a comment. Choose another passage.',
   commentErrLost: 'The text changed in the meantime: select the passage again.',
+  commentBubbleLabel: 'Comment',
+  commentBubbleShow: 'Show in panel',
   exportPdfSuccess:
     'PDF export successful!',
   exportPdfError:

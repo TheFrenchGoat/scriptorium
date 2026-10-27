@@ -13,6 +13,7 @@
 // - empêcher le contenu collé de dépasser horizontalement de la page.
 
 import { replaceLibreOfficeFontsInHtml } from './fontAliases';
+import { stripCommentMarks, stripCommentMarksInHtml } from '../../lib/comments';
 import React, { useEffect, useRef } from 'react';
 import type {
   ClipboardEvent as ReactClipboardEvent,
@@ -374,6 +375,9 @@ export function ChapterEditor({
       plainText
     );
 
+    // Les commentaires restent dans le chapitre : aucune trace dans la copie.
+    stripCommentMarks(temporaryContainer);
+
     event.preventDefault();
 
     event.clipboardData.setData('text/plain', plainText);
@@ -449,6 +453,8 @@ export function ChapterEditor({
           sanitizedHtml = await window.api.sanitizeHtml(
             exactFragment
           );
+          // Aucune trace de commentaire dans le texte colle.
+          sanitizedHtml = stripCommentMarksInHtml(sanitizedHtml);
         } catch (error) {
           console.error(
             'Échec de la désinfection du collage, repli en texte brut :',

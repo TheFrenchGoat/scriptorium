@@ -52,8 +52,9 @@ import { TabsBar } from './TabsBar';
 import { Ruler } from './Ruler';
 import { Toolbar } from './Toolbar';
 import { StatusBar } from './StatusBar';
+import { CommentBubble } from './CommentBubble';
 import { CommentHighlights, NotesPanel, readNotesPanelOpen, saveNotesPanelOpen } from './NotesPanel';
-import { captureCommentSelection, type CommentCapture } from '../../lib/comments';
+import { captureCommentSelection, isCommentId, type CommentCapture } from '../../lib/comments';
 import { ChapterEditor } from './ChapterEditor';
 import { ScreenplayEditor } from './ScreenplayEditor';
 import { WbSheet } from './WbSheet';
@@ -696,9 +697,34 @@ export function EditorPage({
 
   // Commentaires : Ctrl+Alt+M commente la selection du chapitre (le panneau s'ouvre).
   const [commentRequest, setCommentRequest] = useState<CommentCapture | null>(null);
+
+  // Commentaire mis en evidence dans le panneau (clic sur son passage, bulle).
+  const [commentFocus, setCommentFocus] = useState<{ id: string; n: number } | null>(null);
+  useEffect(() => {
+    if (!notesOpen) {
+      setCommentFocus(null);
+      return undefined;
+    }
+    const onPassageClick = (event: MouseEvent): void => {
+      const target = event.target instanceof Element ? event.target : null;
+      const span = target ? target.closest<HTMLElement>('#editor [data-comment-id]') : null;
+      const id = span ? span.getAttribute('data-comment-id') : null;
+      if (!id || !isCommentId(id)) return;
+      const selection = window.getSelection();
+      if (selection && !selection.isCollapsed) return;
+      setCommentFocus((previous) => ({ id, n: (previous ? previous.n : 0) + 1 }));
+    };
+    window.addEventListener('click', onPassageClick);
+    return () => {
+      window.removeEventListener('click', onPassageClick);
+    };
+  }, [notesOpen]);
+
   useEffect(() => {
     const onCommentKey = (event: KeyboardEvent): void => {
-      if (!(event.ctrlKey || event.metaKey) || !event.altKey || event.shiftKey) return;
+      if (!(event.ctrlKey || event.metaKey)) return;
+      // Ctrl+Alt+M, ou Ctrl+Maj+M si un autre logiciel capte Ctrl+Alt+M.
+      if (event.altKey === event.shiftKey) return;
       if (!(event.key.toLowerCase() === 'm' || (event.key.length !== 1 && event.code === 'KeyM'))) return;
       if (document.documentElement.classList.contains('focus-mode')) return;
       const target = event.target instanceof Element ? event.target : null;
@@ -710,8 +736,16 @@ export function EditorPage({
       setNotesOpen(true);
     };
     window.addEventListener('keydown', onCommentKey, true);
+    // Clic droit "Ajouter un commentaire" (menu natif) : meme chemin que le raccourci.
+    const offMenu = window.api.onAddCommentRequest(() => {
+      if (document.documentElement.classList.contains('focus-mode')) return;
+      if (!document.getElementById('editor')) return;
+      setCommentRequest(captureCommentSelection());
+      setNotesOpen(true);
+    });
     return () => {
       window.removeEventListener('keydown', onCommentKey, true);
+      offMenu();
     };
   }, []);
 
@@ -1653,6 +1687,15 @@ export function EditorPage({
         <CommentHighlights
           ids={activeTab && activeType === 'chapter' ? controller.getChapterComments(activeTab).filter((comment) => !comment.resolved).map((comment) => comment.id) : []}
         />
+        {activeTab && activeType === 'chapter' && !controller.isScreenplayProject() && (
+          <CommentBubble
+            comments={controller.getChapterComments(activeTab)}
+            onShowInPanel={(id) => {
+              setNotesOpen(true);
+              setCommentFocus((previous) => ({ id, n: (previous ? previous.n : 0) + 1 }));
+            }}
+          />
+        )}
         {notesOpen && !controller.isScreenplayProject() && (
           <NotesPanel
             controller={controller}
@@ -1660,6 +1703,7 @@ export function EditorPage({
             onClose={() => { setNotesOpen(false); }}
             request={commentRequest}
             onRequestHandled={() => { setCommentRequest(null); }}
+            focusRequest={commentFocus}
           />
         )}
       </div>

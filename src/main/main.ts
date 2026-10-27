@@ -206,6 +206,18 @@ function createWindow(): void {
       menu.append(new MenuItem({ role: 'paste', label: 'Coller' }));
       menu.append(new MenuItem({ role: 'cut', label: 'Couper' }));
       menu.append(new MenuItem({ role: 'selectAll', label: 'Tout sélectionner' }));
+      // Commentaires (romans) : texte selectionne, hors des champs de saisie.
+      const formControl: unknown = Reflect.get(params, 'formControlType');
+      const inFormField = typeof formControl === 'string' && formControl !== 'none';
+      if (params.isEditable && !inFormField && params.selectionText.trim() !== '') {
+        menu.append(new MenuItem({ type: 'separator' }));
+        menu.append(
+          new MenuItem({
+            label: 'Ajouter un commentaire',
+            click: () => win?.webContents.send('comments:add-request')
+          })
+        );
+      }
     }
 
     if (win) menu.popup({ window: win });

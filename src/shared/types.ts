@@ -1366,6 +1366,11 @@ export interface ScriptoriumApi {
     ) => void
   ): () => void;
 
+  /** Clic droit "Ajouter un commentaire" (menu natif). */
+  onAddCommentRequest(
+    callback: () => void
+  ): () => void;
+
   onGrammarServerStopped(
     callback: () => void
   ): () => void;

@@ -442,6 +442,20 @@ const api: ScriptoriumApi = {
     };
   },
 
+  onAddCommentRequest: (
+    callback: () => void
+  ) => {
+    const listener = (): void => {
+      callback();
+    };
+
+    ipcRenderer.on('comments:add-request', listener);
+
+    return () => {
+      ipcRenderer.removeListener('comments:add-request', listener);
+    };
+  },
+
   onGrammarServerStopped: (
     callback: () => void
   ) => {

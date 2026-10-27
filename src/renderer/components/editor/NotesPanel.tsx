@@ -84,6 +84,8 @@ interface NotesPanelProps {
   chapterName: string | null;
   onClose: () => void;
   /** Demande d'ajout venue du raccourci Ctrl+Alt+M. */
+  /** Commentaire a mettre en evidence (clic sur son passage, bulle). */
+  focusRequest?: { id: string; n: number } | null;
   request?: CommentCapture | null;
   onRequestHandled?: () => void;
 }
@@ -98,6 +100,7 @@ export function NotesPanel({
   chapterName,
   onClose,
   request = null,
+  focusRequest = null,
   onRequestHandled
 }: NotesPanelProps): React.ReactElement {
   const { t, lang } = useI18n();
@@ -147,6 +150,25 @@ export function NotesPanel({
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [hideResolved, setHideResolved] = useState<boolean>(() => readFlag(HIDE_RESOLVED_KEY));
   const [, setVersion] = useState(0);
+
+  // Commentaire mis en evidence (clic sur son passage, bulle) : encadre 2 s.
+  const [flashId, setFlashId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!focusRequest || !/^c[a-z0-9]{4,40}$/.test(focusRequest.id)) return undefined;
+    const id = focusRequest.id;
+    setFlashId(id);
+    const scrollTimer = window.setTimeout(() => {
+      const item = document.querySelector<HTMLElement>(`.notes-panel [data-comment-item="${id}"]`);
+      if (item) item.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }, 150);
+    const clearTimer = window.setTimeout(() => {
+      setFlashId((current) => (current === id ? null : current));
+    }, 2000);
+    return () => {
+      window.clearTimeout(scrollTimer);
+      window.clearTimeout(clearTimer);
+    };
+  }, [focusRequest]);
   const refreshView = (): void => {
     setVersion((value) => value + 1);
   };
@@ -397,7 +419,8 @@ export function NotesPanel({
               return (
                 <div
                   key={comment.id}
-                  className={`notes-comment${comment.resolved ? ' resolved' : ''}`}
+                  className={`notes-comment${comment.resolved ? ' resolved' : ''}${flashId === comment.id ? ' flash' : ''}`}
+                  data-comment-item={comment.id}
                   title={missing ? undefined : t('commentGoTitle')}
                   onClick={() => {
                     if (!missing && !editing) goTo(comment.id);
