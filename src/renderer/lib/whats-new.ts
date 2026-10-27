@@ -9,6 +9,25 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    version: '1.4.1',
+    fr: [
+      'Chaque chapitre peut recevoir un état d’avancement, une couleur et un objectif de mots.',
+      'Nouveau réglage pour choisir l’affichage des liens de la bible dans le texte.',
+      'Sessions d’écriture repensées : bouton dans la barre d’outils, panneau plus clair et bilan de fin de session.',
+      'Nouvelle fenêtre Statistiques avec onglets, historique dépliable et objectifs présentés en cartes.',
+      'Mode concentration : écriture en plein écran (F11 pour entrer, Échap pour sortir), avec une option pour estomper les autres paragraphes.',
+      'Remplacements automatiques propres à chaque livre (ex. : « tjrs » → « toujours »), dans la fenêtre Rechercher / Remplacer. Ctrl+Z annule un remplacement.'
+    ],
+    en: [
+      'Each chapter can have a progress status, a color and a word goal.',
+      'New setting to choose how world bible links are shown in the text.',
+      'Redesigned writing sessions: toolbar button, clearer panel and an end-of-session summary.',
+      'New Statistics window with tabs, an expandable history and goals shown as cards.',
+      'Focus mode: full-screen writing (F11 to enter, Esc to leave), with an option to dim the other paragraphs.',
+      'Per-book auto-replace (e.g. "btw" → "by the way") in the Find / Replace window. Ctrl+Z undoes a replacement.'
+    ]
+  },
+  {
     version: '1.4.0',
     fr: [
       'Nouvelle fenêtre d’export avec un aperçu de la mise en page.',
