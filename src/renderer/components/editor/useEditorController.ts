@@ -15,6 +15,8 @@ import { renderExportMarkdown, renderExportText } from '../../lib/export/render-
 import { normalizeExportSettings } from '../../../shared/export-settings';
 import type { ChapterMeta, ChapterMetaPatch, ExportSettings } from '../../../shared/types';
 import { applyChapterMetaPatch } from '../../lib/chapter-status';
+import type { ChapterComment } from '../../../shared/types';
+import { isCommentId, newCommentId, rangeTouchesComment, unwrapComment, unwrapCommentInHtml, wrapRangeWithComment } from '../../lib/comments';
 import { removeGrammarMarksOnMentions } from '../../lib/grammar-check';
 import { countWordsInHtml } from '../../lib/stats';
 import { replaceLibreOfficeFontsInHtml } from './fontAliases';
@@ -250,6 +252,14 @@ export interface EditorController {
   getChapterNote(name: string): string;
   /** Modifie la note du chapitre puis sauvegarde ; un texte vide supprime la note. */
   setChapterNote(name: string, text: string): void;
+  /** Commentaires du chapitre (copies), dans l'ordre de creation. */
+  getChapterComments(name: string): ChapterComment[];
+  /** Commente un passage du chapitre ouvert ; renvoie l'identifiant, ou null si impossible. */
+  addChapterComment(name: string, range: Range, text: string, excerpt: string): string | null;
+  /** Modifie le texte ou l'etat (resolu) d'un commentaire, puis sauvegarde. */
+  updateChapterComment(name: string, id: string, patch: { text?: string; resolved?: boolean }): void;
+  /** Supprime un commentaire et retire son marquage (le texte du chapitre ne change pas). */
+  deleteChapterComment(name: string, id: string): void;
   createChapter(name: string): boolean;
   createScene(options?: CreateScreenplaySceneOptions): string | null;
   updateScreenplay(screenplay: ScreenplayProjectData): void;
@@ -409,6 +419,10 @@ function ensureProjectDefaults(projectData: ProjectData): void {
   const rawChapterNotes: unknown = projectData.chapterNotes;
   if (rawChapterNotes !== undefined && (typeof rawChapterNotes !== 'object' || rawChapterNotes === null || Array.isArray(rawChapterNotes))) {
     delete projectData.chapterNotes;
+  }
+  const rawChapterComments: unknown = projectData.chapterComments;
+  if (rawChapterComments !== undefined && (typeof rawChapterComments !== 'object' || rawChapterComments === null || Array.isArray(rawChapterComments))) {
+    delete projectData.chapterComments;
   }
   projectData.goals = Array.isArray(projectData.goals) ? projectData.goals : [];
 }
@@ -2143,6 +2157,87 @@ export function useEditorController({
         void saveAll();
       },
 
+      /** Commentaires du chapitre (copies), dans l'ordre de creation. */
+      getChapterComments(name: string): ChapterComment[] {
+        const list = s.projectData?.chapterComments?.[name];
+        return Array.isArray(list) ? list.map((comment) => ({ ...comment })) : [];
+      },
+
+      /** Commente un passage du chapitre ouvert ; renvoie l'identifiant, ou null si impossible. */
+      addChapterComment(name: string, range: Range, text: string, excerpt: string): string | null {
+        const data = s.projectData;
+        const editor = s.editorEl;
+        const body = text.trim();
+        if (!data || !editor || !body || s.activeType !== 'chapter' || s.activeTab !== name) return null;
+        if (range.collapsed || !editor.contains(range.startContainer) || !editor.contains(range.endContainer)) return null;
+        if (rangeTouchesComment(editor, range)) return null;
+        const id = newCommentId();
+        flushPendingHistoryCommit();
+        if (!wrapRangeWithComment(editor, range, id)) return null;
+        const comment: ChapterComment = { id, text: body, excerpt: excerpt.slice(0, 300), created: Date.now() };
+        const map: Record<string, ChapterComment[]> = { ...(data.chapterComments ?? {}) };
+        map[name] = [...(map[name] ?? []), comment];
+        data.chapterComments = map;
+        ctrl.handleInput();
+        bump();
+        void saveAll();
+        return id;
+      },
+
+      /** Modifie le texte ou l'etat (resolu) d'un commentaire, puis sauvegarde. */
+      updateChapterComment(name: string, id: string, patch: { text?: string; resolved?: boolean }): void {
+        const data = s.projectData;
+        const list = data?.chapterComments?.[name];
+        if (!data || !Array.isArray(list)) return;
+        let changed = false;
+        const next = list.map((comment) => {
+          if (comment.id !== id) return comment;
+          const updated: ChapterComment = { ...comment };
+          const newText = typeof patch.text === 'string' ? patch.text.trim() : '';
+          if (newText && newText !== comment.text) {
+            updated.text = newText;
+            updated.updated = Date.now();
+            changed = true;
+          }
+          if (typeof patch.resolved === 'boolean' && patch.resolved !== (comment.resolved === true)) {
+            if (patch.resolved) updated.resolved = true;
+            else delete updated.resolved;
+            changed = true;
+          }
+          return updated;
+        });
+        if (!changed) return;
+        data.chapterComments = { ...(data.chapterComments ?? {}), [name]: next };
+        setSaveStatus('pending');
+        bump();
+        void saveAll();
+      },
+
+      /** Supprime un commentaire et retire son marquage (le texte du chapitre ne change pas). */
+      deleteChapterComment(name: string, id: string): void {
+        const data = s.projectData;
+        const list = data?.chapterComments?.[name];
+        if (!data || !Array.isArray(list)) return;
+        const map: Record<string, ChapterComment[]> = { ...(data.chapterComments ?? {}) };
+        const rest = list.filter((comment) => comment.id !== id);
+        if (rest.length > 0) map[name] = rest;
+        else delete map[name];
+        if (Object.keys(map).length > 0) data.chapterComments = map;
+        else delete data.chapterComments;
+        if (isCommentId(id)) {
+          if (s.activeType === 'chapter' && s.activeTab === name && s.editorEl) {
+            flushPendingHistoryCommit();
+            if (unwrapComment(s.editorEl, id)) ctrl.handleInput();
+          } else {
+            const html = data.chapters[name];
+            if (typeof html === 'string') data.chapters[name] = unwrapCommentInHtml(html, id);
+          }
+        }
+        setSaveStatus('pending');
+        bump();
+        void saveAll();
+      },
+
       createChapter(name) {
         if (isScreenplayData(s.projectData)) {
           return false;
@@ -2405,6 +2500,7 @@ export function useEditorController({
           history.remove(key);
           if (s.projectData.chapterMeta) delete s.projectData.chapterMeta[key];
           if (s.projectData.chapterNotes) delete s.projectData.chapterNotes[key];
+          if (s.projectData.chapterComments) delete s.projectData.chapterComments[key];
           mentionIndex.removeChapter(key);
         } else {
           const wbBefore = takeWbSnapshot();
@@ -2534,6 +2630,10 @@ export function useEditorController({
           if (s.projectData.chapterNotes && key !== trimmed && Object.prototype.hasOwnProperty.call(s.projectData.chapterNotes, key)) {
             s.projectData.chapterNotes[trimmed] = s.projectData.chapterNotes[key];
             delete s.projectData.chapterNotes[key];
+          }
+          if (s.projectData.chapterComments && key !== trimmed && Object.prototype.hasOwnProperty.call(s.projectData.chapterComments, key)) {
+            s.projectData.chapterComments[trimmed] = s.projectData.chapterComments[key];
+            delete s.projectData.chapterComments[key];
           }
           mentionIndex.renameChapter(key, trimmed);
 

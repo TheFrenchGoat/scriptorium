@@ -125,7 +125,7 @@ function cssSizeToPt(value: string): number | undefined {
 }
 
 function isTransparentWrapper(el: HTMLElement): boolean {
-  return el.classList.contains('wb-mention') || el.classList.contains('grammar-error');
+  return el.classList.contains('wb-mention') || el.classList.contains('grammar-error') || el.hasAttribute('data-comment-id');
 }
 
 function readStyle(el: HTMLElement, parent: RunStyle, keepFormatting: boolean): RunStyle {

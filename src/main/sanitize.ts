@@ -89,6 +89,8 @@ export const CHAPTER_HTML_SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
       'data-screenplay-type',
       // Couleur choisie volontairement par l'auteur (voir lib/text-color.ts).
       'data-user-color',
+      // Ancre d'un commentaire (1.4.2) : aucun style, ignoree a l'export.
+      'data-comment-id',
       'style',
       'spellcheck'
     ],
@@ -1434,6 +1436,40 @@ function sanitizeChapterNotes(value: unknown, chapters: Record<string, string>):
   }
   return Object.keys(result).length > 0 ? result : undefined;
 }
+/** Nettoie les commentaires : identifiant sur, texte simple, chapitres existants. */
+function sanitizeChapterComments(value: unknown, chapters: Record<string, string>): ProjectData['chapterComments'] {
+  if (!isRecord(value)) return undefined;
+  const result: NonNullable<ProjectData['chapterComments']> = {};
+  for (const [name, raw] of Object.entries(value)) {
+    if (name === '__proto__' || name === 'constructor' || name === 'prototype') continue;
+    if (!Object.prototype.hasOwnProperty.call(chapters, name) || !Array.isArray(raw)) continue;
+    const list: NonNullable<ProjectData['chapterComments']>[string] = [];
+    const seen = new Set<string>();
+    for (const item of raw) {
+      if (!isRecord(item)) continue;
+      const id = item['id'];
+      const text = item['text'];
+      if (typeof id !== 'string' || !/^c[a-z0-9]{4,40}$/.test(id) || seen.has(id)) continue;
+      if (typeof text !== 'string' || text.trim().length === 0) continue;
+      const excerpt = item['excerpt'];
+      const createdAt = item['created'];
+      const updatedAt = item['updated'];
+      const comment: NonNullable<ProjectData['chapterComments']>[string][number] = {
+        id,
+        text: text.slice(0, 20000),
+        excerpt: typeof excerpt === 'string' ? excerpt.slice(0, 300) : '',
+        created: typeof createdAt === 'number' && Number.isFinite(createdAt) && createdAt > 0 ? createdAt : 0
+      };
+      if (typeof updatedAt === 'number' && Number.isFinite(updatedAt) && updatedAt > 0) comment.updated = updatedAt;
+      if (item['resolved'] === true) comment.resolved = true;
+      seen.add(id);
+      list.push(comment);
+      if (list.length >= 2000) break;
+    }
+    if (list.length > 0) result[name] = list;
+  }
+  return Object.keys(result).length > 0 ? result : undefined;
+}
 function sanitizeGoals(value: unknown): ProjectGoal[] {
   if (!Array.isArray(value)) {
     return [];
@@ -1485,6 +1521,10 @@ export function sanitizeProjectData(projectData: unknown): ProjectData {
   if (projectData.chapterNotes !== undefined) {
     const chapterNotes = sanitizeChapterNotes(projectData.chapterNotes, result.chapters);
     if (chapterNotes) result.chapterNotes = chapterNotes;
+  }
+  if (projectData.chapterComments !== undefined) {
+    const chapterComments = sanitizeChapterComments(projectData.chapterComments, result.chapters);
+    if (chapterComments) result.chapterComments = chapterComments;
   }
   if (projectData.exportSettings !== undefined) {
     result.exportSettings = normalizeExportSettings(projectData.exportSettings);

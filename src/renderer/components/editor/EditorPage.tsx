@@ -52,7 +52,8 @@ import { TabsBar } from './TabsBar';
 import { Ruler } from './Ruler';
 import { Toolbar } from './Toolbar';
 import { StatusBar } from './StatusBar';
-import { NotesPanel, readNotesPanelOpen, saveNotesPanelOpen } from './NotesPanel';
+import { CommentHighlights, NotesPanel, readNotesPanelOpen, saveNotesPanelOpen } from './NotesPanel';
+import { captureCommentSelection, type CommentCapture } from '../../lib/comments';
 import { ChapterEditor } from './ChapterEditor';
 import { ScreenplayEditor } from './ScreenplayEditor';
 import { WbSheet } from './WbSheet';
@@ -692,6 +693,27 @@ export function EditorPage({
   useEffect(() => {
     saveNotesPanelOpen(notesOpen);
   }, [notesOpen]);
+
+  // Commentaires : Ctrl+Alt+M commente la selection du chapitre (le panneau s'ouvre).
+  const [commentRequest, setCommentRequest] = useState<CommentCapture | null>(null);
+  useEffect(() => {
+    const onCommentKey = (event: KeyboardEvent): void => {
+      if (!(event.ctrlKey || event.metaKey) || !event.altKey || event.shiftKey) return;
+      if (event.code !== 'KeyM') return;
+      if (document.documentElement.classList.contains('focus-mode')) return;
+      const target = event.target instanceof Element ? event.target : null;
+      if (target?.closest('.notes-panel')) return;
+      if (!document.getElementById('editor')) return;
+      event.preventDefault();
+      event.stopPropagation();
+      setCommentRequest(captureCommentSelection());
+      setNotesOpen(true);
+    };
+    window.addEventListener('keydown', onCommentKey, true);
+    return () => {
+      window.removeEventListener('keydown', onCommentKey, true);
+    };
+  }, []);
 
   useEffect(() => {
     const rootEl = document.documentElement;
@@ -1414,7 +1436,7 @@ export function EditorPage({
         focusMode={focusMode}
         onToggleFocusMode={() => { setFocusMode((value) => !value); }}
         notesOpen={notesOpen}
-        notesHasContent={Boolean(activeTab && activeType === 'chapter' && controller.getChapterNote(activeTab).trim())}
+        notesHasContent={Boolean(activeTab && activeType === 'chapter' && (controller.getChapterNote(activeTab).trim() || controller.getChapterComments(activeTab).some((comment) => !comment.resolved)))}
         onToggleNotes={controller.isScreenplayProject() ? undefined : () => { setNotesOpen((value) => !value); }}
         onOpenGlobalSearch={() => {
           setOpenModal(
@@ -1628,11 +1650,16 @@ export function EditorPage({
           />
         </main>
 
+        <CommentHighlights
+          ids={activeTab && activeType === 'chapter' ? controller.getChapterComments(activeTab).filter((comment) => !comment.resolved).map((comment) => comment.id) : []}
+        />
         {notesOpen && !controller.isScreenplayProject() && (
           <NotesPanel
             controller={controller}
             chapterName={activeTab && activeType === 'chapter' ? activeTab : null}
             onClose={() => { setNotesOpen(false); }}
+            request={commentRequest}
+            onRequestHandled={() => { setCommentRequest(null); }}
           />
         )}
       </div>

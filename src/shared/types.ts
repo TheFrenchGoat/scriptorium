@@ -699,6 +699,22 @@ export type ChapterMetaPatch = {
   [K in keyof ChapterMeta]?: ChapterMeta[K] | null;
 };
 
+/** Commentaire pose sur un passage d'un chapitre (ancre : span data-comment-id dans le HTML). */
+export interface ChapterComment {
+  /** Identifiant (c + lettres minuscules et chiffres). */
+  id: string;
+  /** Texte du commentaire (texte simple). */
+  text: string;
+  /** Debut du passage au moment de la creation (affiche si le passage est efface). */
+  excerpt: string;
+  /** Date de creation (millisecondes). */
+  created: number;
+  /** Date de la derniere modification du texte. */
+  updated?: number;
+  /** Commentaire traite : grise, passage plus surligne. */
+  resolved?: boolean;
+}
+
 export interface ProjectData {
   /**
    * Type du projet.
@@ -798,6 +814,8 @@ export interface ProjectData {
   autoReplace?: AutoReplaceSettings;
   /** Note libre de chaque chapitre (texte simple), indexee par nom de chapitre. Jamais exportee. */
   chapterNotes?: Record<string, string>;
+  /** Commentaires poses sur des passages, par nom de chapitre. Jamais exportes. */
+  chapterComments?: Record<string, ChapterComment[]>;
 }
 
 /** Remplacement automatique : mot tapé -> texte inséré à sa place. */
