@@ -1088,7 +1088,7 @@ export interface LanguageToolFolderResult {
 // ============================================================================
 
 /** Format du document importé (absent : projet Scriptorium). */
-export type ImportFormat = 'odt' | 'docx' | 'txt' | 'md' | 'scriptorium';
+export type ImportFormat = 'odt' | 'docx' | 'txt' | 'md' | 'scriptorium' | 'fountain';
 
 /** Options de l’import d’un document. */
 export interface ImportOptions {

@@ -83,7 +83,7 @@ function decodeWindows1252(buffer: Buffer): string {
 }
 
 /** UTF-8 (avec ou sans BOM), UTF-16 (avec BOM), sinon Windows-1252. */
-function decodeTextFile(buffer: Buffer): string {
+export function decodeTextFile(buffer: Buffer): string {
   if (buffer.length >= 3 && buffer[0] === 0xef && buffer[1] === 0xbb && buffer[2] === 0xbf) {
     return buffer.subarray(3).toString('utf8');
   }

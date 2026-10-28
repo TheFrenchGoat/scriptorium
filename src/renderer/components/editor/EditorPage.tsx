@@ -1308,6 +1308,7 @@ export function EditorPage({
       | 'pdf'
       | 'docx'
       | 'odt'
+      | 'fountain'
       | 'project';
 
     labelKey:
@@ -1316,6 +1317,7 @@ export function EditorPage({
       | 'exportPdfItem'
       | 'exportDocxItem'
       | 'exportOdtItem'
+      | 'exportFountainItem'
       | 'exportProjectItem';
   }[] = [
     {
@@ -1342,6 +1344,11 @@ export function EditorPage({
       key: 'odt',
       labelKey:
         'exportOdtItem'
+    },
+    {
+      key: 'fountain',
+      labelKey:
+        'exportFountainItem'
     },
     {
       key: 'project',

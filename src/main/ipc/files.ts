@@ -4,7 +4,7 @@
 // - boîtes de dialogue ;
 // - export TXT, DOCX, ODT et PDF ;
 // - export/import des projets Scriptorium ;
-// - import ODT, Word (DOCX), texte (TXT) et Markdown (MD) ;
+// - import ODT, Word (DOCX), texte (TXT), Markdown (MD) et Fountain ;
 // - désinfection HTML ;
 // - ouverture des liens externes.
 
@@ -40,6 +40,8 @@ import {
 import {
   importTextProject
 } from '../text-importer';
+
+import { importFountainProject } from '../fountain-importer';
 
 import {
   CHAPTER_HTML_SANITIZE_OPTIONS,
@@ -231,6 +233,28 @@ async function importSupportedProject(
       format: imported.format,
       rejoinSuggested: imported.rejoinSuggested,
       rejoinLines: imported.rejoinLines
+    };
+  }
+
+  if (extension === '.fountain') {
+    const imported =
+      importFountainProject(
+        filePath
+      );
+
+    return {
+      projectName:
+        imported.projectName ||
+        getProjectNameFromFile(
+          filePath
+        ),
+
+      projectData:
+        sanitizeProjectData(
+          imported.projectData
+        ),
+
+      format: 'fountain'
     };
   }
 

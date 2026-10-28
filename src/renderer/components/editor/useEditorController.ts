@@ -13,6 +13,8 @@ import { prepareExportImages } from '../../lib/export/prepare-images';
 import { renderExportHtml, type ExportPreviewSource } from '../../lib/export/render-html';
 import { renderExportMarkdown, renderExportText } from '../../lib/export/render-text';
 import { normalizeExportSettings } from '../../../shared/export-settings';
+import { buildFountainText } from '../../../shared/fountain';
+import { getSceneHeadingText as getFountainSceneHeading } from '../../lib/screenplay';
 import type { ChapterMeta, ChapterMetaPatch, ExportSettings } from '../../../shared/types';
 import { applyChapterMetaPatch } from '../../lib/chapter-status';
 import type { ChapterComment } from '../../../shared/types';
@@ -303,7 +305,7 @@ export interface EditorController {
   applyGrammarSuggestion(mark: HTMLElement, replacement: string): void;
   ignoreGrammarMark(mark: HTMLElement): void;
 
-  exportAs(kind: 'txt' | 'md' | 'pdf' | 'docx' | 'odt' | 'project'): Promise<void>;
+  exportAs(kind: 'txt' | 'md' | 'pdf' | 'docx' | 'odt' | 'fountain' | 'project'): Promise<void>;
   /** Reglages d'export du projet (completes si besoin). */
   getExportSettings(): ExportSettings;
   /** Chapitres du roman, dans l'ordre de la barre laterale. */
@@ -3645,6 +3647,32 @@ export function useEditorController({
           ? s.projectData.screenplay
           : null;
 
+        if (kind === 'fountain') {
+          // Fountain : scenario uniquement (texte brut UTF-8).
+          if (!screenplay) {
+            showInfo(t('nothingToExport'));
+            return;
+          }
+
+          const result = await pickExportPath({
+            defaultPath: screenplay
+              ? `${projectName}.fountain`
+              : `${projectName} - Complet.fountain`,
+            filters: [{ name: 'Fountain', extensions: ['fountain'] }]
+          });
+
+          if (result.canceled || !result.filePath) return;
+
+          const fountainLanguage = screenplay.settings.conventionLanguage;
+          const fountainText = buildFountainText(screenplay, (scene) =>
+            getFountainSceneHeading(scene, fountainLanguage)
+          );
+
+          await window.api.exportTxt(result.filePath, fountainText);
+          showInfo(t('exportFountainSuccess'));
+          return;
+        }
+
         const chapterNames = Object.keys(s.projectData.chapters);
 
         const bibleOnly =
@@ -3858,6 +3886,7 @@ export function useEditorController({
           console.error(`Erreur export ${kind} :`, error);
 
           const prefix = {
+            fountain: 'exportFountainError',
             txt: 'exportTxtError',
             md: 'exportMdError',
             pdf: 'exportPdfError',

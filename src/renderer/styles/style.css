@@ -1919,3 +1919,17 @@ button.btn-primary.replace-run-btn:disabled {
 .import-preview-text h5 { margin: 14px 0 8px; font-size: 1em; }
 .import-preview-text p { margin: 0 0 8px; white-space: pre-wrap; }
 .import-preview-reset { margin-right: auto; }
+
+/* Aperçu avant import d'un scénario Fountain */
+.screenplay-import-scene { align-items: flex-start; }
+.screenplay-import-number { min-width: 2em; padding-top: 2px; text-align: right; color: var(--text-muted); font-size: 0.8em; }
+.screenplay-import-heading { flex: 1; min-width: 0; font-size: 0.9em; overflow-wrap: anywhere; }
+.screenplay-import-working { display: block; color: var(--text-muted); font-size: 0.9em; }
+.import-preview-hint.screenplay-import-language { margin: 0; }
+.import-preview-text.screenplay-import-text { font-family: 'Courier Prime', 'Courier New', Courier, monospace; font-size: 0.92em; }
+.screenplay-import-text h4.screenplay-import-scene-heading { text-transform: uppercase; }
+.screenplay-import-text p.screenplay-import-character { margin: 14px 0 0 38%; text-transform: uppercase; }
+.screenplay-import-text p.screenplay-import-parenthetical { margin: 0 0 0 30%; }
+.screenplay-import-text p.screenplay-import-dialogue { margin: 0 15% 8px 20%; }
+.screenplay-import-text p.screenplay-import-transition { margin-top: 8px; text-align: right; text-transform: uppercase; }
+.screenplay-import-text p.screenplay-import-shot { text-transform: uppercase; }

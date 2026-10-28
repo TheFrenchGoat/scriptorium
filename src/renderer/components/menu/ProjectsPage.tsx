@@ -30,6 +30,7 @@ import { Modal } from '../common/Modal';
 import { ProjectCard } from './ProjectCard';
 import { HomeSettingsModal } from './HomeSettingsModal';
 import { ImportPreviewModal } from './ImportPreviewModal';
+import { ScreenplayImportPreviewModal } from './ScreenplayImportPreviewModal';
 import { describeError } from '../../lib/errors';
 import { renameWritingStatsProject } from '../../lib/writing-stats-rename';
 import {
@@ -899,8 +900,8 @@ export function ProjectsPage({
         await window.api.showOpenDialog({
           title:
             lang === 'fr'
-              ? 'Importer un projet ou un document (LibreOffice, Word, texte, Markdown)'
-              : 'Import a project or a document (LibreOffice, Word, text, Markdown)',
+              ? 'Importer un projet ou un document (LibreOffice, Word, texte, Markdown, Fountain)'
+              : 'Import a project or a document (LibreOffice, Word, text, Markdown, Fountain)',
           filters: [
             {
               name:
@@ -914,6 +915,7 @@ export function ProjectsPage({
                 'txt',
                 'md',
                 'markdown',
+                'fountain',
                 'json'
               ]
             },
@@ -941,6 +943,13 @@ export function ProjectsPage({
             {
               name: 'Markdown',
               extensions: ['md', 'markdown']
+            },
+            {
+              name:
+                lang === 'fr'
+                  ? 'Scénario Fountain'
+                  : 'Fountain screenplay',
+              extensions: ['fountain']
             },
             {
               name:
@@ -1065,8 +1074,8 @@ export function ProjectsPage({
 
       const errorPrefix =
         lang === 'fr'
-          ? "Erreur lors de l'importation : le fichier sélectionné n'est peut-être pas un projet Scriptorium ou un document valide (LibreOffice, Word, texte, Markdown).\n\n"
-          : 'Import error: the selected file may not be a valid Scriptorium project or document (LibreOffice, Word, text, Markdown).\n\n';
+          ? "Erreur lors de l'importation : le fichier sélectionné n'est peut-être pas un projet Scriptorium ou un document valide (LibreOffice, Word, texte, Markdown, Fountain).\n\n"
+          : 'Import error: the selected file may not be a valid Scriptorium project or document (LibreOffice, Word, text, Markdown, Fountain).\n\n';
 
       showInfo(
         errorPrefix +
@@ -1251,7 +1260,24 @@ export function ProjectsPage({
         }}
       />
 
-      {importPreview && (
+      {importPreview && importPreview.imported.format === 'fountain' && (
+        <ScreenplayImportPreviewModal
+          filePath={importPreview.filePath}
+          imported={importPreview.imported}
+          existingNames={Object.keys(projects)}
+          onCancel={() => {
+            setImportPreview(null);
+          }}
+          onConfirm={(name, projectData) => {
+            void confirmImportPreview(
+              name,
+              projectData
+            );
+          }}
+        />
+      )}
+
+      {importPreview && importPreview.imported.format !== 'fountain' && (
         <ImportPreviewModal
           filePath={importPreview.filePath}
           imported={importPreview.imported}
