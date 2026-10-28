@@ -1,6 +1,6 @@
 {
   "name": "scriptorium",
-  "version": "1.4.2",
+  "version": "1.5.0",
   "description": "Éditeur d'écriture moderne",
   "main": "dist/main/main.js",
   "author": "",

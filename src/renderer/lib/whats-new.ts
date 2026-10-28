@@ -9,6 +9,23 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    version: '1.5.0',
+    fr: [
+      'Import de documents ODT (LibreOffice), Word (.docx), TXT et Markdown, avec découpage automatique en chapitres.',
+      'Aperçu avant import : vous voyez les chapitres détectés, pouvez en fusionner, et les lignes coupées sont recollées.',
+      'Scénarios : import et export au format Fountain.',
+      'Nouvel export en livre numérique ePub, avec couverture, page de titre et table des matières.',
+      'Couverture ePub : vignette, aperçu, et alerte si l’image est introuvable ou trop petite.'
+    ],
+    en: [
+      'Import ODT (LibreOffice), Word (.docx), TXT and Markdown documents, with automatic chapter splitting.',
+      'Preview before import: see the detected chapters, merge them, and broken lines are joined back together.',
+      'Screenplays: import and export in Fountain format.',
+      'New ePub e-book export, with cover, title page and table of contents.',
+      'ePub cover: thumbnail, preview, and a warning if the image is missing or too small.'
+    ]
+  },
+  {
     version: '1.4.2',
     fr: [
       'Nouveau panneau Notes (bouton dans la barre d’outils) : une note libre pour chaque chapitre.',
