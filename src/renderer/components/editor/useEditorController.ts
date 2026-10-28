@@ -305,7 +305,7 @@ export interface EditorController {
   applyGrammarSuggestion(mark: HTMLElement, replacement: string): void;
   ignoreGrammarMark(mark: HTMLElement): void;
 
-  exportAs(kind: 'txt' | 'md' | 'pdf' | 'docx' | 'odt' | 'fountain' | 'project'): Promise<void>;
+  exportAs(kind: 'txt' | 'md' | 'pdf' | 'docx' | 'odt' | 'epub' | 'fountain' | 'project'): Promise<void>;
   /** Reglages d'export du projet (completes si besoin). */
   getExportSettings(): ExportSettings;
   /** Chapitres du roman, dans l'ordre de la barre laterale. */
@@ -3863,6 +3863,54 @@ export function useEditorController({
             return;
           }
 
+          if (kind === 'epub') {
+            if (screenplay) {
+              showInfo(t('nothingToExport'));
+              return;
+            }
+
+            const result = await pickExportPath({
+              title: getLanguage() === 'fr' ? 'Exporter en ePub' : 'Export as ePub',
+              defaultPath: `${projectName}.epub`,
+              filters: [{ name: 'ePub', extensions: ['epub'] }]
+            });
+
+            if (result.canceled || !result.filePath) {
+              return;
+            }
+
+            // Identifiant du livre : créé au premier export, puis conservé.
+            const epubSettings = normalizeExportSettings(s.projectData.exportSettings);
+            let identifier = epubSettings.epub.identifier;
+
+            if (identifier === '') {
+              identifier =
+                typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+                  ? crypto.randomUUID()
+                  : '';
+
+              if (identifier !== '') {
+                s.projectData.exportSettings = {
+                  ...epubSettings,
+                  epub: { ...epubSettings.epub, identifier }
+                };
+                await save();
+              }
+            }
+
+            const epubResult = await window.api.exportDocumentEpub(
+              result.filePath,
+              await prepareExportImages(buildNovelExportDocument()),
+              { identifier, coverPath: epubSettings.epub.coverPath }
+            );
+
+            showInfo(
+              t(epubResult.coverMissing ? 'exportEpubSuccessNoCover' : 'exportEpubSuccess')
+            );
+
+            return;
+          }
+
           const result = await pickExportPath({
             title: 'Exporter le projet complet',
             defaultPath: `${projectName}.scriptorium`,
@@ -3892,6 +3940,7 @@ export function useEditorController({
             pdf: 'exportPdfError',
             docx: 'exportDocxError',
             odt: 'exportOdtError',
+            epub: 'exportEpubError',
             project: 'exportProjectError'
           } as const;
 

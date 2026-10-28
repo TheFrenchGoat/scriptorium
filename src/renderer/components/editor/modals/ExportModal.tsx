@@ -10,7 +10,7 @@
 // Formats proposés : PDF, Word, OpenDocument (.odt), texte brut et Markdown.
 
 import React, { useEffect, useMemo, useState } from 'react';
-import type { ExportBibleMode, ExportBibleSettings } from '../../../../shared/types';
+import type { ExportBibleMode, ExportBibleSettings, ExportEpubSettings } from '../../../../shared/types';
 import type { ExportBibleCategory } from '../../../lib/export/build-bible';
 
 import { getLanguage, useI18n, type TranslationKey } from '../../../i18n';
@@ -46,6 +46,7 @@ const FORMAT_CHOICES: Choice<ExportFormat>[] = [
   { value: 'pdf', labelKey: 'exportFormatPdf' },
   { value: 'docx', labelKey: 'exportFormatDocx' },
   { value: 'odt', labelKey: 'exportFormatOdt' },
+  { value: 'epub', labelKey: 'exportFormatEpub' },
   { value: 'txt', labelKey: 'exportFormatTxt' },
   { value: 'md', labelKey: 'exportFormatMd' }
 ];
@@ -172,6 +173,12 @@ function FieldRow({ label, children }: { label: string; children: React.ReactNod
 // ----------------------------------------------------------------------------
 // Fenêtre
 // ----------------------------------------------------------------------------
+
+/** Nom du fichier, sans le dossier. */
+function fileNameOf(filePath: string): string {
+  const parts = filePath.split(/[\x5C\x2F]/);
+  return parts[parts.length - 1] || filePath;
+}
 
 const NO_BIBLE_CATEGORIES: ExportBibleCategory[] = [];
 
@@ -311,6 +318,18 @@ export function ExportModal({
 
     setCustomLineHeight(false);
     setLayout({ lineHeight: Number(value) });
+  };
+
+  const setEpub = (patch: Partial<ExportEpubSettings>) =>
+    setSettings((prev) => ({ ...prev, epub: { ...prev.epub, ...patch } }));
+
+  const chooseCover = async () => {
+    try {
+      const picked = await window.api.pickEpubCover(t('exportEpubChooseCover'));
+      if (picked) setEpub({ coverPath: picked });
+    } catch (error) {
+      console.error('Choix de la couverture impossible :', error);
+    }
   };
 
   const footer = (
@@ -663,7 +682,33 @@ export function ExportModal({
               </CheckRow>
             </>
           ) : (
-            <p className="export-hint">{t('exportLayoutTextHint')}</p>
+            settings.format === 'epub' ? (
+              <>
+                <p className="export-hint">{t('exportEpubLayoutHint')}</p>
+
+                <FieldRow label={t('exportEpubCover')}>
+                  <div className="export-inline export-cover">
+                    <span className="export-cover-name" title={settings.epub.coverPath}>
+                      {settings.epub.coverPath !== ''
+                        ? fileNameOf(settings.epub.coverPath)
+                        : t('exportEpubNoCover')}
+                    </span>
+                    <button type="button" onClick={() => void chooseCover()}>
+                      {t('exportEpubChooseCover')}
+                    </button>
+                    {settings.epub.coverPath !== '' && (
+                      <button type="button" onClick={() => setEpub({ coverPath: '' })}>
+                        {t('exportEpubRemoveCover')}
+                      </button>
+                    )}
+                  </div>
+                </FieldRow>
+
+                <p className="export-hint">{t('exportEpubCoverHint')}</p>
+              </>
+            ) : (
+              <p className="export-hint">{t('exportLayoutTextHint')}</p>
+            )
           )}
         </section>
       </div>

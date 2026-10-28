@@ -44,7 +44,7 @@ export function ExportPreview({ settings, buildPreview }: ExportPreviewProps) {
   const [failed, setFailed] = useState(false);
 
   const hasLayout =
-    settings.format === 'pdf' || settings.format === 'docx' || settings.format === 'odt';
+    settings.format === 'pdf' || settings.format === 'docx' || settings.format === 'odt' || settings.format === 'epub';
 
   useEffect(() => {
     if (!hasLayout) return;

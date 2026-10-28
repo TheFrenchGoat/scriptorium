@@ -24,6 +24,8 @@ import sanitizeHtml from 'sanitize-html';
 
 import { generateExportDocx } from '../export-docx';
 import { generateExportOdt } from '../export-odt';
+import { generateExportEpub, normalizeEpubExportOptions } from '../export-epub';
+import type { EpubExportResult } from '../../shared/types';
 import { generateScreenplayDocx, generateScreenplayOdt } from '../export-screenplay';
 import { normalizeScreenplayExportDocument } from '../../shared/screenplay-export';
 import type { ExportBlock, ExportDocument } from '../../shared/export-document';
@@ -560,6 +562,44 @@ export function registerFileIpc(): void {
         payload.filePath,
         sanitizeExportDocument(payload.doc)
       );
+    }
+  );
+
+  ipcMain.handle(
+    'export:document-epub',
+    async (
+      _event,
+      payload: {
+        filePath: string;
+        doc: ExportDocument;
+        options: unknown;
+      }
+    ): Promise<EpubExportResult> => {
+      return generateExportEpub(
+        payload.filePath,
+        sanitizeExportDocument(payload.doc),
+        normalizeEpubExportOptions(payload.options)
+      );
+    }
+  );
+
+  ipcMain.handle(
+    'export:pick-epub-cover',
+    async (_event, payload: { title?: unknown } | undefined): Promise<string | null> => {
+      const options: Electron.OpenDialogOptions = {
+        properties: ['openFile'],
+        filters: [{ name: 'Images', extensions: ['jpg', 'jpeg', 'png'] }]
+      };
+
+      if (typeof payload?.title === 'string' && payload.title.trim() !== '') {
+        options.title = payload.title.slice(0, 200);
+      }
+
+      const result = await dialog.showOpenDialog(options);
+
+      if (result.canceled) return null;
+
+      return result.filePaths[0] ?? null;
     }
   );
 

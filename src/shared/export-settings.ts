@@ -16,7 +16,7 @@ import type {
   ExportTemplateId
 } from './types';
 
-export const EXPORT_FORMATS: readonly ExportFormat[] = ['pdf', 'docx', 'odt', 'txt', 'md'];
+export const EXPORT_FORMATS: readonly ExportFormat[] = ['pdf', 'docx', 'odt', 'epub', 'txt', 'md'];
 
 export const EXPORT_TEMPLATE_IDS: readonly ExportTemplateId[] = ['manuscript', 'novel'];
 
@@ -150,7 +150,8 @@ export function createDefaultExportSettings(
       relations: true,
       timeline: true
     },
-    layout: { ...preset.layout }
+    layout: { ...preset.layout },
+    epub: { coverPath: '', identifier: '' }
   };
 }
 
@@ -247,6 +248,20 @@ function cleanNameList(value: unknown): string[] {
   return Array.from(names);
 }
 
+/** Chemin de fichier : conservé tel quel s’il est plausible, sinon vide. */
+function cleanFilePath(value: unknown): string {
+  if (typeof value !== 'string') return '';
+  if (value.length === 0 || value.length > 4096) return '';
+  return /[\u0000-\u001F\u007F]/.test(value) ? '' : value;
+}
+
+/** Identifiant de livre : UUID en minuscules, sinon vide (un nouveau sera créé). */
+function cleanIdentifier(value: unknown): string {
+  if (typeof value !== 'string') return '';
+  const text = value.trim().toLowerCase();
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(text) ? text : '';
+}
+
 /**
  * Renvoie toujours des réglages complets et valides : toute valeur absente
  * ou incorrecte est remplacée par celle du modèle choisi.
@@ -260,6 +275,7 @@ export function normalizeExportSettings(value: unknown): ExportSettings {
   const content = isRecord(source.content) ? source.content : {};
   const bible = isRecord(source.bible) ? source.bible : {};
   const layout = isRecord(source.layout) ? source.layout : {};
+  const epub = isRecord(source.epub) ? source.epub : {};
 
   const L = EXPORT_LIMITS;
   const d = defaults.layout;
@@ -312,6 +328,10 @@ export function normalizeExportSettings(value: unknown): ExportSettings {
         d.firstLineIndentCm
       ),
       pageNumbers: pickBoolean(layout.pageNumbers, d.pageNumbers)
+    },
+    epub: {
+      coverPath: cleanFilePath(epub.coverPath),
+      identifier: cleanIdentifier(epub.identifier)
     }
   };
 }

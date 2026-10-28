@@ -834,7 +834,7 @@ export interface AutoReplaceSettings {
 // ----------------------------------------------------------------------------
 
 /** Format de fichier produit par la fenêtre d’export. */
-export type ExportFormat = 'pdf' | 'docx' | 'odt' | 'txt' | 'md';
+export type ExportFormat = 'pdf' | 'docx' | 'odt' | 'epub' | 'txt' | 'md';
 
 /** Modèle de mise en page appliqué à un roman. */
 export type ExportTemplateId = 'manuscript' | 'novel';
@@ -910,6 +910,28 @@ export interface ExportLayoutSettings {
   pageNumbers: boolean;
 }
 
+/** Réglages propres au livre numérique (ePub). */
+export interface ExportEpubSettings {
+  /** Chemin de l’image de couverture (JPG ou PNG) ; vide : pas de couverture. */
+  coverPath: string;
+  /**
+   * Identifiant unique du livre (UUID), créé au premier export ePub puis
+   * conservé : les liseuses reconnaissent ainsi les nouvelles versions.
+   */
+  identifier: string;
+}
+
+/** Options transmises au processus principal pour un export ePub. */
+export interface EpubExportOptions {
+  identifier: string;
+  coverPath: string;
+}
+
+export interface EpubExportResult {
+  /** Une couverture était choisie, mais l’image est introuvable ou invalide. */
+  coverMissing: boolean;
+}
+
 export interface ExportSettings {
   format: ExportFormat;
   template: ExportTemplateId;
@@ -919,6 +941,7 @@ export interface ExportSettings {
   content: ExportContentSettings;
   bible: ExportBibleSettings;
   layout: ExportLayoutSettings;
+  epub: ExportEpubSettings;
 }
 export type ProjectsMap = Record<
 
@@ -1299,6 +1322,12 @@ export interface ScriptoriumApi {
   exportScreenplayDocx(filePath: string, doc: import('./screenplay-export').ScreenplayExportDocument): Promise<void>;
   exportScreenplayOdt(filePath: string, doc: import('./screenplay-export').ScreenplayExportDocument): Promise<void>;
   exportDocumentDocx(filePath: string, doc: import('./export-document').ExportDocument): Promise<void>;
+  exportDocumentEpub(
+    filePath: string,
+    doc: import('./export-document').ExportDocument,
+    options: EpubExportOptions
+  ): Promise<EpubExportResult>;
+  pickEpubCover(title: string): Promise<string | null>;
 
   exportPdf(
     filePath: string,

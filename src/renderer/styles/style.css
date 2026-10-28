@@ -1933,3 +1933,8 @@ button.btn-primary.replace-run-btn:disabled {
 .screenplay-import-text p.screenplay-import-dialogue { margin: 0 15% 8px 20%; }
 .screenplay-import-text p.screenplay-import-transition { margin-top: 8px; text-align: right; text-transform: uppercase; }
 .screenplay-import-text p.screenplay-import-shot { text-transform: uppercase; }
+
+/* Export ePub : choix de la couverture */
+.export-cover { flex-wrap: nowrap; }
+.export-cover-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-muted); font-size: 13px; }
+.export-cover button { flex-shrink: 0; font-size: 12px; padding: 4px 10px; }
