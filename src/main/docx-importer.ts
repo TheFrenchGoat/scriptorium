@@ -21,7 +21,7 @@ import AdmZip from 'adm-zip';
 import {
   getExplicitChapterTitle,
   normalizeVisibleText,
-  splitIntoChapters,
+  splitDocument,
   type ImportBlock
 } from './import-chapters';
 import {
@@ -618,8 +618,10 @@ export function importDocxProject(filePath: string): ImportedProject {
     throw new Error('Le document Word ne contient aucun texte importable.');
   }
 
+  const split = splitDocument(blocks);
+
   const projectData: ProjectData = {
-    chapters: splitIntoChapters(blocks),
+    chapters: split.chapters,
     world: {},
     customWbTypes: {},
     writingSessions: [],
@@ -627,7 +629,7 @@ export function importDocxProject(filePath: string): ImportedProject {
   };
 
   return {
-    projectName: projectNameFromFilePath(filePath),
+    projectName: split.bookTitle || projectNameFromFilePath(filePath),
     projectData
   };
 }

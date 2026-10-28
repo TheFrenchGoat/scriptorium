@@ -11,6 +11,10 @@
 // Le texte placé avant le premier titre devient "Introduction". Le titre donne
 // son nom au chapitre et n'est pas repris dans son contenu. Les lignes vides
 // au début et à la fin de chaque chapitre sont retirées.
+//
+// splitDocument() ajoute la règle du "titre du livre" : un seul titre de
+// niveau 1 en tête du document, suivi d'au moins deux titres de niveau 2,
+// donne le nom du projet ; les titres de niveau 2 deviennent les chapitres.
 
 import { sanitizeChapterHtml } from './sanitize';
 
@@ -318,4 +322,56 @@ export function splitIntoChapters(blocks: ImportBlock[]): Record<string, string>
   });
 
   return result;
+}
+
+/** Résultat du découpage, avec le titre du livre s'il a été trouvé. */
+export interface SplitDocumentResult {
+  chapters: Record<string, string>;
+  /** Titre du livre (nom de projet proposé), ou null. */
+  bookTitle: string | null;
+}
+
+/**
+ * Découpe le document en appliquant d'abord la règle du "titre du livre" :
+ * un seul titre de niveau 1, placé avant tout texte, qui n'est pas un
+ * "Chapitre X", suivi d'au moins deux titres de niveau 2. Ce titre devient le
+ * nom du projet et ne crée pas de chapitre ; les titres de niveau 2 servent
+ * alors de titres de chapitres. Sinon, le découpage habituel s'applique.
+ */
+export function splitDocument(blocks: ImportBlock[]): SplitDocumentResult {
+  const isHeading = (block: ImportBlock, level: number): boolean =>
+    block.headingLevel === level && block.text.length > 0;
+
+  const level1Indexes: number[] = [];
+  let level2Count = 0;
+
+  blocks.forEach((block, index) => {
+    if (isHeading(block, 1)) {
+      level1Indexes.push(index);
+    } else if (isHeading(block, 2)) {
+      level2Count++;
+    }
+  });
+
+  const titleIndex = level1Indexes.length === 1 ? level1Indexes[0] : undefined;
+  const titleBlock = titleIndex === undefined ? undefined : blocks[titleIndex];
+
+  if (
+    titleIndex === undefined ||
+    !titleBlock ||
+    level2Count < 2 ||
+    titleIndex !== blocks.findIndex((block) => block.text.length > 0) ||
+    getExplicitChapterTitle(titleBlock.text) !== null
+  ) {
+    return { chapters: splitIntoChapters(blocks), bookTitle: null };
+  }
+
+  const rest = blocks
+    .slice(titleIndex + 1)
+    .map((block) => (block.headingLevel === 2 ? { ...block, headingLevel: 1 } : block));
+
+  return {
+    chapters: splitIntoChapters(rest),
+    bookTitle: titleBlock.text || null
+  };
 }

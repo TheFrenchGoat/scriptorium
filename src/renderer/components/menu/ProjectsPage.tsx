@@ -889,8 +889,8 @@ export function ProjectsPage({
         await window.api.showOpenDialog({
           title:
             lang === 'fr'
-              ? 'Importer un projet ou un document LibreOffice ou Word'
-              : 'Import a project or a LibreOffice or Word document',
+              ? 'Importer un projet ou un document (LibreOffice, Word, texte, Markdown)'
+              : 'Import a project or a document (LibreOffice, Word, text, Markdown)',
           filters: [
             {
               name:
@@ -901,6 +901,9 @@ export function ProjectsPage({
                 'scriptorium',
                 'odt',
                 'docx',
+                'txt',
+                'md',
+                'markdown',
                 'json'
               ]
             },
@@ -917,6 +920,17 @@ export function ProjectsPage({
                   ? 'Document Word'
                   : 'Word document',
               extensions: ['docx']
+            },
+            {
+              name:
+                lang === 'fr'
+                  ? 'Texte brut'
+                  : 'Plain text',
+              extensions: ['txt']
+            },
+            {
+              name: 'Markdown',
+              extensions: ['md', 'markdown']
             },
             {
               name:
@@ -1010,8 +1024,8 @@ export function ProjectsPage({
 
         const errorPrefix =
           lang === 'fr'
-            ? "Erreur lors de l'importation : le fichier sélectionné n'est peut-être pas un projet Scriptorium ou un document LibreOffice ou Word valide.\n\n"
-            : 'Import error: the selected file may not be a valid Scriptorium project or LibreOffice or Word document.\n\n';
+            ? "Erreur lors de l'importation : le fichier sélectionné n'est peut-être pas un projet Scriptorium ou un document valide (LibreOffice, Word, texte, Markdown).\n\n"
+            : 'Import error: the selected file may not be a valid Scriptorium project or document (LibreOffice, Word, text, Markdown).\n\n';
 
         showInfo(
           errorPrefix +
@@ -1082,8 +1096,8 @@ export function ProjectsPage({
               type="button"
               title={
                 lang === 'fr'
-                  ? 'Importer un projet Scriptorium ou un document LibreOffice ou Word'
-                  : 'Import a Scriptorium project or a LibreOffice or Word document'
+                  ? 'Importer un projet Scriptorium ou un document (LibreOffice, Word, texte, Markdown)'
+                  : 'Import a Scriptorium project or a document (LibreOffice, Word, text, Markdown)'
               }
               onClick={() => {
                 void importProject();

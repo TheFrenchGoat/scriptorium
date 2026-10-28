@@ -19,7 +19,7 @@ import AdmZip from 'adm-zip';
 import {
   getExplicitChapterTitle,
   normalizeVisibleText,
-  splitIntoChapters,
+  splitDocument,
   type ImportBlock
 } from './import-chapters';
 import {
@@ -741,12 +741,12 @@ export function importOdtProject(
     );
   }
 
-  const chapters = splitIntoChapters(
+  const split = splitDocument(
     blocks
   );
 
   const projectData: ProjectData = {
-    chapters,
+    chapters: split.chapters,
     world: {},
     customWbTypes: {},
     writingSessions: [],
@@ -755,6 +755,7 @@ export function importOdtProject(
 
   return {
     projectName:
+      split.bookTitle ||
       projectNameFromFilePath(filePath),
     projectData
   };
