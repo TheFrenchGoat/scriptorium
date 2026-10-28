@@ -47,9 +47,17 @@ interface PreviewBlock {
 /** Nombre maximal de paragraphes affichés dans l'aperçu d'un chapitre. */
 const PREVIEW_MAX_BLOCKS = 400;
 
-/** Balises dont on parcourt le contenu au lieu de les lire d'un bloc. */
-const CONTAINER_TAGS = new Set([
+/** Balises de bloc : tout le reste (gras, italique, liensè) fait partie du paragraphe. */
+const BLOCK_TAGS = new Set([
+  'P',
   'DIV',
+  'H1',
+  'H2',
+  'H3',
+  'H4',
+  'H5',
+  'H6',
+  'LI',
   'UL',
   'OL',
   'BLOCKQUOTE',
@@ -59,7 +67,12 @@ const CONTAINER_TAGS = new Set([
   'TBODY',
   'THEAD',
   'TFOOT',
-  'TR'
+  'TR',
+  'TD',
+  'TH',
+  'PRE',
+  'HR',
+  'FIGURE'
 ]);
 
 let nextChapterId = 0;
@@ -104,47 +117,78 @@ function escapeHtml(value: string): string {
     .replace(/"/g, '&quot;');
 }
 
+function hasBlockChild(element: Element): boolean {
+  return Array.from(element.children).some((child) => BLOCK_TAGS.has(child.tagName.toUpperCase()));
+}
+
+/* Texte d'un contenu en ligne : les espaces du code HTML deviennent un seul
+   espace, seul <br> donne un retour à la ligne. */
+function inlineText(node: Node): string {
+  if (node.nodeType === Node.TEXT_NODE) {
+    return (node.textContent ?? '').replace(/\s+/g, ' ');
+  }
+
+  if (node.nodeType !== Node.ELEMENT_NODE) {
+    return '';
+  }
+
+  const element = node as Element;
+
+  if (element.tagName.toUpperCase() === 'BR') {
+    return '\n';
+  }
+
+  return Array.from(element.childNodes).map(inlineText).join('');
+}
+
+function cleanText(raw: string): string {
+  return raw.replace(/ *\n */g, '\n').trim();
+}
+
+/* Un paragraphe = un bloc sans sous-bloc, ou une suite de contenus en ligne
+   entre deux blocs. */
 function collectBlocks(parent: Node, out: PreviewBlock[]): void {
+  let buffer = '';
+
+  const flush = (): void => {
+    const text = cleanText(buffer);
+    buffer = '';
+
+    if (text) {
+      out.push({ text, heading: false });
+    }
+  };
+
   for (const child of Array.from(parent.childNodes)) {
     if (out.length > PREVIEW_MAX_BLOCKS) {
       return;
     }
 
-    if (child.nodeType === Node.TEXT_NODE) {
-      const text = (child.textContent ?? '').replace(/\s+/g, ' ').trim();
+    if (child.nodeType === Node.ELEMENT_NODE) {
+      const element = child as Element;
+      const tag = element.tagName.toUpperCase();
 
-      if (text) {
-        out.push({ text, heading: false });
+      if (BLOCK_TAGS.has(tag)) {
+        flush();
+
+        if (hasBlockChild(element)) {
+          collectBlocks(element, out);
+        } else {
+          const text = cleanText(inlineText(element));
+
+          if (text) {
+            out.push({ text, heading: /^H[1-6]$/.test(tag) });
+          }
+        }
+
+        continue;
       }
-
-      continue;
     }
 
-    if (child.nodeType !== Node.ELEMENT_NODE) {
-      continue;
-    }
-
-    const element = child as Element;
-    const tag = element.tagName.toUpperCase();
-
-    if (CONTAINER_TAGS.has(tag)) {
-      collectBlocks(element, out);
-      continue;
-    }
-
-    for (const lineBreak of Array.from(element.querySelectorAll('br'))) {
-      lineBreak.replaceWith('\n');
-    }
-
-    const text = (element.textContent ?? '')
-      .replace(/[^\S\n]+/g, ' ')
-      .replace(/ *\n */g, '\n')
-      .trim();
-
-    if (text) {
-      out.push({ text, heading: /^H[1-6]$/.test(tag) });
-    }
+    buffer += inlineText(child);
   }
+
+  flush();
 }
 
 function htmlToBlocks(html: string): PreviewBlock[] {
