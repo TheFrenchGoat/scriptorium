@@ -5,14 +5,9 @@
 // styles.xml. Le document est converti en projet Scriptorium puis découpé
 // automatiquement en chapitres.
 //
-// Règles de découpage :
-// - les paragraphes nommés "Chapitre 1", "Chapitre II", "Chapter 3", etc.
-//   deviennent des séparateurs de chapitres ;
-// - Prologue et Épilogue sont également reconnus ;
-// - si aucun titre explicite n'est trouvé, les titres de niveau 1 sont utilisés ;
-// - tout texte situé avant le premier chapitre devient "Introduction" ;
-// - le paragraphe contenant le titre du chapitre n'est pas ajouté au contenu
-//   du chapitre.
+// Le découpage en chapitres est commun à tous les imports de documents :
+// voir import-chapters.ts (Chapitre X, titres du document, puis titres
+// visuels centrés, en gras ou en grand).
 //
 // La conversion ne cherche pas à reproduire toute la mise en page de
 // LibreOffice. Elle conserve les éléments utiles à l'éditeur : paragraphes,
@@ -21,7 +16,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import AdmZip from 'adm-zip';
-import { sanitizeChapterHtml } from './sanitize';
+import {
+  getExplicitChapterTitle,
+  splitIntoChapters,
+  type ImportBlock
+} from './import-chapters';
 import type {
   ImportedProject,
   ProjectData
@@ -41,11 +40,8 @@ interface OdtStyle {
   textAlign?: string;
 }
 
-interface ParsedBlock {
-  text: string;
-  html: string;
-  headingLevel: number | null;
-}
+/** Bloc commun aux imports : texte, HTML, niveau de titre et mise en forme. */
+type ParsedBlock = ImportBlock;
 
 interface RenderedInline {
   text: string;
@@ -60,9 +56,6 @@ interface InlineStyle {
   fontFamily?: string;
   fontSize?: string;
 }
-
-const CHAPTER_NUMBER_PATTERN =
-  String.raw`(?:\d+|[ivxlcdm]+|premier|première|premiere|one)`;
 
 /**
  * Caractères ayant un sens particulier dans une expression régulière.
@@ -279,14 +272,14 @@ function parseStyles(
   const styles = new Map<string, OdtStyle>();
 
   const stylePattern =
-    /<style:style\b([^>]*)>([\s\S]*?)<\/style:style>/gi;
+    /<style:style\b([^>]*?)(?:\/>|>([\s\S]*?)<\/style:style>)/gi;
 
   xmlDocuments.forEach((xml) => {
     let match: RegExpExecArray | null;
 
     while ((match = stylePattern.exec(xml)) !== null) {
       const attributes = match[1];
-      const body = match[2];
+      const body = match[2] ?? '';
 
       const name = getXmlAttribute(
         attributes,
@@ -662,80 +655,6 @@ function renderInlineXml(
 }
 
 /**
- * Détecte un titre explicite de chapitre.
- *
- * La valeur retournée devient le nom du chapitre. Une valeur null signifie
- * que le bloc n'est pas un séparateur.
- */
-function getExplicitChapterTitle(
-  rawText: string
-): string | null {
-  let text = normalizeVisibleText(rawText);
-
-  if (!text) {
-    return null;
-  }
-
-  /*
-   * Supprime les décorations parfois utilisées autour des titres :
-   * "— Chapitre 1 —", "• Chapitre 1", etc.
-   */
-  text = text
-    .replace(/^[•·▪◦\-–—]+\s*/u, '')
-    .replace(/\s*[•·▪◦\-–—]+$/u, '')
-    .trim();
-
-  if (/^prologue(?:\s*[:.\-–—]\s*)?$/iu.test(text)) {
-    return 'Prologue';
-  }
-
-  if (
-    /^épilogue(?:\s*[:.\-–—]\s*)?$/iu.test(text) ||
-    /^epilogue(?:\s*[:.\-–—]\s*)?$/iu.test(text)
-  ) {
-    return 'Épilogue';
-  }
-
-  /*
-   * Formes reconnues :
-   *
-   * Chapitre 1
-   * Chapitre 1 :
-   * Chapitre 1 : Le départ
-   * Chapitre 1 — Le départ
-   * Chapitre 1 Le départ
-   * Chapitre I
-   * CHAPTER 1
-   * Chapitre n° 1
-   */
-  const pattern = new RegExp(
-    String.raw`^(chapitre|chapter)\s*(?:n\s*[°ºo]?\s*)?(${CHAPTER_NUMBER_PATTERN})(?:\s*(?:[:.\-–—]\s*(.*)|\s+(.+)))?$`,
-    'iu'
-  );
-
-  const match = text.match(pattern);
-
-  if (!match) {
-    return null;
-  }
-
-  const languageWord = match[1];
-  const number = match[2];
-  const subtitle = normalizeVisibleText(
-    match[3] ?? match[4] ?? ''
-  )
-    .replace(/^[\-–—:.\s]+/u, '')
-    .replace(/[\-–—:.\s]+$/u, '')
-    .trim();
-
-  const baseTitle = `${languageWord} ${number}`;
-
-  return subtitle
-    ? `${baseTitle} — ${subtitle}`
-    : baseTitle;
-}
-
-/**
  * Retourne le niveau de titre d'un paragraphe ODT.
  */
 function getHeadingLevel(
@@ -798,6 +717,109 @@ function buildBlockStyle(
   return declarations.join('; ');
 }
 
+/** Mise en forme utile pour détecter les titres visuels. */
+interface BlockFormat {
+  centered: boolean;
+  bold: boolean;
+  fontSizePt: number | null;
+}
+
+/** Convertit une taille CSS ("20pt", "16px") en points. */
+function fontSizeToPt(value: string | undefined): number | null {
+  if (!value) {
+    return null;
+  }
+
+  const match = /^([0-9.]+)(pt|px)$/.exec(value);
+
+  if (!match) {
+    return null;
+  }
+
+  const size = parseFloat(match[1] ?? '');
+
+  if (!Number.isFinite(size) || size <= 0) {
+    return null;
+  }
+
+  return match[2] === 'px' ? Math.round(size * 7.5) / 10 : size;
+}
+
+/**
+ * Mesure le gras et la taille dominante d'un paragraphe.
+ * Le paragraphe est en gras si plus de la moitié du texte l'est. La taille
+ * retenue est celle qui couvre le plus de caractères.
+ */
+function measureFormatting(
+  xml: string,
+  styles: Map<string, OdtStyle>,
+  base: InlineStyle
+): { bold: boolean; fontSizePt: number | null } {
+  let total = 0;
+  let boldChars = 0;
+  const sizes = new Map<number, number>();
+
+  const add = (fragment: string, bold: boolean, fontSize: string | undefined): void => {
+    const length = normalizeVisibleText(
+      decodeXmlEntities(fragment.replace(/<[^>]+>/g, ''))
+    ).length;
+
+    if (length === 0) {
+      return;
+    }
+
+    total += length;
+
+    if (bold) {
+      boldChars += length;
+    }
+
+    const pt = fontSizeToPt(fontSize);
+
+    if (pt !== null) {
+      sizes.set(pt, (sizes.get(pt) ?? 0) + length);
+    }
+  };
+
+  const spanPattern = /<text:span\b([^>]*)>([\s\S]*?)<\/text:span>/gi;
+  let cursor = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = spanPattern.exec(xml)) !== null) {
+    add(xml.slice(cursor, match.index), base.bold === true, base.fontSize);
+
+    const spanStyle = resolveStyle(
+      getXmlAttribute(match[1] ?? '', 'text:style-name'),
+      styles
+    );
+
+    add(
+      match[2] ?? '',
+      base.bold === true || spanStyle?.bold === true,
+      spanStyle?.fontSize ?? base.fontSize
+    );
+
+    cursor = spanPattern.lastIndex;
+  }
+
+  add(xml.slice(cursor), base.bold === true, base.fontSize);
+
+  let fontSizePt: number | null = null;
+  let bestCount = 0;
+
+  sizes.forEach((count, size) => {
+    if (count > bestCount) {
+      bestCount = count;
+      fontSizePt = size;
+    }
+  });
+
+  return {
+    bold: total > 0 && boldChars * 2 > total,
+    fontSizePt
+  };
+}
+
 /**
  * Ajoute un bloc analysé à la liste.
  */
@@ -805,7 +827,8 @@ function pushRenderedBlock(
   blocks: ParsedBlock[],
   rendered: RenderedInline,
   headingLevel: number | null,
-  blockStyle: string
+  blockStyle: string,
+  format: BlockFormat
 ): void {
   const text = normalizeVisibleText(
     rendered.text
@@ -824,6 +847,9 @@ function pushRenderedBlock(
   blocks.push({
     text,
     headingLevel,
+    centered: format.centered,
+    bold: format.bold,
+    fontSizePt: format.fontSizePt,
     html: `<div${styleAttribute}>${
       rendered.html || '<br>'
     }</div>`
@@ -840,7 +866,7 @@ function parseBlocks(
   const blocks: ParsedBlock[] = [];
 
   const blockPattern =
-    /<(text:p|text:h)\b([^>]*)>([\s\S]*?)<\/\1>/gi;
+    /<(text:p|text:h)\b([^>]*?)(?:\/>|>([\s\S]*?)<\/\1>)/gi;
 
   let match: RegExpExecArray | null;
 
@@ -875,6 +901,13 @@ function parseBlocks(
     const baseInlineStyle =
       inlineStyleFromOdtStyle(resolvedStyle);
 
+    /* Mise en forme du paragraphe, pour la détection des titres visuels. */
+    const centered = resolvedStyle?.textAlign === 'center';
+    const formatOf = (xml: string): BlockFormat => ({
+      centered,
+      ...measureFormatting(xml, styles, baseInlineStyle)
+    });
+
     /*
      * LibreOffice peut placer "Chapitre 1" après un saut de ligne manuel dans
      * le même paragraphe que le texte précédent. Dans ce cas, analyser tout le
@@ -908,7 +941,7 @@ function parseBlocks(
 
       if (containsExplicitChapter) {
         renderedParts.forEach(
-          (renderedPart) => {
+          (renderedPart, partIndex) => {
             /*
              * Une portion totalement vide issue d'un saut adjacent n'a pas
              * besoin de devenir un paragraphe séparé.
@@ -926,7 +959,8 @@ function parseBlocks(
               blocks,
               renderedPart,
               headingLevel,
-              blockStyle
+              blockStyle,
+              formatOf(manualLineParts[partIndex] ?? '')
             );
           }
         );
@@ -945,197 +979,12 @@ function parseBlocks(
       blocks,
       rendered,
       headingLevel,
-      blockStyle
+      blockStyle,
+      formatOf(innerXml)
     );
   }
 
   return blocks;
-}
-
-/**
- * Nettoie le nom proposé pour un chapitre.
- */
-function cleanChapterName(
-  value: string,
-  fallback: string
-): string {
-  const normalized = normalizeVisibleText(value)
-    .replace(/[<>:"/\\|?*\u0000-\u001F]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-
-  return normalized || fallback;
-}
-
-/**
- * Empêche deux chapitres importés de porter exactement le même nom.
- */
-function uniqueChapterName(
-  chapters: Record<string, string>,
-  requestedName: string
-): string {
-  if (!(requestedName in chapters)) {
-    return requestedName;
-  }
-
-  let index = 2;
-
-  while (
-    `${requestedName} (${index})` in chapters
-  ) {
-    index++;
-  }
-
-  return `${requestedName} (${index})`;
-}
-
-/**
- * Découpe les blocs du document en chapitres.
- */
-function splitIntoChapters(
-  blocks: ParsedBlock[]
-): Record<string, string> {
-  const chapters: Record<string, string> = {};
-
-  const explicitTitles = blocks.map(
-    (block) =>
-      getExplicitChapterTitle(block.text)
-  );
-
-  const hasExplicitTitles =
-    explicitTitles.some(
-      (title) => title !== null
-    );
-
-  /*
-   * Si aucun "Chapitre X" n'est présent, on utilise les titres de niveau 1.
-   */
-  const isSeparator = (
-    block: ParsedBlock,
-    index: number
-  ): boolean => {
-    if (hasExplicitTitles) {
-      return explicitTitles[index] !== null;
-    }
-
-    return (
-      block.headingLevel === 1 &&
-      block.text.length > 0
-    );
-  };
-
-  const separatorTitle = (
-    block: ParsedBlock,
-    index: number
-  ): string => {
-    const explicitTitle =
-      explicitTitles[index];
-
-    if (explicitTitle) {
-      return cleanChapterName(
-        explicitTitle,
-        `Chapitre ${
-          Object.keys(chapters).length + 1
-        }`
-      );
-    }
-
-    return cleanChapterName(
-      block.text,
-      `Chapitre ${
-        Object.keys(chapters).length + 1
-      }`
-    );
-  };
-
-  let currentChapterName: string | null =
-    null;
-
-  let currentChapterBlocks: string[] = [];
-
-  const introductionBlocks: string[] = [];
-
-  const flushCurrentChapter = (): void => {
-    if (!currentChapterName) {
-      return;
-    }
-
-    const uniqueName = uniqueChapterName(
-      chapters,
-      currentChapterName
-    );
-
-    chapters[uniqueName] =
-      sanitizeChapterHtml(
-        currentChapterBlocks.join('')
-      );
-
-    currentChapterName = null;
-    currentChapterBlocks = [];
-  };
-
-  blocks.forEach((block, index) => {
-    if (isSeparator(block, index)) {
-      flushCurrentChapter();
-
-      currentChapterName =
-        separatorTitle(block, index);
-
-      /*
-       * Le bloc du titre sert uniquement de séparateur. Il ne doit pas être
-       * placé dans l'Introduction ni dans le contenu du nouveau chapitre.
-       */
-      return;
-    }
-
-    if (!currentChapterName) {
-      introductionBlocks.push(block.html);
-      return;
-    }
-
-    currentChapterBlocks.push(block.html);
-  });
-
-  flushCurrentChapter();
-
-  const introductionHtml =
-    sanitizeChapterHtml(
-      introductionBlocks.join('')
-    );
-
-  /*
-   * L'Introduction est insérée avant tous les chapitres uniquement lorsqu'il
-   * existe réellement du contenu visible avant le premier séparateur.
-   */
-  const introductionText =
-    normalizeVisibleText(
-      introductionHtml.replace(/<[^>]+>/g, ' ')
-    );
-
-  if (introductionText) {
-    return {
-      Introduction: introductionHtml,
-      ...chapters
-    };
-  }
-
-  /*
-   * Si aucun séparateur n'a été trouvé, tout le document devient un chapitre.
-   */
-  if (Object.keys(chapters).length === 0) {
-    const completeHtml =
-      sanitizeChapterHtml(
-        blocks
-          .map((block) => block.html)
-          .join('')
-      );
-
-    return {
-      'Chapitre 1': completeHtml
-    };
-  }
-
-  return chapters;
 }
 
 /**
