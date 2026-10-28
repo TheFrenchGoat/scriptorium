@@ -292,6 +292,9 @@ const api: ScriptoriumApi = {
   pickEpubCover: (title: string) =>
     ipcRenderer.invoke('export:pick-epub-cover', { title }),
 
+  readEpubCover: (filePath: string) =>
+    ipcRenderer.invoke('export:read-epub-cover', { filePath }),
+
   exportPdf: (
     filePath: string,
     htmlContent: string

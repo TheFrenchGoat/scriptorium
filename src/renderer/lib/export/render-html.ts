@@ -218,6 +218,8 @@ export interface ExportPreviewOptions {
   sheetWidthPx: number;
   /** Titres de la table des matières (par défaut : chapitres du document). */
   tocTitles?: string[];
+  /** Couverture ePub (data URL), affichèe sur une première feuille. */
+  coverDataUrl?: string;
 }
 
 const PX_PER_MM = 96 / 25.4;
@@ -243,6 +245,10 @@ export function renderExportPreview(
     if (newSheet || sheets.length === 0) sheets.push([]);
     sheets[sheets.length - 1].push(html);
   };
+
+  if (options.coverDataUrl) {
+    add(`<div class="cover"><img src="${escapeHtml(options.coverDataUrl)}" alt=""></div>`, true);
+  }
 
   if (doc.titlePage) {
     const parts = [`<h1 class="doc-title">${escapeHtml(doc.title)}</h1>`];
@@ -294,6 +300,14 @@ export function renderExportPreview(
   overflow-wrap: break-word;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
+.cover {
+  margin: -${L.marginCm}cm;
+  min-height: ${page.height}mm;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cover img { display: block; max-width: 100%; max-height: ${page.height}mm; }
 `;
 
   return { css, html: `<div class="preview">${body}</div>` };

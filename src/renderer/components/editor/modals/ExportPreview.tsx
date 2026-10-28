@@ -29,9 +29,11 @@ const PREVIEW_DELAY_MS = 250;
 export interface ExportPreviewProps {
   settings: ExportSettings;
   buildPreview: (settings: ExportSettings) => ExportPreviewSource;
+  /** Couverture ePub (data URL) affichèe en tête de l'aperçu, ou null. */
+  coverDataUrl?: string | null;
 }
 
-export function ExportPreview({ settings, buildPreview }: ExportPreviewProps) {
+export function ExportPreview({ settings, buildPreview, coverDataUrl }: ExportPreviewProps) {
   const { t } = useI18n();
   const hostRef = useRef<HTMLDivElement | null>(null);
 
@@ -70,7 +72,8 @@ export function ExportPreview({ settings, buildPreview }: ExportPreviewProps) {
       const root = host.shadowRoot ?? host.attachShadow({ mode: 'open' });
       const markup = renderExportPreview(source.document, {
         sheetWidthPx: PREVIEW_SHEET_WIDTH,
-        tocTitles: source.tocTitles
+        tocTitles: source.tocTitles,
+        coverDataUrl: coverDataUrl ?? undefined
       });
 
       const sheet = new CSSStyleSheet();
@@ -81,7 +84,7 @@ export function ExportPreview({ settings, buildPreview }: ExportPreviewProps) {
       console.error('Affichage de l apercu impossible :', error);
       setFailed(true);
     }
-  }, [source, hasLayout]);
+  }, [source, hasLayout, coverDataUrl]);
 
   return (
     <aside className="export-preview" aria-label={t('exportPreviewTitle')}>

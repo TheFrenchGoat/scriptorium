@@ -213,6 +213,18 @@ function readCover(coverPath: string): EpubCover | null {
   }
 }
 
+/**
+ * Couverture sous forme de data URL, pour la vignette et l'aperçu de la
+ * fenêtre d'export. Mêmes règles que l'export (JPEG ou PNG, 30 Mo au plus) :
+ * null si l'image est absente ou invalide.
+ */
+export function readCoverDataUrl(coverPath: string): string | null {
+  const cover = readCover(coverPath);
+  if (!cover) return null;
+
+  return `data:${cover.mediaType};base64,${Buffer.from(cover.data).toString('base64')}`;
+}
+
 /** Date au format exigé par ePub : 2026-01-31T12:00:00Z. */
 function modifiedDate(): string {
   return new Date().toISOString().replace(/\.\d+Z$/, 'Z');

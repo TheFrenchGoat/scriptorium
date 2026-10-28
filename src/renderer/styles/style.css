@@ -1938,3 +1938,8 @@ button.btn-primary.replace-run-btn:disabled {
 .export-cover { flex-wrap: nowrap; }
 .export-cover-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-muted); font-size: 13px; }
 .export-cover button { flex-shrink: 0; font-size: 12px; padding: 4px 10px; }
+
+/* Export ePub : vignette de la couverture, image introuvable, image petite */
+.export-cover-thumb { flex-shrink: 0; width: 40px; height: 60px; object-fit: cover; border: 1px solid var(--border); border-radius: 3px; background: var(--bg-input); }
+.export-cover-alert { color: #ef4444; }
+.export-cover-advice { color: #d9822b; }

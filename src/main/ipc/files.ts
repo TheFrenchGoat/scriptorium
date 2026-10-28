@@ -24,7 +24,7 @@ import sanitizeHtml from 'sanitize-html';
 
 import { generateExportDocx } from '../export-docx';
 import { generateExportOdt } from '../export-odt';
-import { generateExportEpub, normalizeEpubExportOptions } from '../export-epub';
+import { generateExportEpub, normalizeEpubExportOptions, readCoverDataUrl } from '../export-epub';
 import type { EpubExportResult } from '../../shared/types';
 import { generateScreenplayDocx, generateScreenplayOdt } from '../export-screenplay';
 import { normalizeScreenplayExportDocument } from '../../shared/screenplay-export';
@@ -600,6 +600,16 @@ export function registerFileIpc(): void {
       if (result.canceled) return null;
 
       return result.filePaths[0] ?? null;
+    }
+  );
+
+  ipcMain.handle(
+    'export:read-epub-cover',
+    async (_event, payload: { filePath?: unknown } | undefined): Promise<string | null> => {
+      const coverFile = payload?.filePath;
+      if (typeof coverFile !== 'string' || coverFile === '' || coverFile.length > 4096) return null;
+
+      return readCoverDataUrl(coverFile);
     }
   );
 

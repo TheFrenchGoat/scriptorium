@@ -7,7 +7,7 @@
 // sont alors mémorisés dans le projet, puis le fichier est produit (voir
 // saveExportSettings et exportAs dans useEditorController).
 //
-// Formats proposés : PDF, Word, OpenDocument (.odt), texte brut et Markdown.
+// Formats proposés : PDF, Word, OpenDocument (.odt), ePub, texte brut et Markdown.
 
 import React, { useEffect, useMemo, useState } from 'react';
 import type { ExportBibleMode, ExportBibleSettings, ExportEpubSettings } from '../../../../shared/types';
@@ -174,6 +174,9 @@ function FieldRow({ label, children }: { label: string; children: React.ReactNod
 // Fenêtre
 // ----------------------------------------------------------------------------
 
+/** En dessous de cette hauteur (en pixels), la couverture risque d'être floue. */
+const COVER_MIN_HEIGHT = 1000;
+
 /** Nom du fichier, sans le dossier. */
 function fileNameOf(filePath: string): string {
   const parts = filePath.split(/[\x5C\x2F]/);
@@ -331,6 +334,56 @@ export function ExportModal({
       console.error('Choix de la couverture impossible :', error);
     }
   };
+
+  // Couverture ePub : l'image est lue par le processus principal, avec les
+  // mêmes règles que l'export. Elle sert à la vignette, à l'aperçu et au
+  // conseil de taille. Chaque image n'est lue qu'une fois, quand le chemin change.
+  const epubCoverPath = settings.epub.coverPath;
+  const [epubCover, setEpubCover] = useState<{
+    path: string;
+    dataUrl: string | null;
+    height: number;
+  } | null>(null);
+
+  useEffect(() => {
+    if (epubCoverPath === '') return;
+
+    let cancelled = false;
+
+    const done = (dataUrl: string | null, height: number) => {
+      if (!cancelled) setEpubCover({ path: epubCoverPath, dataUrl, height });
+    };
+
+    window.api
+      .readEpubCover(epubCoverPath)
+      .then((dataUrl) => {
+        if (!dataUrl) {
+          done(null, 0);
+          return;
+        }
+
+        const image = new window.Image();
+        image.onload = () => done(dataUrl, image.naturalHeight);
+        image.onerror = () => done(null, 0);
+        image.src = dataUrl;
+      })
+      .catch((error: unknown) => {
+        console.error('Lecture de la couverture impossible :', error);
+        done(null, 0);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [epubCoverPath]);
+
+  // Résultat valable seulement pour l'image actuellement choisie.
+  const epubCoverInfo =
+    epubCoverPath !== '' && epubCover !== null && epubCover.path === epubCoverPath ? epubCover : null;
+  const epubCoverDataUrl = epubCoverInfo?.dataUrl ?? null;
+  const epubCoverMissing = epubCoverInfo !== null && epubCoverInfo.dataUrl === null;
+  const epubCoverSmall =
+    epubCoverInfo !== null && epubCoverInfo.dataUrl !== null && epubCoverInfo.height < COVER_MIN_HEIGHT;
 
   const footer = (
     <>
@@ -688,7 +741,17 @@ export function ExportModal({
 
                 <FieldRow label={t('exportEpubCover')}>
                   <div className="export-inline export-cover">
-                    <span className="export-cover-name" title={settings.epub.coverPath}>
+                    {epubCoverDataUrl && (
+                      <img
+                        className="export-cover-thumb"
+                        src={epubCoverDataUrl}
+                        alt={t('exportEpubCoverThumbAlt')}
+                      />
+                    )}
+                    <span
+                      className={epubCoverMissing ? 'export-cover-name export-cover-alert' : 'export-cover-name'}
+                      title={settings.epub.coverPath}
+                    >
                       {settings.epub.coverPath !== ''
                         ? fileNameOf(settings.epub.coverPath)
                         : t('exportEpubNoCover')}
@@ -703,6 +766,12 @@ export function ExportModal({
                     )}
                   </div>
                 </FieldRow>
+                {epubCoverMissing && (
+                  <p className="export-hint export-cover-alert">{t('exportEpubCoverMissing')}</p>
+                )}
+                {epubCoverSmall && (
+                  <p className="export-hint export-cover-advice">{t('exportEpubCoverSmall')}</p>
+                )}
 
                 <p className="export-hint">{t('exportEpubCoverHint')}</p>
               </>
@@ -712,7 +781,11 @@ export function ExportModal({
           )}
         </section>
       </div>
-      <ExportPreview settings={settings} buildPreview={buildPreview} />
+      <ExportPreview
+        settings={settings}
+        buildPreview={buildPreview}
+        coverDataUrl={settings.format === 'epub' ? epubCoverDataUrl : null}
+      />
       </div>
     </Modal>
   );

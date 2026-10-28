@@ -1144,6 +1144,9 @@ export const fr = {
   exportEpubChooseCover: 'Choisir une image…',
   exportEpubRemoveCover: 'Retirer',
   exportEpubCoverHint: 'Image JPG ou PNG, de préférence en hauteur (par exemple 1600 x 2560 pixels). Sans image, le livre s’ouvre sur la page de titre.',
+  exportEpubCoverThumbAlt: 'Aperçu de la couverture',
+  exportEpubCoverMissing: 'Image introuvable, ou ce n’est pas une image JPG ou PNG : le livre sera exporté sans couverture.',
+  exportEpubCoverSmall: 'Image petite (moins de 1000 pixels de haut) : elle risque d’être floue sur une liseuse.',
   exportPdfSuccess: 'Export PDF réussi !',
   exportPdfError:
     "Erreur lors de l'export PDF : ",
@@ -2307,6 +2310,9 @@ export const en: Record<TranslationKey, string> = {
   exportEpubChooseCover: 'Choose an image…',
   exportEpubRemoveCover: 'Remove',
   exportEpubCoverHint: 'JPG or PNG image, preferably portrait (for example 1600 x 2560 pixels). Without an image, the book opens on the title page.',
+  exportEpubCoverThumbAlt: 'Cover preview',
+  exportEpubCoverMissing: 'Image not found, or not a JPG or PNG image: the book will be exported without a cover.',
+  exportEpubCoverSmall: 'Small image (less than 1000 pixels high): it may look blurry on an e-reader.',
   exportPdfSuccess:
     'PDF export successful!',
   exportPdfError:

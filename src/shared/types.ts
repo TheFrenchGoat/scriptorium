@@ -1328,6 +1328,7 @@ export interface ScriptoriumApi {
     options: EpubExportOptions
   ): Promise<EpubExportResult>;
   pickEpubCover(title: string): Promise<string | null>;
+  readEpubCover(filePath: string): Promise<string | null>;
 
   exportPdf(
     filePath: string,
