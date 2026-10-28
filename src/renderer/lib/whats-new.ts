@@ -9,6 +9,23 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    version: '1.4.2',
+    fr: [
+      'Nouveau panneau Notes (bouton dans la barre d’outils) : une note libre pour chaque chapitre.',
+      'Commentaires : sélectionnez un passage, puis Ctrl+Alt+M ou clic droit. Le passage est surligné, le commentaire s’affiche au survol et tous sont listés dans le panneau Notes.',
+      'Rechercher / Remplacer : options « Mot entier » et « Majuscules », et nombre d’occurrences affiché avant de remplacer.',
+      'Rechercher / Remplacer : présentation plus claire et plus compacte.',
+      'Scénarios : les remplacements automatiques fonctionnent dans les actions, les dialogues et les didascalies.'
+    ],
+    en: [
+      'New Notes panel (toolbar button): a free-form note for each chapter.',
+      'Comments: select a passage, then press Ctrl+Alt+M or right-click. The passage is highlighted, the comment shows on hover, and all comments are listed in the Notes panel.',
+      'Find / Replace: "Whole word" and "Match case" options, and the number of matches is shown before replacing.',
+      'Find / Replace: a clearer, more compact layout.',
+      'Screenplays: auto-replace now works in action, dialogue and parenthetical elements.'
+    ]
+  },
+  {
     version: '1.4.1',
     fr: [
       'Chaque chapitre peut recevoir un état d’avancement, une couleur et un objectif de mots.',
