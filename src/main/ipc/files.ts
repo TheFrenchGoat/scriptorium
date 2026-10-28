@@ -4,7 +4,7 @@
 // - boîtes de dialogue ;
 // - export TXT, DOCX, ODT et PDF ;
 // - export/import des projets Scriptorium ;
-// - import ODT ;
+// - import ODT et Word (DOCX) ;
 // - désinfection HTML ;
 // - ouverture des liens externes.
 
@@ -32,6 +32,10 @@ import { normalizeExportSettings } from '../../shared/export-settings';
 import {
   importOdtProject
 } from '../odt-importer';
+
+import {
+  importDocxProject
+} from '../docx-importer';
 
 import {
   CHAPTER_HTML_SANITIZE_OPTIONS,
@@ -148,6 +152,26 @@ async function importSupportedProject(
   if (extension === '.odt') {
     const imported =
       await importOdtProject(
+        filePath
+      );
+
+    return {
+      projectName:
+        imported.projectName ||
+        getProjectNameFromFile(
+          filePath
+        ),
+
+      projectData:
+        sanitizeProjectData(
+          imported.projectData
+        )
+    };
+  }
+
+  if (extension === '.docx') {
+    const imported =
+      importDocxProject(
         filePath
       );
 

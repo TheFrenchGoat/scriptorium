@@ -283,7 +283,7 @@ export function splitIntoChapters(blocks: ImportBlock[]): Record<string, string>
       current &&
       !current.merged &&
       current.explicit !== explicit &&
-      current.blocks.every((item) => isBlankBlock(item))
+      current.blocks.length === 0
     ) {
       current.name = mergeTitles(current.name, name);
       current.merged = true;

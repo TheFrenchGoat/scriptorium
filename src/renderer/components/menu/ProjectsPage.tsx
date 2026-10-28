@@ -889,8 +889,8 @@ export function ProjectsPage({
         await window.api.showOpenDialog({
           title:
             lang === 'fr'
-              ? 'Importer un projet ou un document LibreOffice'
-              : 'Import a project or LibreOffice document',
+              ? 'Importer un projet ou un document LibreOffice ou Word'
+              : 'Import a project or a LibreOffice or Word document',
           filters: [
             {
               name:
@@ -900,6 +900,7 @@ export function ProjectsPage({
               extensions: [
                 'scriptorium',
                 'odt',
+                'docx',
                 'json'
               ]
             },
@@ -909,6 +910,13 @@ export function ProjectsPage({
                   ? 'Document LibreOffice Writer'
                   : 'LibreOffice Writer document',
               extensions: ['odt']
+            },
+            {
+              name:
+                lang === 'fr'
+                  ? 'Document Word'
+                  : 'Word document',
+              extensions: ['docx']
             },
             {
               name:
@@ -1002,8 +1010,8 @@ export function ProjectsPage({
 
         const errorPrefix =
           lang === 'fr'
-            ? "Erreur lors de l'importation : le fichier sélectionné n'est peut-être pas un projet Scriptorium ou un document ODT valide.\n\n"
-            : 'Import error: the selected file may not be a valid Scriptorium project or ODT document.\n\n';
+            ? "Erreur lors de l'importation : le fichier sélectionné n'est peut-être pas un projet Scriptorium ou un document LibreOffice ou Word valide.\n\n"
+            : 'Import error: the selected file may not be a valid Scriptorium project or LibreOffice or Word document.\n\n';
 
         showInfo(
           errorPrefix +
@@ -1074,8 +1082,8 @@ export function ProjectsPage({
               type="button"
               title={
                 lang === 'fr'
-                  ? 'Importer un projet Scriptorium ou un document LibreOffice Writer'
-                  : 'Import a Scriptorium project or LibreOffice Writer document'
+                  ? 'Importer un projet Scriptorium ou un document LibreOffice ou Word'
+                  : 'Import a Scriptorium project or a LibreOffice or Word document'
               }
               onClick={() => {
                 void importProject();

@@ -18,9 +18,28 @@ import path from 'node:path';
 import AdmZip from 'adm-zip';
 import {
   getExplicitChapterTitle,
+  normalizeVisibleText,
   splitIntoChapters,
   type ImportBlock
 } from './import-chapters';
+import {
+  decodeXmlEntities,
+  escapeHtml,
+  escapeHtmlAttribute,
+  fontSizeToPt,
+  getXmlAttribute,
+  inlineStyleToCss,
+  mapLibreOfficeFontStack,
+  normalizeColor,
+  normalizeFontFamily,
+  normalizeFontSize,
+  normalizeTextAlign,
+  projectNameFromFilePath,
+  pushRenderedBlock,
+  type BlockFormat,
+  type InlineStyle,
+  type RenderedInline
+} from './import-html';
 import type {
   ImportedProject,
   ProjectData
@@ -42,226 +61,6 @@ interface OdtStyle {
 
 /** Bloc commun aux imports : texte, HTML, niveau de titre et mise en forme. */
 type ParsedBlock = ImportBlock;
-
-interface RenderedInline {
-  text: string;
-  html: string;
-}
-
-interface InlineStyle {
-  bold?: boolean;
-  italic?: boolean;
-  underline?: boolean;
-  color?: string;
-  fontFamily?: string;
-  fontSize?: string;
-}
-
-/**
- * Caractères ayant un sens particulier dans une expression régulière.
- * Écrits sous forme de chaîne pour éviter toute séquence fragile au
- * copier-coller.
- */
-const REGEX_SPECIAL_CHARS = '.*+?^${}()|[]\\';
-
-/**
- * Protège un texte pour l'insérer tel quel dans une expression régulière.
- */
-function escapeRegExp(value: string): string {
-  return Array.from(value)
-    .map((char) =>
-      REGEX_SPECIAL_CHARS.includes(char)
-        ? '\\' + char
-        : char
-    )
-    .join('');
-}
-
-/**
- * Décode les entités XML les plus courantes.
- */
-function decodeXmlEntities(value: string): string {
-  return value
-    .replace(/&#x([0-9a-f]+);/gi, (_match, hex: string) => {
-      const codePoint = parseInt(hex, 16);
-
-      if (!Number.isFinite(codePoint)) {
-        return '';
-      }
-
-      try {
-        return String.fromCodePoint(codePoint);
-      } catch {
-        return '';
-      }
-    })
-    .replace(/&#([0-9]+);/g, (_match, decimal: string) => {
-      const codePoint = parseInt(decimal, 10);
-
-      if (!Number.isFinite(codePoint)) {
-        return '';
-      }
-
-      try {
-        return String.fromCodePoint(codePoint);
-      } catch {
-        return '';
-      }
-    })
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'")
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&amp;/g, '&');
-}
-
-/**
- * Protège du texte destiné à être inséré dans le HTML de l'éditeur.
- */
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
-/**
- * Protège une valeur destinée à un attribut HTML.
- */
-function escapeHtmlAttribute(value: string): string {
-  return escapeHtml(value).replace(/'/g, '&#39;');
-}
-
-/**
- * Normalise le texte provenant du XML LibreOffice.
- *
- * LibreOffice peut insérer :
- * - des espaces insécables ;
- * - des espaces insécables fines ;
- * - des caractères de largeur nulle ;
- * - des césures conditionnelles ;
- * - des retours à la ligne autour des balises XML.
- *
- * Sans cette normalisation, un texte visuellement égal à "Chapitre 1" peut
- * ne pas correspondre à l'expression régulière de détection.
- */
-function normalizeVisibleText(value: string): string {
-  return value
-    .replace(/[\u200B-\u200D\u2060\uFEFF]/g, '')
-    .replace(/\u00AD/g, '')
-    .replace(/[\u00A0\u202F]/g, ' ')
-    .replace(/\s+/gu, ' ')
-    .trim();
-}
-
-/**
- * Normalise un nom de police destiné au style HTML.
- */
-/** Remplace les polices LibreOffice par leurs équivalents Windows (mêmes métriques). */
-function mapLibreOfficeFontStack(value: string): string {
-  const first = (value.split(',')[0] ?? '').replace(/["']/g, '').trim().toLowerCase();
-
-  switch (first) {
-    case 'liberation sans':
-    case 'liberation sans narrow':
-    case 'arimo':
-      return 'Arial, sans-serif';
-    case 'liberation serif':
-    case 'tinos':
-      return "'Times New Roman', serif";
-    case 'liberation mono':
-    case 'cousine':
-      return "'Courier New', monospace";
-    default:
-      return value;
-  }
-}
-
-function normalizeFontFamily(value: string): string {
-  return value
-    .replace(/^["']+|["']+$/g, '')
-    .replace(/[;{}]/g, '')
-    .trim();
-}
-
-/**
- * Lit la valeur d'un attribut XML.
- */
-function getXmlAttribute(
-  source: string,
-  attributeName: string
-): string | undefined {
-  const escapedName = escapeRegExp(attributeName);
-
-  const doubleQuoted = source.match(
-    new RegExp(
-      `${escapedName}\\s*=\\s*"([^"]*)"`,
-      'i'
-    )
-  );
-
-  if (doubleQuoted) {
-    return decodeXmlEntities(doubleQuoted[1]);
-  }
-
-  const singleQuoted = source.match(
-    new RegExp(
-      `${escapedName}\\s*=\\s*'([^']*)'`,
-      'i'
-    )
-  );
-
-  if (singleQuoted) {
-    return decodeXmlEntities(singleQuoted[1]);
-  }
-
-  return undefined;
-}
-
-/**
- * Transforme une couleur ODT valide en couleur CSS.
- * Formes acceptées : #rgb, #rrggbb (avec ou sans transparence),
- * rgb(…) et rgba(…).
- */
-function normalizeColor(
-  value: string | undefined
-): string | undefined {
-  if (!value) {
-    return undefined;
-  }
-
-  const normalized = value.trim();
-
-  if (/^#[0-9a-f]{3,8}$/i.test(normalized)) {
-    return normalized;
-  }
-
-  if (/^rgba?[(][0-9, .]+[)]$/i.test(normalized)) {
-    return normalized;
-  }
-
-  return undefined;
-}
-
-/**
- * Transforme une taille ODT en taille CSS acceptée par le sanitizer.
- */
-function normalizeFontSize(
-  value: string | undefined
-): string | undefined {
-  if (!value) {
-    return undefined;
-  }
-
-  const normalized = value.trim().toLowerCase();
-
-  if (/^[0-9.]+(?:pt|px)$/.test(normalized)) {
-    return normalized;
-  }
-
-  return undefined;
-}
 
 /**
  * Extrait les styles déclarés dans styles.xml et content.xml.
@@ -383,27 +182,23 @@ function parseStyles(
           ? parsedOutlineLevel
           : undefined,
         bold:
-          fontWeight === 'bold' ||
-          (
-            fontWeight !== undefined &&
-            Number(fontWeight) >= 600
-          ),
-        italic: fontStyle === 'italic',
+          fontWeight === undefined
+            ? undefined
+            : fontWeight === 'bold' || Number(fontWeight) >= 600,
+        italic:
+          fontStyle === undefined
+            ? undefined
+            : fontStyle === 'italic' || fontStyle === 'oblique',
         underline:
-          underlineStyle !== undefined &&
-          underlineStyle !== 'none',
+          underlineStyle === undefined
+            ? undefined
+            : underlineStyle !== 'none',
         color: normalizeColor(colorRaw),
         fontFamily: fontFamilyRaw
           ? mapLibreOfficeFontStack(normalizeFontFamily(fontFamilyRaw))
           : undefined,
         fontSize: normalizeFontSize(fontSizeRaw),
-        textAlign:
-          textAlign &&
-          /^(left|right|center|justify)$/i.test(
-            textAlign
-          )
-            ? textAlign.toLowerCase()
-            : undefined
+        textAlign: normalizeTextAlign(textAlign)
       });
     }
   });
@@ -466,43 +261,6 @@ function inlineStyleFromOdtStyle(
     fontFamily: style.fontFamily,
     fontSize: style.fontSize
   };
-}
-
-/**
- * Construit le style CSS d'une portion de texte.
- */
-function inlineStyleToCss(style: InlineStyle): string {
-  const declarations: string[] = [];
-
-  if (style.bold) {
-    declarations.push('font-weight: bold');
-  }
-
-  if (style.italic) {
-    declarations.push('font-style: italic');
-  }
-
-  if (style.underline) {
-    declarations.push('text-decoration: underline');
-  }
-
-  if (style.color) {
-    declarations.push(`color: ${style.color}`);
-  }
-
-  if (style.fontFamily) {
-    declarations.push(
-      `font-family: ${style.fontFamily}`
-    );
-  }
-
-  if (style.fontSize) {
-    declarations.push(
-      `font-size: ${style.fontSize}`
-    );
-  }
-
-  return declarations.join('; ');
 }
 
 /**
@@ -623,13 +381,6 @@ function renderInlineXml(
     ) {
       plainText += '\n';
       html += '<br>';
-    } else if (
-      /^<text:soft-page-break\b/i.test(
-        fullToken
-      )
-    ) {
-      plainText += '\n';
-      html += '<br>';
     }
 
     cursor = tokenPattern.lastIndex;
@@ -717,34 +468,6 @@ function buildBlockStyle(
   return declarations.join('; ');
 }
 
-/** Mise en forme utile pour détecter les titres visuels. */
-interface BlockFormat {
-  centered: boolean;
-  bold: boolean;
-  fontSizePt: number | null;
-}
-
-/** Convertit une taille CSS ("20pt", "16px") en points. */
-function fontSizeToPt(value: string | undefined): number | null {
-  if (!value) {
-    return null;
-  }
-
-  const match = /^([0-9.]+)(pt|px)$/.exec(value);
-
-  if (!match) {
-    return null;
-  }
-
-  const size = parseFloat(match[1] ?? '');
-
-  if (!Number.isFinite(size) || size <= 0) {
-    return null;
-  }
-
-  return match[2] === 'px' ? Math.round(size * 7.5) / 10 : size;
-}
-
 /**
  * Mesure le gras et la taille dominante d'un paragraphe.
  * Le paragraphe est en gras si plus de la moitié du texte l'est. La taille
@@ -821,42 +544,6 @@ function measureFormatting(
 }
 
 /**
- * Ajoute un bloc analysé à la liste.
- */
-function pushRenderedBlock(
-  blocks: ParsedBlock[],
-  rendered: RenderedInline,
-  headingLevel: number | null,
-  blockStyle: string,
-  format: BlockFormat
-): void {
-  const text = normalizeVisibleText(
-    rendered.text
-  );
-
-  const styleAttribute = blockStyle
-    ? ` style="${escapeHtmlAttribute(
-        blockStyle
-      )}"`
-    : '';
-
-  /*
-   * Les paragraphes entièrement vides sont conservés afin de ne pas supprimer
-   * volontairement les espacements du document.
-   */
-  blocks.push({
-    text,
-    headingLevel,
-    centered: format.centered,
-    bold: format.bold,
-    fontSizePt: format.fontSizePt,
-    html: `<div${styleAttribute}>${
-      rendered.html || '<br>'
-    }</div>`
-  });
-}
-
-/**
  * Analyse les paragraphes et titres contenus dans content.xml.
  */
 function parseBlocks(
@@ -918,7 +605,7 @@ function parseBlocks(
      * chapitre explicite.
      */
     const manualLineParts = innerXml.split(
-      /<text:(?:line-break|soft-page-break)\b[^>]*\/?>/gi
+      /<text:line-break\b[^>]*\/?>/gi
     );
 
     if (manualLineParts.length > 1) {
@@ -985,24 +672,6 @@ function parseBlocks(
   }
 
   return blocks;
-}
-
-/**
- * Détermine le nom de projet à partir du nom du fichier ODT.
- */
-function projectNameFromFilePath(
-  filePath: string
-): string {
-  const baseName = path.basename(
-    filePath,
-    path.extname(filePath)
-  );
-
-  const normalized = normalizeVisibleText(
-    baseName
-  );
-
-  return normalized || 'Document importé';
 }
 
 /**
