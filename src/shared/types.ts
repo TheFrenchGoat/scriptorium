@@ -1087,9 +1087,24 @@ export interface LanguageToolFolderResult {
 // EXPORT / IMPORT / SAUVEGARDES
 // ============================================================================
 
+/** Format du document importé (absent : projet Scriptorium). */
+export type ImportFormat = 'odt' | 'docx' | 'txt' | 'md' | 'scriptorium';
+
+/** Options de l’import d’un document. */
+export interface ImportOptions {
+  /** Texte brut : recoller les lignes coupées à largeur fixe (absent : choix automatique). */
+  rejoinLines?: boolean;
+}
+
 export interface ImportedProject {
   projectName: string;
   projectData: ProjectData;
+  /** Format du fichier source ; absent pour un projet Scriptorium. */
+  format?: ImportFormat;
+  /** Texte brut : le fichier semble coupé à largeur fixe. */
+  rejoinSuggested?: boolean;
+  /** Texte brut : les lignes coupées ont été recollées. */
+  rejoinLines?: boolean;
 }
 
 export interface BackupEntry {
@@ -1301,7 +1316,8 @@ export interface ScriptoriumApi {
   ): Promise<boolean>;
 
   importProject(
-    filePath: string
+    filePath: string,
+    options?: ImportOptions
   ): Promise<ImportedProject>;
 
   // ------------------------------------------------------------------------

@@ -11,6 +11,9 @@
 //    vide, au moins deux fois dans le fichier ;
 // 3. "Chapitre X", "Prologue", "Épilogue" (règle commune).
 // Une page de titre en tête du fichier donne le nom du projet.
+// Option "recoller les lignes coupées" : un texte coupé à largeur fixe
+// (lignes de 60 à 80 caractères) retrouve ses paragraphes. Elle est
+// proposée d’office quand le fichier semble coupé ainsi.
 //
 // Markdown : titres #, ## ou soulignés (=== / ---), **gras**, *italique*,
 // _italique_, <u>souligné</u>. Liens : texte seul. Images et en-tête
@@ -377,8 +380,110 @@ function findLayoutTitles(lines: string[], bodyStart: number): number[] {
   return found.length >= LAYOUT_TITLE_MIN_COUNT ? found : [];
 }
 
-function importPlainText(text: string): SplitDocumentResult {
-  const lines = splitLines(text).map((line) => line.replace(/\s+$/, ''));
+/* Texte coupé à largeur fixe : la plupart des lignes remplies font entre
+   60 et 80 caractères et ne finissent pas une phrase. */
+const WRAP_MIN_LENGTH = 60;
+const WRAP_MAX_LENGTH = 80;
+const WRAP_MIN_LINES = 8;
+
+/* Une ligne au moins aussi longue que cette part de la largeur est pleine :
+   le paragraphe continue sur la ligne suivante. */
+const WRAP_FULL_RATIO = 0.75;
+
+function endsSentence(line: string): boolean {
+  return /[.!?:;\u2026\u00BB"\u201D)]$/.test(line);
+}
+
+function looksHardWrapped(rawLines: string[]): boolean {
+  const filled = rawLines.map((line) => line.trim()).filter((line) => line.length > 0);
+
+  if (filled.length < WRAP_MIN_LINES) {
+    return false;
+  }
+
+  const wrapped = filled.filter(
+    (line) => line.length >= WRAP_MIN_LENGTH && line.length <= WRAP_MAX_LENGTH
+  );
+
+  if (wrapped.length * 2 < filled.length) {
+    return false;
+  }
+
+  const open = wrapped.filter((line) => !endsSentence(line));
+
+  return open.length * 2 >= wrapped.length;
+}
+
+/* Largeur de coupe : 9e décile des longueurs des lignes remplies. */
+function wrapWidth(lines: string[]): number {
+  const lengths = lines
+    .map((line) => line.trim().length)
+    .filter((length) => length > 0 && length <= 120)
+    .sort((a, b) => a - b);
+
+  if (lengths.length === 0) {
+    return WRAP_MAX_LENGTH;
+  }
+
+  return lengths[Math.floor((lengths.length - 1) * 0.9)] ?? WRAP_MAX_LENGTH;
+}
+
+/* Recolle les lignes d’un même paragraphe. Les lignes vides sont gardées :
+   elles servent au repérage des titres. Une ligne courte termine le
+   paragraphe ; un retrait, un tiret de dialogue ou un séparateur en
+   commence un nouveau. */
+function rejoinWrappedLines(lines: string[]): string[] {
+  const full = Math.max(30, Math.floor(wrapWidth(lines) * WRAP_FULL_RATIO));
+  const filled = lines.filter((line) => !isBlank(line));
+  const indented = filled.filter((line) => /^[ \t]/.test(line)).length;
+
+  /* Retrait ignoré si la plupart des lignes sont en retrait. */
+  const useIndent = indented * 2 < filled.length;
+
+  const result: string[] = [];
+  let current: string | null = null;
+  let lastLength = 0;
+
+  for (const line of lines) {
+    if (isBlank(line)) {
+      if (current !== null) {
+        result.push(current);
+        current = null;
+      }
+
+      result.push(line);
+      lastLength = 0;
+      continue;
+    }
+
+    const newParagraph =
+      (useIndent && /^[ \t]/.test(line)) ||
+      /^[ \t]*[\u2014\u2013]/.test(line) ||
+      isSeparatorLine(line.trim());
+
+    if (current !== null && lastLength >= full && !newParagraph) {
+      current = current + ' ' + line.trim();
+    } else {
+      if (current !== null) {
+        result.push(current);
+      }
+
+      current = line;
+    }
+
+    lastLength = line.trim().length;
+  }
+
+  if (current !== null) {
+    result.push(current);
+  }
+
+  return result;
+}
+
+function importPlainText(text: string, rejoinLines = false): SplitDocumentResult {
+  const rawLines = splitLines(text).map((line) => line.replace(/\s+$/, ''));
+  const lines = rejoinLines ? rejoinWrappedLines(rawLines) : rawLines;
   const first = firstNonBlank(lines, 0);
 
   if (first < 0) {
@@ -954,7 +1059,7 @@ function importMarkdownText(text: string): SplitDocumentResult {
 // -----------------------------------------------------------------------------
 
 /** Importe un fichier texte (.txt) ou Markdown (.md) en projet Scriptorium. */
-export function importTextProject(filePath: string): ImportedProject {
+export function importTextProject(filePath: string, rejoinLines?: boolean): ImportedProject {
   const extension = typeof filePath === 'string' ? path.extname(filePath).toLowerCase() : '';
   const markdown = extension === '.md' || extension === '.markdown';
 
@@ -980,7 +1085,9 @@ export function importTextProject(filePath: string): ImportedProject {
     throw new Error("Le fichier sélectionné n'est pas un fichier texte lisible.");
   }
 
-  const split = markdown ? importMarkdownText(text) : importPlainText(text);
+  const rejoinSuggested = !markdown && looksHardWrapped(splitLines(text));
+  const rejoin = !markdown && (rejoinLines ?? rejoinSuggested);
+  const split = markdown ? importMarkdownText(text) : importPlainText(text, rejoin);
 
   const projectData: ProjectData = {
     chapters: split.chapters,
@@ -992,6 +1099,9 @@ export function importTextProject(filePath: string): ImportedProject {
 
   return {
     projectName: split.bookTitle || projectNameFromFilePath(filePath),
-    projectData
+    projectData,
+    format: markdown ? 'md' : 'txt',
+    rejoinSuggested,
+    rejoinLines: rejoin
   };
 }

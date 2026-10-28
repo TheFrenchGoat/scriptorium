@@ -48,6 +48,7 @@ import {
 
 import type {
   ImportedProject,
+  ImportOptions,
   OpenDialogOptions,
   ProjectData,
   SaveDialogOptions
@@ -146,7 +147,8 @@ function importScriptoriumProject(
  * Charge un fichier pris en charge selon son extension.
  */
 async function importSupportedProject(
-  filePath: string
+  filePath: string,
+  options?: ImportOptions
 ): Promise<ImportedProject> {
   const extension =
     path
@@ -169,7 +171,9 @@ async function importSupportedProject(
       projectData:
         sanitizeProjectData(
           imported.projectData
-        )
+        ),
+
+      format: 'odt'
     };
   }
 
@@ -189,7 +193,9 @@ async function importSupportedProject(
       projectData:
         sanitizeProjectData(
           imported.projectData
-        )
+        ),
+
+      format: 'docx'
     };
   }
 
@@ -198,9 +204,16 @@ async function importSupportedProject(
     extension === '.md' ||
     extension === '.markdown'
   ) {
+    // Absent : l’option est choisie d’après le contenu du fichier.
+    const rejoinLines =
+      options && typeof options.rejoinLines === 'boolean'
+        ? options.rejoinLines
+        : undefined;
+
     const imported =
       importTextProject(
-        filePath
+        filePath,
+        rejoinLines
       );
 
     return {
@@ -213,7 +226,11 @@ async function importSupportedProject(
       projectData:
         sanitizeProjectData(
           imported.projectData
-        )
+        ),
+
+      format: imported.format,
+      rejoinSuggested: imported.rejoinSuggested,
+      rejoinLines: imported.rejoinLines
     };
   }
 
@@ -684,10 +701,12 @@ export function registerFileIpc(): void {
     'project:import',
     async (
       _event,
-      filePath: string
+      filePath: string,
+      options?: ImportOptions
     ): Promise<ImportedProject> => {
       return importSupportedProject(
-        filePath
+        filePath,
+        options
       );
     }
   );

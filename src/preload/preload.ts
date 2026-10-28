@@ -313,11 +313,13 @@ const api: ScriptoriumApi = {
     ),
 
   importProject: (
-    filePath: string
+    filePath: string,
+    options?: { rejoinLines?: boolean }
   ) =>
     ipcRenderer.invoke(
       'project:import',
-      filePath
+      filePath,
+      options
     ),
 
   // -----------------------------------------------------------------------

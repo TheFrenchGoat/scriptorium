@@ -29,6 +29,7 @@ import { useDialogs } from '../common/Dialogs';
 import { Modal } from '../common/Modal';
 import { ProjectCard } from './ProjectCard';
 import { HomeSettingsModal } from './HomeSettingsModal';
+import { ImportPreviewModal } from './ImportPreviewModal';
 import { describeError } from '../../lib/errors';
 import { renameWritingStatsProject } from '../../lib/writing-stats-rename';
 import {
@@ -43,6 +44,7 @@ import {
 } from '../../lib/wb-migration';
 import { WB_FORMAT_VERSION } from '../../../shared/types';
 import type {
+  ImportedProject,
   ProjectData,
   ProjectType,
   ProjectsMap,
@@ -383,6 +385,14 @@ export function ProjectsPage({
   ] = useState<{
     oldName: string;
     value: string;
+  } | null>(null);
+
+  const [
+    importPreview,
+    setImportPreview
+  ] = useState<{
+    filePath: string;
+    imported: ImportedProject;
   } | null>(null);
 
   const newProjectInputRef =
@@ -963,74 +973,122 @@ export function ProjectsPage({
             selectedFile
           );
 
-        let name =
-          imported.projectName.trim();
-
-        if (!name) {
-          name =
-            t('defaultProjectName');
+        // Document (LibreOffice, Word, texte, Markdown) : aperçu avant la
+        // création du projet. Projet Scriptorium : import direct.
+        if (
+          imported.format &&
+          imported.format !== 'scriptorium'
+        ) {
+          setImportPreview({
+            filePath: selectedFile,
+            imported
+          });
+          return;
         }
 
-        if (projects[name]) {
-          const baseName = name;
-          let index = 2;
-
-          while (
-            projects[
-              `${baseName} (${index})`
-            ]
-          ) {
-            index++;
-          }
-
-          name = `${baseName} (${index})`;
-        }
-
-        // Normalisation, puis conversion du World Building au format actuel.
-        // Pas de sauvegarde ici : le fichier importé reste intact sur le disque.
-        const importedProject =
-          prepareWorldBuilding(
-            normalizeProjectData(
-              imported.projectData
-            ),
-            lang
-          ).data;
-
-        const normalizedImportedProject: ProjectData =
-          {
-            ...importedProject,
-            writingSessions:
-              importedProject.writingSessions?.map(
-                (session) => ({
-                  ...session,
-                  projectName: name
-                })
-              ) || []
-          };
-
-        await persist({
-          ...projects,
-          [name]:
-            normalizedImportedProject
-        });
-
-        showInfo(
-          t('importSuccess', {
-            name
-          })
+        await createImportedProject(
+          imported.projectName,
+          imported.projectData
         );
       } catch (error) {
-        console.error(error);
+        showImportError(error);
+      }
+    };
 
-        const errorPrefix =
-          lang === 'fr'
-            ? "Erreur lors de l'importation : le fichier sélectionné n'est peut-être pas un projet Scriptorium ou un document valide (LibreOffice, Word, texte, Markdown).\n\n"
-            : 'Import error: the selected file may not be a valid Scriptorium project or document (LibreOffice, Word, text, Markdown).\n\n';
+  // Crée le projet importé sous un nom libre (suffixe " (2)" si besoin).
+  const createImportedProject =
+    async (
+      requestedName: string,
+      projectData: ProjectData
+    ): Promise<void> => {
+      let name =
+        requestedName.trim();
 
-        showInfo(
-          errorPrefix +
-            describeError(error)
+      if (!name) {
+        name =
+          t('defaultProjectName');
+      }
+
+      if (projects[name]) {
+        const baseName = name;
+        let index = 2;
+
+        while (
+          projects[
+            `${baseName} (${index})`
+          ]
+        ) {
+          index++;
+        }
+
+        name = `${baseName} (${index})`;
+      }
+
+      // Normalisation, puis conversion du World Building au format actuel.
+      // Pas de sauvegarde ici : le fichier importé reste intact sur le disque.
+      const importedProject =
+        prepareWorldBuilding(
+          normalizeProjectData(
+            projectData
+          ),
+          lang
+        ).data;
+
+      const normalizedImportedProject: ProjectData =
+        {
+          ...importedProject,
+          writingSessions:
+            importedProject.writingSessions?.map(
+              (session) => ({
+                ...session,
+                projectName: name
+              })
+            ) || []
+        };
+
+      await persist({
+        ...projects,
+        [name]:
+          normalizedImportedProject
+      });
+
+      showInfo(
+        t('importSuccess', {
+          name
+        })
+      );
+    };
+
+  const showImportError =
+    (error: unknown): void => {
+      console.error(error);
+
+      const errorPrefix =
+        lang === 'fr'
+          ? "Erreur lors de l'importation : le fichier sélectionné n'est peut-être pas un projet Scriptorium ou un document valide (LibreOffice, Word, texte, Markdown).\n\n"
+          : 'Import error: the selected file may not be a valid Scriptorium project or document (LibreOffice, Word, text, Markdown).\n\n';
+
+      showInfo(
+        errorPrefix +
+          describeError(error)
+      );
+    };
+
+  // Validation de l'aperçu : création du projet avec les chapitres retenus.
+  const confirmImportPreview =
+    async (
+      name: string,
+      projectData: ProjectData
+    ): Promise<void> => {
+      setImportPreview(null);
+
+      try {
+        await createImportedProject(
+          name,
+          projectData
         );
+      } catch (error) {
+        showImportError(error);
       }
     };
 
@@ -1192,6 +1250,23 @@ export function ProjectsPage({
           setSettingsOpen(false);
         }}
       />
+
+      {importPreview && (
+        <ImportPreviewModal
+          filePath={importPreview.filePath}
+          imported={importPreview.imported}
+          existingNames={Object.keys(projects)}
+          onCancel={() => {
+            setImportPreview(null);
+          }}
+          onConfirm={(name, projectData) => {
+            void confirmImportPreview(
+              name,
+              projectData
+            );
+          }}
+        />
+      )}
 
       <Modal
         open={
