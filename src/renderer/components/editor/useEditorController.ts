@@ -21,6 +21,7 @@ import type { ChapterComment } from '../../../shared/types';
 import { isCommentId, newCommentId, rangeTouchesComment, unwrapComment, unwrapCommentInHtml, wrapRangeWithComment } from '../../lib/comments';
 import { removeGrammarMarksOnMentions } from '../../lib/grammar-check';
 import { countWordsInHtml } from '../../lib/stats';
+import { insertChapterAfter, stripCommentAnchors, uniqueChapterCopyName } from '../../../shared/backup-preview';
 import { replaceLibreOfficeFontsInHtml } from './fontAliases';
 import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
 import type {
@@ -319,6 +320,8 @@ export interface EditorController {
   restoreBackup(fileName: string): Promise<void>;
   /** Crée une version nommée du projet (enregistre d'abord les modifications). */
   createNamedVersion(label: string): Promise<void>;
+  /** Ajoute la copie d'un chapitre récupéré dans une sauvegarde ; renvoie son nom, ou null. */
+  recoverChapterCopy(sourceName: string, html: string, suffix: string): string | null;
   recordWritingStats(): Promise<void>;
   renameProject(newName: string): Promise<boolean>;
 }
@@ -3958,6 +3961,47 @@ export function useEditorController({
         // contient exactement ce qui est affiché.
         await saveAll();
         await window.api.createNamedVersion(projectName, s.projectData, label);
+      },
+
+      recoverChapterCopy(sourceName, html, suffix) {
+        if (isScreenplayData(s.projectData)) {
+          return null;
+        }
+
+        // La copie porte un nom libre et prend place juste après l'original
+        // (à la fin s'il n'existe plus). Le chapitre actuel ne change pas.
+        const newName = uniqueChapterCopyName(
+          sourceName,
+          suffix,
+          Object.keys(s.projectData.chapters)
+        );
+
+        const next = insertChapterAfter(
+          s.projectData.chapters,
+          sourceName,
+          newName,
+          stripCommentAnchors(html)
+        );
+
+        if (!next) {
+          return null;
+        }
+
+        s.projectData.chapters = next;
+        s.projects[projectName] = s.projectData;
+        s.hasUnsavedChangesSinceLastBackup = true;
+
+        invalidateProjectWordCache(s.projectData);
+        mentionIndex.rebuildChapterOrder();
+        mentionIndex.rebuildAll();
+
+        setSaveStatus('pending');
+        updateStats();
+        bump();
+
+        void saveAll();
+
+        return newName;
       },
 
       async restoreBackup(fileName) {

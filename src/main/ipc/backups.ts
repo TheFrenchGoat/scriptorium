@@ -30,6 +30,7 @@ import {
   sanitizeVersionLabel,
   writeBackupFile
 } from '../backup-files';
+import { readBackupProjectData } from '../backup-read';
 import type { BackupEntry, ProjectData } from '../../shared/types';
 
 /** Version actuelle du format du World Building (identique à WB_FORMAT_VERSION). */
@@ -152,6 +153,19 @@ export function registerBackupIpc(): void {
 
       const data = JSON.parse(fs.readFileSync(filePath, 'utf-8')) as { projectData?: unknown };
       return sanitizeProjectData(data.projectData);
+    }
+  );
+
+  // Lecture d'une sauvegarde pour l'aperçu : rien n'est modifié ni restauré.
+  ipcMain.handle(
+    'backup:read',
+    (_e, payload: { projectName: string; fileName: string }): ProjectData => {
+      if (!payload || typeof payload.projectName !== 'string') {
+        throw new Error('Données de lecture invalides.');
+      }
+
+      const dir = projectBackupDir(backupsDir(), payload.projectName);
+      return sanitizeProjectData(readBackupProjectData(dir, payload.fileName));
     }
   );
 

@@ -383,6 +383,18 @@ const api: ScriptoriumApi = {
       }
     ),
 
+  readBackup: (
+    projectName: string,
+    fileName: string
+  ) =>
+    ipcRenderer.invoke(
+      'backup:read',
+      {
+        projectName,
+        fileName
+      }
+    ),
+
   createNamedVersion: (
     projectName: string,
     projectData: ProjectData,

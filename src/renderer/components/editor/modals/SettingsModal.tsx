@@ -429,6 +429,8 @@ export function SettingsModal({
             projectName={controller.projectName}
             onRestore={(fileName) => controller.restoreBackup(fileName)}
             onCreateVersion={(label) => controller.createNamedVersion(label)}
+            getCurrentData={() => controller.data()}
+            onRecoverChapter={(name, html, suffix) => controller.recoverChapterCopy(name, html, suffix)}
             onRestored={onClose}
           />
         )}

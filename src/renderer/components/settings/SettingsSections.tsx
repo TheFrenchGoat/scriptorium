@@ -11,7 +11,8 @@ import { Select } from '../common/Select';
 import { describeError } from '../../lib/errors';
 import { registerUpdatesPanel } from '../../lib/update-panel';
 import { THEMES, UI_FONTS, UI_SIZES } from '../../lib/settings-options';
-import type { BackupEntry, LanguageCode, ThemeName } from '../../../shared/types';
+import type { BackupEntry, LanguageCode, ProjectData, ThemeName } from '../../../shared/types';
+import { BackupPreview } from './BackupPreview';
 
 const LANGUAGES: LanguageCode[] = ['fr', 'en'];
 
@@ -536,6 +537,10 @@ export interface BackupsSectionProps {
   onRestored?: () => void;
   /** Crée une version nommée (fourni par l'éditeur). */
   onCreateVersion?: (label: string) => Promise<unknown>;
+  /** Données actuelles du projet (comparaison dans l'aperçu). */
+  getCurrentData?: () => ProjectData;
+  /** Ajoute la copie d'un chapitre récupéré ; renvoie le nom de la copie. */
+  onRecoverChapter?: (name: string, html: string, suffix: string) => string | null;
 }
 
 export function BackupsSection({
@@ -543,7 +548,9 @@ export function BackupsSection({
   projectName,
   onRestore,
   onRestored,
-  onCreateVersion
+  onCreateVersion,
+  getCurrentData,
+  onRecoverChapter
 }: BackupsSectionProps): ReactElement {
   const { t, lang } = useI18n();
   const { showInfo, showConfirm } = useDialogs();
@@ -551,6 +558,12 @@ export function BackupsSection({
   const [reloadKey, setReloadKey] = useState(0);
   const [versionLabel, setVersionLabel] = useState('');
   const [creating, setCreating] = useState(false);
+  const [preview, setPreview] = useState<BackupEntry | null>(null);
+
+  // La fenêtre se referme : retour à la liste à la prochaine ouverture.
+  useEffect(() => {
+    if (!open) setPreview(null);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -635,6 +648,22 @@ export function BackupsSection({
   const versions = backups ? backups.filter((backup) => backup.kind === 'named') : null;
   const automatic = backups ? backups.filter((backup) => backup.kind !== 'named') : null;
 
+  if (preview && getCurrentData) {
+    const shown = preview;
+    return (
+      <BackupPreview
+        projectName={projectName}
+        backup={shown}
+        title={shown.kind === 'named' ? shown.label || t('backupUnnamedVersion') : formatDate(shown.savedAt)}
+        dateText={formatDate(shown.savedAt)}
+        getCurrentData={getCurrentData}
+        onBack={() => setPreview(null)}
+        onRestore={() => void restore(shown)}
+        onRecoverChapter={onRecoverChapter}
+      />
+    );
+  }
+
   return (
     <div className="settings-section">
       <h4 className="settings-section-title">{t('backupVersionsTitle')}</h4>
@@ -676,6 +705,11 @@ export function BackupsSection({
                 <span className="backup-item-date">{formatDate(backup.savedAt)}</span>
               </span>
               <span className="backup-item-actions">
+                {getCurrentData && (
+                  <button type="button" onClick={() => setPreview(backup)}>
+                    {t('backupPreviewBtn')}
+                  </button>
+                )}
                 <button className="btn-restore-backup" onClick={() => void restore(backup)}>
                   {t('backupRestoreBtn')}
                 </button>
@@ -699,9 +733,16 @@ export function BackupsSection({
           automatic.map((backup) => (
             <li className="backup-item" key={backup.fileName}>
               <span>{formatDate(backup.savedAt)}</span>
-              <button className="btn-restore-backup" onClick={() => void restore(backup)}>
-                {t('backupRestoreBtn')}
-              </button>
+              <span className="backup-item-actions">
+                {getCurrentData && (
+                  <button type="button" onClick={() => setPreview(backup)}>
+                    {t('backupPreviewBtn')}
+                  </button>
+                )}
+                <button className="btn-restore-backup" onClick={() => void restore(backup)}>
+                  {t('backupRestoreBtn')}
+                </button>
+              </span>
             </li>
           ))
         )}

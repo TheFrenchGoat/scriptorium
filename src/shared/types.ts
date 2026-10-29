@@ -1383,6 +1383,12 @@ export interface ScriptoriumApi {
     newName: string
   ): Promise<boolean>;
 
+  /** Lit une sauvegarde sans la restaurer (aperçu). */
+  readBackup(
+    projectName: string,
+    fileName: string
+  ): Promise<ProjectData>;
+
   /** Crée une version nommée du projet (jamais supprimée automatiquement). */
   createNamedVersion(
     projectName: string,

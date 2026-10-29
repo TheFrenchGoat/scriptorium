@@ -863,6 +863,32 @@ export const fr = {
   backupDeleteVersionError: 'Erreur lors de la suppression : ',
   backupConfirmRestoreVersion:
     "Restaurer la version « {name} » ({date}) ?\n\nLe contenu actuel du projet sera remplacé (une sauvegarde de l'état actuel sera créée juste avant, par sécurité).",
+  backupPreviewBtn: 'Aperçu',
+  backupPreviewBack: '\u2190 Retour',
+  backupPreviewReadBack: '\u2190 Retour à l’aperçu',
+  backupPreviewLoading: 'Lecture de la sauvegarde…',
+  backupPreviewError: 'Impossible de lire cette sauvegarde : ',
+  backupPreviewTotal: '{words} mots dans cette sauvegarde, {current} aujourd’hui ({diff}).',
+  backupPreviewWorld: 'Fiches du World Building : {count} (aujourd’hui : {current}).',
+  backupPreviewScenes: 'Scènes : {count} (aujourd’hui : {current}).',
+  backupPreviewScreenplayHint:
+    'Pour un scénario, l’aperçu indique seulement les chiffres. La récupération d’une scène viendra plus tard.',
+  backupPreviewChaptersTitle: 'Chapitres de cette sauvegarde',
+  backupPreviewAddedTitle: 'Chapitres ajoutés depuis',
+  backupPreviewNoChapter: 'Aucun chapitre dans cette sauvegarde.',
+  backupPreviewWords: '{count} mots',
+  backupDiffIdentical: 'inchangé aujourd’hui',
+  backupDiffModified: 'modifié depuis ({diff} mots)',
+  backupDiffRemoved: 'supprimé depuis',
+  backupPreviewReadBtn: 'Lire',
+  backupPreviewRecoverBtn: 'Récupérer',
+  backupPreviewRecoverHint:
+    '« Récupérer » ajoute une copie du chapitre au projet : le chapitre actuel n’est pas modifié.',
+  backupPreviewRecovered: 'Chapitre récupéré sous le nom « {name} ».',
+  backupPreviewRecoverError: 'Impossible de récupérer ce chapitre.',
+  backupPreviewRestoreAll: 'Restaurer tout le projet',
+  backupPreviewEmptyChapter: '(chapitre vide)',
+  backupCopySuffixDate: 'version du {date}',
 
   // -------------------------------------------------------------------------
   // CORRECTEUR DE GRAMMAIRE
@@ -2048,6 +2074,32 @@ export const en: Record<TranslationKey, string> = {
   backupDeleteVersionError: 'Error while deleting: ',
   backupConfirmRestoreVersion:
     "Restore the version \"{name}\" ({date})?\n\nThe project's current content will be replaced (a backup of the current state will be created first, as a safety net).",
+  backupPreviewBtn: 'Preview',
+  backupPreviewBack: '\u2190 Back',
+  backupPreviewReadBack: '\u2190 Back to preview',
+  backupPreviewLoading: 'Reading the backup…',
+  backupPreviewError: 'Unable to read this backup: ',
+  backupPreviewTotal: '{words} words in this backup, {current} today ({diff}).',
+  backupPreviewWorld: 'World Building entries: {count} (today: {current}).',
+  backupPreviewScenes: 'Scenes: {count} (today: {current}).',
+  backupPreviewScreenplayHint:
+    'For a screenplay, the preview only shows figures. Recovering a single scene will come later.',
+  backupPreviewChaptersTitle: 'Chapters in this backup',
+  backupPreviewAddedTitle: 'Chapters added since',
+  backupPreviewNoChapter: 'No chapters in this backup.',
+  backupPreviewWords: '{count} words',
+  backupDiffIdentical: 'unchanged today',
+  backupDiffModified: 'changed since ({diff} words)',
+  backupDiffRemoved: 'deleted since',
+  backupPreviewReadBtn: 'Read',
+  backupPreviewRecoverBtn: 'Recover',
+  backupPreviewRecoverHint:
+    '"Recover" adds a copy of the chapter to the project: the current chapter is not changed.',
+  backupPreviewRecovered: 'Chapter recovered as "{name}".',
+  backupPreviewRecoverError: 'Unable to recover this chapter.',
+  backupPreviewRestoreAll: 'Restore the whole project',
+  backupPreviewEmptyChapter: '(empty chapter)',
+  backupCopySuffixDate: 'version of {date}',
 
   // -------------------------------------------------------------------------
   // GRAMMAR CHECKER
