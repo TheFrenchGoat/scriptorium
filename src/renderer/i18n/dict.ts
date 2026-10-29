@@ -1216,7 +1216,41 @@ export const fr = {
   initErrorSuffix:
     '\n\nOuvrez la console (Ctrl+Shift+I) pour plus de détails.',
   menuInitErrorPrefix:
-    'Une erreur est survenue au chargement de la liste des projets :\n\n'
+    'Une erreur est survenue au chargement de la liste des projets :\n\n',
+
+  // -------------------------------------------------------------------------
+  // INTERFACE : TEXTES AUPARAVANT ÉCRITS EN DUR (1.5.1)
+  // -------------------------------------------------------------------------
+  exportDialogTxt: 'Exporter en TXT',
+  exportDialogMd: 'Exporter en Markdown',
+  exportDialogPdf: 'Exporter en PDF',
+  exportDialogDocx: 'Exporter en DOCX',
+  exportDialogOdt: 'Exporter en ODT',
+  exportDialogEpub: 'Exporter en ePub',
+  exportDialogProject: 'Exporter le projet complet',
+  exportFilterText: 'Fichier Texte',
+  exportFilterProject: 'Projet Scriptorium',
+  exportFullSuffix: ' - Complet',
+  kbdAccents: 'Ctrl+` Ctrl+\' Ctrl+Maj+^ Ctrl+Maj+: Ctrl+,',
+  kbdGlobalSearch: 'Ctrl+Maj+F',
+  kbdSwitchTab: 'Ctrl+Tab / Ctrl+Maj+Tab',
+  kbdZoomWheel: 'Ctrl+Molette',
+  kbdCtrlClick: 'Ctrl+Clic',
+  kbdDelete: 'Suppr',
+  kbdMiddleClick: 'Clic molette',
+  kbdActivate: 'Entrée / Espace',
+  kbdEscape: 'Échap',
+  fontSizeDecrease: 'Réduire la taille',
+  fontSizeIncrease: 'Augmenter la taille',
+  grammarSuggDelete: '(supprimer)',
+  grammarSuggSpace: '(espace)',
+  grammarSuggDeleteTitle: 'Supprimer ce passage',
+  grammarSuggSpaceTitle: 'Remplacer par une espace',
+  grammarSuggReplaceWith: 'Remplacer par \u00AB\u00A0{value}\u00A0\u00BB',
+  grammarSuggPossibleError: 'Faute possible.',
+  screenplayDataMissingTitle: 'Données du scénario indisponibles',
+  screenplayDataMissingText:
+    'Le projet est identifié comme un scénario, mais ses données de scénario sont absentes.'
 };
 
 export type TranslationKey = keyof typeof fr;
@@ -2425,7 +2459,41 @@ export const en: Record<TranslationKey, string> = {
   initErrorSuffix:
     '\n\nOpen the console (Ctrl+Shift+I) for more details.',
   menuInitErrorPrefix:
-    'An error occurred while loading the project list:\n\n'
+    'An error occurred while loading the project list:\n\n',
+
+  // -------------------------------------------------------------------------
+  // INTERFACE: TEXTS PREVIOUSLY HARD-CODED (1.5.1)
+  // -------------------------------------------------------------------------
+  exportDialogTxt: 'Export as TXT',
+  exportDialogMd: 'Export as Markdown',
+  exportDialogPdf: 'Export as PDF',
+  exportDialogDocx: 'Export as DOCX',
+  exportDialogOdt: 'Export as ODT',
+  exportDialogEpub: 'Export as ePub',
+  exportDialogProject: 'Export the full project',
+  exportFilterText: 'Text file',
+  exportFilterProject: 'Scriptorium project',
+  exportFullSuffix: ' - Complete',
+  kbdAccents: 'Ctrl+` Ctrl+\' Ctrl+Shift+^ Ctrl+Shift+: Ctrl+,',
+  kbdGlobalSearch: 'Ctrl+Shift+F',
+  kbdSwitchTab: 'Ctrl+Tab / Ctrl+Shift+Tab',
+  kbdZoomWheel: 'Ctrl+Wheel',
+  kbdCtrlClick: 'Ctrl+Click',
+  kbdDelete: 'Delete',
+  kbdMiddleClick: 'Middle-click',
+  kbdActivate: 'Enter / Space',
+  kbdEscape: 'Esc',
+  fontSizeDecrease: 'Decrease size',
+  fontSizeIncrease: 'Increase size',
+  grammarSuggDelete: '(delete)',
+  grammarSuggSpace: '(space)',
+  grammarSuggDeleteTitle: 'Delete this passage',
+  grammarSuggSpaceTitle: 'Replace with a space',
+  grammarSuggReplaceWith: 'Replace with \u201C{value}\u201D',
+  grammarSuggPossibleError: 'Possible error.',
+  screenplayDataMissingTitle: 'Screenplay data unavailable',
+  screenplayDataMissingText:
+    'This project is marked as a screenplay, but its screenplay data is missing.'
 };
 
 export const dict = {

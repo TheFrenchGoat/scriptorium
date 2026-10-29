@@ -754,7 +754,7 @@ export function BackupsSection({
 // ---------- Aide : raccourcis clavier ----------
 
 /** Raccourcis affichés dans l'onglet Aide. */
-const SHORTCUTS: { labelKey: TranslationKey; kbd: string }[] = [
+const SHORTCUTS: { labelKey: TranslationKey; kbd?: string; kbdKey?: TranslationKey }[] = [
   { labelKey: 'shortcutSave', kbd: 'Ctrl+S' },
   { labelKey: 'shortcutUndo', kbd: 'Ctrl+Z' },
   { labelKey: 'shortcutRedo', kbd: 'Ctrl+Y' },
@@ -762,18 +762,18 @@ const SHORTCUTS: { labelKey: TranslationKey; kbd: string }[] = [
   { labelKey: 'shortcutItalic', kbd: 'Ctrl+I' },
   { labelKey: 'shortcutUnderline', kbd: 'Ctrl+U' },
   { labelKey: 'shortcutAlign', kbd: 'Ctrl+L / Ctrl+E / Ctrl+R / Ctrl+J' },
-  { labelKey: 'shortcutAccents', kbd: 'Ctrl+` Ctrl+\' Ctrl+Maj+^ Ctrl+Maj+: Ctrl+,' },
+  { labelKey: 'shortcutAccents', kbdKey: 'kbdAccents' },
   { labelKey: 'shortcutReplace', kbd: 'Ctrl+F' },
-  { labelKey: 'shortcutGlobalSearch', kbd: 'Ctrl+Maj+F' },
-  { labelKey: 'shortcutSwitchTab', kbd: 'Ctrl+Tab / Ctrl+Maj+Tab' },
+  { labelKey: 'shortcutGlobalSearch', kbdKey: 'kbdGlobalSearch' },
+  { labelKey: 'shortcutSwitchTab', kbdKey: 'kbdSwitchTab' },
   { labelKey: 'shortcutZoomKeys', kbd: 'Ctrl++ / Ctrl+- / Ctrl+0' },
-  { labelKey: 'shortcutZoom', kbd: 'Ctrl+Molette' },
-  { labelKey: 'shortcutWbOpen', kbd: 'Ctrl+Clic' },
-  { labelKey: 'shortcutCloseTab', kbd: 'Delete' },
-  { labelKey: 'shortcutMiddleClose', kbd: 'Clic molette' },
+  { labelKey: 'shortcutZoom', kbdKey: 'kbdZoomWheel' },
+  { labelKey: 'shortcutWbOpen', kbdKey: 'kbdCtrlClick' },
+  { labelKey: 'shortcutCloseTab', kbdKey: 'kbdDelete' },
+  { labelKey: 'shortcutMiddleClose', kbdKey: 'kbdMiddleClick' },
   { labelKey: 'shortcutNavigate', kbd: 'Tab' },
-  { labelKey: 'shortcutActivate', kbd: 'Entrée / Espace' },
-  { labelKey: 'shortcutCloseModal', kbd: 'Échap' }
+  { labelKey: 'shortcutActivate', kbdKey: 'kbdActivate' },
+  { labelKey: 'shortcutCloseModal', kbdKey: 'kbdEscape' }
 ];
 
 export function HelpSection(): ReactElement {
@@ -786,7 +786,7 @@ export function HelpSection(): ReactElement {
         {SHORTCUTS.map((item) => (
           <li key={item.labelKey}>
             <span>{t(item.labelKey)}</span>
-            <kbd>{item.kbd}</kbd>
+            <kbd>{item.kbdKey ? t(item.kbdKey) : item.kbd}</kbd>
           </li>
         ))}
       </ul>

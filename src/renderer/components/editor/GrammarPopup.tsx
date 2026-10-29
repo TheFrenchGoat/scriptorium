@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
+import { t } from '../../i18n';
 
 /**
  * Menu de propositions du correcteur grammatical.
@@ -93,15 +94,15 @@ function computeAnchor(mark: HTMLElement, clientX: number, clientY: number): Pop
 }
 
 function suggestionLabel(value: string): string {
-  if (value === '') return '(supprimer)';
-  if (value.trim() === '') return '(espace)';
+  if (value === '') return t('grammarSuggDelete');
+  if (value.trim() === '') return t('grammarSuggSpace');
   return value;
 }
 
 function suggestionTitle(value: string): string {
-  if (value === '') return 'Supprimer ce passage';
-  if (value.trim() === '') return 'Remplacer par une espace';
-  return `Remplacer par « ${value} »`;
+  if (value === '') return t('grammarSuggDeleteTitle');
+  if (value.trim() === '') return t('grammarSuggSpaceTitle');
+  return t('grammarSuggReplaceWith').split('{value}').join(value);
 }
 
 function isInside(container: HTMLElement | null, target: EventTarget | null): boolean {
@@ -281,7 +282,7 @@ export function GrammarPopup({ controller }: GrammarPopupProps) {
       onMouseDown={keepEditorFocus}
       onContextMenu={keepEditorFocus}
     >
-      <div className="gsp-message">{popup.message || 'Faute possible.'}</div>
+      <div className="gsp-message">{popup.message || t('grammarSuggPossibleError')}</div>
 
       {popup.replacements.length > 0 ? (
         <div className="gsp-suggestions">
@@ -300,12 +301,12 @@ export function GrammarPopup({ controller }: GrammarPopupProps) {
         </div>
       ) : (
         <div className="gsp-empty" style={{ opacity: 0.7, fontStyle: 'italic', margin: '6px 0' }}>
-          Aucune suggestion
+          {t('grammarNoSuggestions')}
         </div>
       )}
 
       <button type="button" role="menuitem" className="gsp-ignore" onClick={ignoreMark}>
-        Ignorer
+        {t('grammarIgnoreBtn')}
       </button>
     </div>
   );

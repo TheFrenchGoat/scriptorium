@@ -1641,17 +1641,11 @@ export function EditorPage({
                   </span>
 
                   <h3>
-                    Données du
-                    scénario
-                    indisponibles
+                    {t('screenplayDataMissingTitle')}
                   </h3>
 
                   <p>
-                    Le projet est
-                    identifié comme un
-                    scénario, mais ses
-                    données de scénario
-                    sont absentes.
+                    {t('screenplayDataMissingText')}
                   </p>
                 </div>
               )}

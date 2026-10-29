@@ -1410,8 +1410,8 @@ export function Toolbar({
           >
             <button
               type="button"
-              aria-label="Réduire la taille"
-              title="Réduire la taille"
+              aria-label={t('fontSizeDecrease')}
+              title={t('fontSizeDecrease')}
               onMouseDown={preventFocusLoss}
               onClick={() => changeFontSize(-1)}
               style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
@@ -1465,8 +1465,8 @@ export function Toolbar({
 
             <button
               type="button"
-              aria-label="Augmenter la taille"
-              title="Augmenter la taille"
+              aria-label={t('fontSizeIncrease')}
+              title={t('fontSizeIncrease')}
               onMouseDown={preventFocusLoss}
               onClick={() => changeFontSize(1)}
               style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}

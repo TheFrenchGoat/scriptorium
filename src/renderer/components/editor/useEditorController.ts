@@ -3662,7 +3662,7 @@ export function useEditorController({
           const result = await pickExportPath({
             defaultPath: screenplay
               ? `${projectName}.fountain`
-              : `${projectName} - Complet.fountain`,
+              : projectName + t('exportFullSuffix') + '.fountain',
             filters: [{ name: 'Fountain', extensions: ['fountain'] }]
           });
 
@@ -3718,11 +3718,11 @@ export function useEditorController({
         try {
           if (kind === 'txt') {
             const result = await pickExportPath({
-              title: 'Exporter en TXT',
+              title: t('exportDialogTxt'),
               defaultPath: screenplay
                 ? `${projectName}.txt`
-                : `${projectName} - Complet.txt`,
-              filters: [{ name: 'Fichier Texte', extensions: ['txt'] }]
+                : projectName + t('exportFullSuffix') + '.txt',
+              filters: [{ name: t('exportFilterText'), extensions: ['txt'] }]
             });
 
             if (result.canceled || !result.filePath) {
@@ -3746,7 +3746,7 @@ export function useEditorController({
 
           if (kind === 'md') {
             const result = await pickExportPath({
-              title: 'Exporter en Markdown',
+              title: t('exportDialogMd'),
               defaultPath: `${projectName}.md`,
               filters: [{ name: 'Markdown', extensions: ['md'] }]
             });
@@ -3768,7 +3768,7 @@ export function useEditorController({
 
           if (kind === 'pdf') {
             const result = await pickExportPath({
-              title: 'Exporter en PDF',
+              title: t('exportDialogPdf'),
               defaultPath: `${projectName}.pdf`,
               filters: [{ name: 'PDF', extensions: ['pdf'] }]
             });
@@ -3791,7 +3791,7 @@ export function useEditorController({
           if (kind === 'docx') {
             if (screenplay) {
               const screenplayResult = await pickExportPath({
-                title: getLanguage() === 'fr' ? 'Exporter en DOCX' : 'Export as DOCX',
+                title: t('exportDialogDocx'),
                 defaultPath: `${projectName}.docx`,
                 filters: [{ name: 'Word', extensions: ['docx'] }]
               });
@@ -3809,8 +3809,8 @@ export function useEditorController({
             }
 
             const result = await pickExportPath({
-              title: 'Exporter en DOCX',
-              defaultPath: `${projectName} - Complet.docx`,
+              title: t('exportDialogDocx'),
+              defaultPath: projectName + t('exportFullSuffix') + '.docx',
               filters: [{ name: 'Word', extensions: ['docx'] }]
             });
 
@@ -3831,7 +3831,7 @@ export function useEditorController({
           if (kind === 'odt') {
             if (screenplay) {
               const screenplayResult = await pickExportPath({
-                title: getLanguage() === 'fr' ? 'Exporter en ODT' : 'Export as ODT',
+                title: t('exportDialogOdt'),
                 defaultPath: `${projectName}.odt`,
                 filters: [{ name: 'OpenDocument', extensions: ['odt'] }]
               });
@@ -3849,8 +3849,8 @@ export function useEditorController({
             }
 
             const result = await pickExportPath({
-              title: getLanguage() === 'fr' ? 'Exporter en ODT' : 'Export as ODT',
-              defaultPath: `${projectName} - Complet.odt`,
+              title: t('exportDialogOdt'),
+              defaultPath: projectName + t('exportFullSuffix') + '.odt',
               filters: [{ name: 'OpenDocument', extensions: ['odt'] }]
             });
 
@@ -3875,7 +3875,7 @@ export function useEditorController({
             }
 
             const result = await pickExportPath({
-              title: getLanguage() === 'fr' ? 'Exporter en ePub' : 'Export as ePub',
+              title: t('exportDialogEpub'),
               defaultPath: `${projectName}.epub`,
               filters: [{ name: 'ePub', extensions: ['epub'] }]
             });
@@ -3917,9 +3917,9 @@ export function useEditorController({
           }
 
           const result = await pickExportPath({
-            title: 'Exporter le projet complet',
+            title: t('exportDialogProject'),
             defaultPath: `${projectName}.scriptorium`,
-            filters: [{ name: 'Projet Scriptorium', extensions: ['scriptorium'] }]
+            filters: [{ name: t('exportFilterProject'), extensions: ['scriptorium'] }]
           });
 
           if (result.canceled || !result.filePath) {
