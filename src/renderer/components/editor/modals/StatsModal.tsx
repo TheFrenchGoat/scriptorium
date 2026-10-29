@@ -134,13 +134,6 @@ const STATS_TABS: {
   { value: 'goals', labelKey: 'statsTabGoals' }
 ];
 
-const CARD_STYLE: React.CSSProperties = {
-  padding: 14,
-  border: '1px solid var(--border)',
-  borderRadius: 'var(--radius)',
-  background: 'var(--bg-input)'
-};
-
 function clamp(
   value: number,
   min: number,
@@ -430,7 +423,7 @@ function MetricCard({
   accent?: string;
 }): React.ReactElement {
   return (
-    <div style={CARD_STYLE}>
+    <div className="stats-box">
       <div
         className="stats-metric-label"
       >
@@ -438,14 +431,8 @@ function MetricCard({
       </div>
 
       <div
-        style={{
-          overflowWrap: 'anywhere',
-          color:
-            accent ??
-            'var(--text-main)',
-          fontSize: 20,
-          fontWeight: 700
-        }}
+        className="stats-metric-value"
+        style={{ color: accent ?? 'var(--text-main)' }}
       >
         {value}
       </div>
@@ -584,24 +571,7 @@ function DocumentsList({
           <span
             key={documentName}
             title={documentName}
-            style={{
-              display: 'inline-flex',
-              maxWidth: '100%',
-              alignItems: 'center',
-              overflow: 'hidden',
-              padding: '4px 8px',
-              border:
-                '1px solid var(--border)',
-              borderRadius: 999,
-              background:
-                'var(--bg-app)',
-              color:
-                'var(--text-main)',
-              fontSize: 12,
-              textOverflow:
-                'ellipsis',
-              whiteSpace: 'nowrap'
-            }}
+            className="stats-doc-chip"
           >
             📄 {documentName}
           </span>
@@ -1446,25 +1416,16 @@ export function StatsModal({
   const overview = (
     <>
       <section
-        style={{
-          marginBottom: 22
-        }}
+        className="stats-block"
       >
         <h4
-          style={{
-            marginBottom: 14
-          }}
+          className="stats-subtitle"
         >
           {t('statsStreakTitle')}
         </h4>
 
         <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns:
-              'repeat(auto-fit, minmax(160px, 1fr))',
-            gap: 10
-          }}
+          className="stats-metric-grid"
         >
           <MetricCard
             label={t(
@@ -1510,13 +1471,7 @@ export function StatsModal({
       </section>
 
       <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns:
-            'repeat(auto-fit, minmax(145px, 1fr))',
-          gap: 10,
-          marginBottom: 22
-        }}
+        className="stats-kpi-grid"
       >
         <MetricCard
           label={t(
@@ -1594,12 +1549,10 @@ export function StatsModal({
       </div>
 
       <section
-        style={{ marginBottom: 25 }}
+        className="stats-block-lg"
       >
         <h4
-          style={{
-            marginBottom: 14
-          }}
+          className="stats-subtitle"
         >
           {t('statsActivityByDay')}
         </h4>
@@ -1619,12 +1572,10 @@ export function StatsModal({
       </section>
 
       <section
-        style={{ marginBottom: 25 }}
+        className="stats-block-lg"
       >
         <h4
-          style={{
-            marginBottom: 14
-          }}
+          className="stats-subtitle"
         >
           {t(
             'statsActivityByHour'
@@ -1646,12 +1597,10 @@ export function StatsModal({
       </section>
 
       <section
-        style={{ marginBottom: 25 }}
+        className="stats-block-lg"
       >
         <h4
-          style={{
-            marginBottom: 14
-          }}
+          className="stats-subtitle"
         >
           {t(
             'statsProductivityByWeekday'
@@ -1678,12 +1627,10 @@ export function StatsModal({
       </section>
 
       <section
-        style={{ marginBottom: 25 }}
+        className="stats-block-lg"
       >
         <h4
-          style={{
-            marginBottom: 14
-          }}
+          className="stats-subtitle"
         >
           {t(
             'statsConcentrationByHour'
@@ -1717,9 +1664,7 @@ export function StatsModal({
 
       <section>
         <h4
-          style={{
-            marginBottom: 14
-          }}
+          className="stats-subtitle"
         >
           {t(
             'statsMoodProductivity'
@@ -1735,12 +1680,7 @@ export function StatsModal({
           </EmptyPanel>
         ) : (
           <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns:
-                'repeat(auto-fit, minmax(150px, 1fr))',
-              gap: 10
-            }}
+            className="stats-mood-grid"
           >
             {moodBuckets
               .filter(
@@ -1751,13 +1691,10 @@ export function StatsModal({
               .map((bucket) => (
                 <div
                   key={bucket.mood}
-                  style={CARD_STYLE}
+                  className="stats-box"
                 >
                   <div
-                    style={{
-                      marginBottom: 8,
-                      fontSize: 26
-                    }}
+                    className="stats-mood-emoji"
                   >
                     {getMoodEmoji(
                       bucket.mood
@@ -1765,10 +1702,7 @@ export function StatsModal({
                   </div>
 
                   <div
-                    style={{
-                      marginBottom: 6,
-                      fontWeight: 700
-                    }}
+                    className="stats-mood-label"
                   >
                     {t(
                       moodTranslationKey(
@@ -1778,12 +1712,7 @@ export function StatsModal({
                   </div>
 
                   <div
-                    style={{
-                      color:
-                        'var(--text-muted)',
-                      fontSize: 12,
-                      lineHeight: 1.6
-                    }}
+                    className="stats-mood-text"
                   >
                     <div>
                       {
@@ -1822,15 +1751,7 @@ export function StatsModal({
   const calendarPanel = (
     <section>
       <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent:
-            'space-between',
-          flexWrap: 'wrap',
-          gap: 12,
-          marginBottom: 16
-        }}
+        className="stats-head-row"
       >
         <div>
           <h4>
@@ -1840,25 +1761,14 @@ export function StatsModal({
           </h4>
 
           <div
-            style={{
-              marginTop: 4,
-              color:
-                'var(--text-muted)',
-              fontSize: 12,
-              textTransform:
-                'capitalize'
-            }}
+            className="stats-head-subtitle"
           >
             {calendarMonthTitle}
           </div>
         </div>
 
         <div
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: 7
-          }}
+          className="stats-row-7"
         >
           <button
             type="button"
@@ -1898,12 +1808,7 @@ export function StatsModal({
       </div>
 
       <div
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: 8,
-          marginBottom: 16
-        }}
+        className="stats-row-8-spaced"
       >
         <button
           type="button"
@@ -1945,13 +1850,7 @@ export function StatsModal({
       </div>
 
       <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns:
-            'repeat(auto-fit, minmax(145px, 1fr))',
-          gap: 10,
-          marginBottom: 18
-        }}
+        className="stats-kpi-grid-calendar"
       >
         <MetricCard
           label={t(
@@ -1994,31 +1893,16 @@ export function StatsModal({
       </div>
 
       <div
-        style={{
-          minWidth: 620
-        }}
+        className="stats-calendar"
       >
         <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns:
-              'repeat(7, minmax(70px, 1fr))',
-            gap: 6,
-            marginBottom: 6
-          }}
+          className="stats-calendar-weekdays"
         >
           {calendarWeekdayLabels.map(
             (label) => (
               <div
                 key={label}
-                style={{
-                  padding: '4px 0',
-                  color:
-                    'var(--text-muted)',
-                  fontSize: 11,
-                  fontWeight: 700,
-                  textAlign: 'center'
-                }}
+                className="stats-calendar-weekday"
               >
                 {label}
               </div>
@@ -2027,12 +1911,7 @@ export function StatsModal({
         </div>
 
         <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns:
-              'repeat(7, minmax(70px, 1fr))',
-            gap: 6
-          }}
+          className="stats-calendar-grid"
         >
           {calendarDays.map((day) => (
             <CalendarCell
@@ -2448,10 +2327,7 @@ export function StatsModal({
           tab === 'sessions') && (
           <div className="stats-period">
             <label
-              className="wb-label"
-              style={{
-                marginBottom: 10
-              }}
+              className="wb-label stats-label-loose"
             >
               {t(
                 'statsRangeLabel'
@@ -2459,11 +2335,7 @@ export function StatsModal({
             </label>
 
             <div
-              style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: 8
-              }}
+              className="stats-row-8"
             >
               {PERIODS.map(
                 (item) => (
@@ -2492,20 +2364,11 @@ export function StatsModal({
 
             {period === 'custom' && (
               <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns:
-                    'repeat(auto-fit, minmax(180px, 1fr))',
-                  gap: 10,
-                  marginTop: 14
-                }}
+                className="stats-custom-range"
               >
                 <label>
                   <span
-                    className="wb-label"
-                    style={{
-                      marginBottom: 6
-                    }}
+                    className="wb-label stats-label-tight"
                   >
                     {t(
                       'statsCustomStart'
@@ -2529,18 +2392,13 @@ export function StatsModal({
                           .value
                       )
                     }
-                    style={{
-                      width: '100%'
-                    }}
+                    className="stats-input-full"
                   />
                 </label>
 
                 <label>
                   <span
-                    className="wb-label"
-                    style={{
-                      marginBottom: 6
-                    }}
+                    className="wb-label stats-label-tight"
                   >
                     {t(
                       'statsCustomEnd'
@@ -2562,21 +2420,14 @@ export function StatsModal({
                           .value
                       )
                     }
-                    style={{
-                      width: '100%'
-                    }}
+                    className="stats-input-full"
                   />
                 </label>
               </div>
             )}
 
             <div
-              style={{
-                marginTop: 10,
-                color:
-                  'var(--text-muted)',
-                fontSize: 12
-              }}
+              className="stats-range-hint"
             >
               {t(periodLabel)}
             </div>
@@ -2625,9 +2476,7 @@ export function StatsModal({
 
             <button
               type="button"
-              style={{
-                color: '#ef4444'
-              }}
+              className="stats-negative"
               disabled={saving}
               onClick={() =>
                 void deleteSession()
@@ -2641,10 +2490,7 @@ export function StatsModal({
         }
       >
         <p
-          style={{
-            margin: '15px 0',
-            lineHeight: 1.6
-          }}
+          className="stats-confirm-text"
         >
           {t(
             'statsConfirmDeleteSession'
@@ -2751,9 +2597,7 @@ export function StatsModal({
                         : current
                   )
                 }
-                style={{
-                  width: '100%'
-                }}
+                className="stats-input-full"
               />
             </div>
 
@@ -2824,10 +2668,7 @@ export function StatsModal({
             {goalDraft.progressMode ===
             'words' ? (
               <div
-                className="wb-form-group"
-                style={{
-                  marginBottom: 0
-                }}
+                className="wb-form-group stats-form-group-flush"
               >
                 <label className="wb-label">
                   {t(
@@ -2863,10 +2704,7 @@ export function StatsModal({
               </div>
             ) : (
               <div
-                className="wb-form-group"
-                style={{
-                  marginBottom: 0
-                }}
+                className="wb-form-group stats-form-group-flush"
               >
                 <label className="wb-label">
                   {t(
@@ -2875,12 +2713,7 @@ export function StatsModal({
                 </label>
 
                 <div
-                  style={{
-                    display: 'flex',
-                    alignItems:
-                      'center',
-                    gap: 12
-                  }}
+                  className="stats-progress-row"
                 >
                   <input
                     type="range"
@@ -2911,9 +2744,7 @@ export function StatsModal({
                             : current
                       )
                     }
-                    style={{
-                      flex: 1
-                    }}
+                    className="stats-range-input"
                   />
 
                   <input
@@ -2956,9 +2787,7 @@ export function StatsModal({
                             : current
                       );
                     }}
-                    style={{
-                      width: 70
-                    }}
+                    className="stats-percent-input"
                   />
 
                   <span>%</span>
@@ -2994,9 +2823,7 @@ export function StatsModal({
 
             <button
               type="button"
-              style={{
-                color: '#ef4444'
-              }}
+              className="stats-negative"
               disabled={saving}
               onClick={() =>
                 void deleteGoal()
@@ -3008,10 +2835,7 @@ export function StatsModal({
         }
       >
         <p
-          style={{
-            margin: '15px 0',
-            lineHeight: 1.6
-          }}
+          className="stats-confirm-text"
         >
           {t(
             'goalConfirmDelete',

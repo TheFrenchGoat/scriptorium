@@ -462,3 +462,167 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* 1.5.1 : styles sortis de StatsModal.tsx, partie 2 (valeurs identiques) */
+.stats-box {
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-input);
+}
+
+.stats-metric-value {
+  overflow-wrap: anywhere;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.stats-doc-chip {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  overflow: hidden;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-app);
+  color: var(--text-main);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stats-block { margin-bottom: 22px; }
+.stats-block-lg { margin-bottom: 25px; }
+.stats-subtitle { margin-bottom: 14px; }
+
+.stats-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+.stats-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  gap: 10px;
+  margin-bottom: 22px;
+}
+
+.stats-kpi-grid-calendar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.stats-mood-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.stats-mood-emoji {
+  margin-bottom: 8px;
+  font-size: 26px;
+}
+
+.stats-mood-label {
+  margin-bottom: 6px;
+  font-weight: 700;
+}
+
+.stats-mood-text {
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.stats-head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.stats-head-subtitle {
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-transform: capitalize;
+}
+
+.stats-row-7 {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.stats-row-8 {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.stats-row-8-spaced {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.stats-calendar { min-width: 620px; }
+
+.stats-calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(70px, 1fr));
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.stats-calendar-weekday {
+  padding: 4px 0;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.stats-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(70px, 1fr));
+  gap: 6px;
+}
+
+.stats-custom-range {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.stats-range-hint {
+  margin-top: 10px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.stats-confirm-text {
+  margin: 15px 0;
+  line-height: 1.6;
+}
+
+.stats-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Selecteurs renforces : passent devant .wb-label, .wb-form-group et .modal-content input */
+.modal-content .wb-label.stats-label-loose { margin-bottom: 10px; }
+.modal-content .wb-label.stats-label-tight { margin-bottom: 6px; }
+.modal-content .wb-form-group.stats-form-group-flush { margin-bottom: 0; }
+.modal-content input.stats-input-full { width: 100%; }
+.modal-content input.stats-range-input { flex: 1; }
+.modal-content input.stats-percent-input { width: 70px; }
