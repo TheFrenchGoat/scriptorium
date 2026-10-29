@@ -432,11 +432,7 @@ function MetricCard({
   return (
     <div style={CARD_STYLE}>
       <div
-        style={{
-          marginBottom: 7,
-          color: 'var(--text-muted)',
-          fontSize: 12
-        }}
+        className="stats-metric-label"
       >
         {label}
       </div>
@@ -464,15 +460,7 @@ function EmptyPanel({
 }): React.ReactElement {
   return (
     <div
-      style={{
-        padding: '26px 15px',
-        border:
-          '1px dashed var(--border)',
-        borderRadius:
-          'var(--radius)',
-        color: 'var(--text-muted)',
-        textAlign: 'center'
-      }}
+      className="stats-empty"
     >
       {children}
     </div>
@@ -517,11 +505,7 @@ function ActivityChart({
 
   return (
     <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 9
-      }}
+      className="stats-bars"
     >
       {rows.map((row) => {
         const currentValue = value(
@@ -544,62 +528,26 @@ function ActivityChart({
         return (
           <div
             key={row.key}
-            style={{
-              display: 'grid',
-              gridTemplateColumns:
-                '115px minmax(100px, 1fr) 110px',
-              alignItems: 'center',
-              gap: 10
-            }}
+            className="stats-bar-row"
           >
             <span
               title={row.label}
-              style={{
-                overflow: 'hidden',
-                color:
-                  'var(--text-muted)',
-                fontSize: 12,
-                textOverflow:
-                  'ellipsis',
-                whiteSpace: 'nowrap'
-              }}
+              className="stats-bar-label"
             >
               {row.label}
             </span>
 
             <div
-              style={{
-                height: 11,
-                overflow: 'hidden',
-                border:
-                  '1px solid var(--border)',
-                borderRadius: 999,
-                background:
-                  'var(--bg-app)'
-              }}
+              className="stats-bar-track"
             >
               <div
-                style={{
-                  width: `${width}%`,
-                  height: '100%',
-                  borderRadius: 999,
-                  background:
-                    'var(--accent)',
-                  transition:
-                    'width 0.2s ease'
-                }}
+                className="stats-bar-fill"
+                style={{ width: `${width}%` }}
               />
             </div>
 
             <span
-              style={{
-                color:
-                  'var(--text-main)',
-                fontSize: 12,
-                fontWeight: 600,
-                textAlign: 'right',
-                whiteSpace: 'nowrap'
-              }}
+              className="stats-bar-value"
             >
               {formatValue(
                 currentValue,
@@ -629,12 +577,7 @@ function DocumentsList({
 
   return (
     <div
-      style={{
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: 6,
-        marginTop: 7
-      }}
+      className="stats-doc-chips"
     >
       {documents.map(
         (documentName) => (
@@ -684,54 +627,22 @@ function DocumentStatsList({
 
   return (
     <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 7,
-        marginTop: 10
-      }}
+      className="stats-doc-list"
     >
       {stats.map((entry) => (
         <div
           key={entry.documentName}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent:
-              'space-between',
-            gap: 12,
-            padding: '8px 10px',
-            border:
-              '1px solid var(--border)',
-            borderRadius: 6,
-            background:
-              'var(--bg-app)'
-          }}
+          className="stats-doc-item"
         >
           <span
             title={entry.documentName}
-            style={{
-              minWidth: 0,
-              overflow: 'hidden',
-              textOverflow:
-                'ellipsis',
-              whiteSpace: 'nowrap'
-            }}
+            className="stats-doc-name"
           >
             📄 {entry.documentName}
           </span>
 
           <strong
-            style={{
-              flexShrink: 0,
-              color:
-                entry.wordsWritten > 0
-                  ? '#10b981'
-                  : entry.wordsWritten <
-                      0
-                    ? '#ef4444'
-                    : 'var(--text-muted)'
-            }}
+            className={'stats-doc-delta ' + (entry.wordsWritten > 0 ? 'stats-positive' : entry.wordsWritten < 0 ? 'stats-negative' : 'stats-muted')}
           >
             {entry.wordsWritten > 0
               ? '+'
@@ -811,13 +722,7 @@ function CalendarCell({
       }}
     >
       <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent:
-            'space-between',
-          gap: 5
-        }}
+        className="stats-day-head"
       >
         <span
           style={{
@@ -831,10 +736,7 @@ function CalendarCell({
 
         {day.sessionCount > 0 && (
           <span
-            style={{
-              fontSize: 10,
-              opacity: 0.8
-            }}
+            className="stats-day-small"
           >
             {day.sessionCount}×
           </span>
@@ -843,17 +745,7 @@ function CalendarCell({
 
       {day.sessionCount > 0 && (
         <div
-          style={{
-            position: 'absolute',
-            right: 7,
-            bottom: 7,
-            left: 7,
-            overflow: 'hidden',
-            fontSize: 10,
-            fontWeight: 700,
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap'
-          }}
+          className="stats-day-words"
         >
           {metric === 'words'
             ? `${day.wordsWritten > 0 ? '+' : ''}${day.wordsWritten}`
