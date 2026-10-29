@@ -4093,6 +4093,13 @@ export function useEditorController({
           renameWritingStatsProject(projectName, trimmed)
         );
 
+        // Sauvegardes horodatées : déplacées vers le nouveau nom (sans bloquer).
+        try {
+          await window.api.renameProjectBackups(projectName, trimmed);
+        } catch (error) {
+          console.error('Échec du déplacement des sauvegardes du projet renommé :', error);
+        }
+
         await window.api.setCurrentProject(trimmed);
 
         return true;

@@ -371,6 +371,18 @@ const api: ScriptoriumApi = {
       }
     ),
 
+  renameProjectBackups: (
+    oldName: string,
+    newName: string
+  ) =>
+    ipcRenderer.invoke(
+      'backup:rename-project',
+      {
+        oldName,
+        newName
+      }
+    ),
+
   // -----------------------------------------------------------------------
   // DÉSINFECTION HTML
   // -----------------------------------------------------------------------

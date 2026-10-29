@@ -1370,6 +1370,12 @@ export interface ScriptoriumApi {
     fileName: string
   ): Promise<ProjectData>;
 
+  /** Déplace les sauvegardes horodatées d'un projet renommé vers son nouveau nom. */
+  renameProjectBackups(
+    oldName: string,
+    newName: string
+  ): Promise<boolean>;
+
   // ------------------------------------------------------------------------
   // Désinfection HTML
   // ------------------------------------------------------------------------

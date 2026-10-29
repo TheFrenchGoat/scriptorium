@@ -774,6 +774,19 @@ export function ProjectsPage({
         newName
       );
 
+      // Sauvegardes horodatées : déplacées vers le nouveau nom (sans bloquer).
+      try {
+        await window.api.renameProjectBackups(
+          oldName,
+          newName
+        );
+      } catch (error) {
+        console.error(
+          'Échec du déplacement des sauvegardes du projet renommé :',
+          error
+        );
+      }
+
       const currentProject =
         await window.api.getCurrentProject();
 
