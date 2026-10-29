@@ -7,12 +7,14 @@
 // - liste rapide : la date est lue dans le nom du fichier ;
 // - rotation : les 10 plus récentes, plus la dernière de chaque heure sur
 //   24 h et de chaque jour sur 14 jours ;
+// - versions nommées (suffixe -version) : créées par l'auteur, jamais
+//   supprimées automatiquement ; seules elles peuvent être supprimées ;
 // - renommage d'un projet : ses sauvegardes suivent le nouveau nom, sans
 //   jamais écraser un fichier existant.
 
 import fs from 'node:fs';
 import path from 'node:path';
-import type { BackupEntry } from '../shared/types';
+import type { BackupEntry, BackupKind } from '../shared/types';
 
 export const MAX_BACKUPS_PER_PROJECT = 10;
 export const MAX_PRE_CONVERSION_BACKUPS = 3;
@@ -26,6 +28,12 @@ const DAY_MS = 24 * HOUR_MS;
 
 /** Suffixe des sauvegardes faites avant la conversion du World Building. */
 export const PRE_CONVERSION_SUFFIX = '-avant-conversion.json';
+
+/** Suffixe des versions nommées créées par l'auteur. */
+export const NAMED_SUFFIX = '-version.json';
+
+/** Longueur maximale du nom d'une version. */
+export const VERSION_LABEL_MAX = 80;
 
 /** Suffixe des fichiers temporaires (jamais listés ni restaurés). */
 export const TEMP_SUFFIX = '.tmp';
@@ -84,8 +92,8 @@ export function backupTimestamp(date: Date): string {
   return date.toISOString().replace(/:/g, '-').replace(/\./g, '-');
 }
 
-/** Format des noms : 2026-10-22T14-30-05-123Z.json (ou -avant-conversion.json). */
-const BACKUP_NAME_PATTERN = /^(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2})-(\d{3})Z(-avant-conversion)?\.json$/;
+/** Format des noms : 2026-10-22T14-30-05-123Z.json (ou -avant-conversion.json, -version.json). */
+const BACKUP_NAME_PATTERN = /^(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2})-(\d{3})Z(-avant-conversion|-version)?\.json$/;
 
 /** Date d'une sauvegarde d'après son nom, ou null si le nom n'a pas le format attendu. */
 export function backupTime(fileName: string): number | null {
@@ -95,6 +103,41 @@ export function backupTime(fileName: string): number | null {
     match[1] + 'T' + match[2] + ':' + match[3] + ':' + match[4] + '.' + match[5] + 'Z'
   );
   return Number.isNaN(time) ? null : time;
+}
+
+/** Type d'une sauvegarde d'après son nom. */
+export function backupKind(fileName: string): BackupKind {
+  if (fileName.endsWith(NAMED_SUFFIX)) return 'named';
+  if (fileName.endsWith(PRE_CONVERSION_SUFFIX)) return 'pre-conversion';
+  return 'auto';
+}
+
+/** Caractères de contrôle et caractères invisibles (espaces sans largeur, etc.). */
+function isInvisibleChar(code: number): boolean {
+  return (
+    code < 32 ||
+    (code >= 0x7f && code <= 0x9f) ||
+    (code >= 0x200b && code <= 0x200f) ||
+    (code >= 0x2028 && code <= 0x202e) ||
+    (code >= 0x2060 && code <= 0x2064) ||
+    code === 0xfeff
+  );
+}
+
+/**
+ * Nom d'une version : espaces regroupés, caractères invisibles retirés,
+ * au plus VERSION_LABEL_MAX caractères. Renvoie '' si rien ne reste.
+ */
+export function sanitizeVersionLabel(label: unknown): string {
+  const text = typeof label === 'string' ? label : '';
+  let cleaned = '';
+
+  for (const char of text.replace(/\s+/g, ' ')) {
+    if (!isInvisibleChar(char.charCodeAt(0))) cleaned += char;
+  }
+
+  cleaned = cleaned.replace(/\s+/g, ' ').trim();
+  return Array.from(cleaned).slice(0, VERSION_LABEL_MAX).join('').trim();
 }
 
 /** Supprime les fichiers temporaires laissés par une écriture interrompue. */
@@ -163,15 +206,16 @@ export function writeBackupFile(dir: string, fileName: string, content: string):
 }
 
 /**
- * Sauvegardes ordinaires à supprimer. On garde :
+ * Sauvegardes automatiques à supprimer. On garde :
  * - les MAX_BACKUPS_PER_PROJECT plus récentes ;
  * - la plus récente de chaque heure sur les KEEP_HOURLY_HOURS dernières heures ;
  * - la plus récente de chaque jour sur les KEEP_DAILY_DAYS derniers jours.
- * Un fichier dont le nom n'a pas le format attendu n'est jamais supprimé.
+ * Les versions nommées et les sauvegardes avant conversion ne sont jamais
+ * sélectionnées, ni un fichier dont le nom n'a pas le format attendu.
  */
 export function selectRegularBackupsToRemove(files: string[], now: number): string[] {
   const dated = files
-    .filter((fileName) => !fileName.endsWith(PRE_CONVERSION_SUFFIX))
+    .filter((fileName) => backupKind(fileName) === 'auto')
     .map((fileName) => ({ fileName, time: backupTime(fileName) }))
     .filter((entry): entry is { fileName: string; time: number } => entry.time !== null)
     .sort((a, b) => b.time - a.time);
@@ -205,11 +249,11 @@ export function selectRegularBackupsToRemove(files: string[], now: number): stri
   return dated.filter((entry) => !keep.has(entry.fileName)).map((entry) => entry.fileName);
 }
 
-/** Applique la rotation dans le dossier de sauvegardes d'un projet. */
+/** Applique la rotation dans le dossier de sauvegardes d'un projet (versions nommées intactes). */
 export function rotateBackups(dir: string, now: number = Date.now()): void {
   const files = fs.readdirSync(dir).filter((fileName) => fileName.endsWith('.json'));
-  const preConversion = files.filter((fileName) => fileName.endsWith(PRE_CONVERSION_SUFFIX)).sort();
-  const regular = files.filter((fileName) => !fileName.endsWith(PRE_CONVERSION_SUFFIX));
+  const preConversion = files.filter((fileName) => backupKind(fileName) === 'pre-conversion').sort();
+  const regular = files.filter((fileName) => backupKind(fileName) === 'auto');
 
   const toRemove = selectRegularBackupsToRemove(regular, now);
   const excess = preConversion.length - MAX_PRE_CONVERSION_BACKUPS;
@@ -227,7 +271,7 @@ export function rotateBackups(dir: string, now: number = Date.now()): void {
 /**
  * Liste des sauvegardes, de la plus récente à la plus ancienne. La date vient
  * du nom du fichier ; le fichier n'est ouvert que si son nom n'a pas le
- * format habituel.
+ * format habituel, ou pour lire le nom d'une version.
  */
 export function listBackupEntries(dir: string): BackupEntry[] {
   if (!fs.existsSync(dir)) return [];
@@ -236,19 +280,27 @@ export function listBackupEntries(dir: string): BackupEntry[] {
     .readdirSync(dir)
     .filter((fileName) => fileName.endsWith('.json'))
     .map((fileName) => {
+      const kind = backupKind(fileName);
       const time = backupTime(fileName);
-      if (time !== null) return { fileName, savedAt: new Date(time).toISOString() };
+      let savedAt: string | null = time !== null ? new Date(time).toISOString() : null;
+      let label = '';
 
-      let savedAt: string | null = null;
-      try {
-        const data = JSON.parse(fs.readFileSync(path.join(dir, fileName), 'utf-8')) as {
-          savedAt?: unknown;
-        };
-        savedAt = typeof data.savedAt === 'string' ? data.savedAt : null;
-      } catch {
-        /* fichier illisible : date inconnue */
+      if (time === null || kind === 'named') {
+        try {
+          const data = JSON.parse(fs.readFileSync(path.join(dir, fileName), 'utf-8')) as {
+            savedAt?: unknown;
+            label?: unknown;
+          };
+          if (savedAt === null && typeof data.savedAt === 'string') savedAt = data.savedAt;
+          if (kind === 'named') label = sanitizeVersionLabel(data.label);
+        } catch {
+          /* fichier illisible : date ou nom inconnu */
+        }
       }
-      return { fileName, savedAt };
+
+      const entry: BackupEntry = { fileName, savedAt, kind };
+      if (label) entry.label = label;
+      return entry;
     });
 
   const timeOf = (entry: BackupEntry): number =>
@@ -262,6 +314,23 @@ export function listBackupEntries(dir: string): BackupEntry[] {
     if (Number.isNaN(tb)) return -1;
     return tb - ta;
   });
+}
+
+/**
+ * Supprime une version nommée. Toute autre sauvegarde (automatique, avant
+ * conversion) ou tout nom contenant un chemin est refusé.
+ * Renvoie false si le fichier n'existe déjà plus.
+ */
+export function deleteNamedVersion(dir: string, fileName: unknown): boolean {
+  if (!isSafeBackupFileName(fileName) || !fileName.endsWith(NAMED_SUFFIX)) {
+    throw new Error('Seules les versions nommées peuvent être supprimées.');
+  }
+
+  const filePath = path.join(dir, fileName);
+  if (!fs.existsSync(filePath)) return false;
+
+  fs.unlinkSync(filePath);
+  return true;
 }
 
 export interface MoveBackupsResult {

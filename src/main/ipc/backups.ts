@@ -1,14 +1,17 @@
 // src/main/ipc/backups.ts
-// SAUVEGARDES AUTOMATIQUES HORODATÉES
+// SAUVEGARDES AUTOMATIQUES HORODATÉES ET VERSIONS NOMMÉES
 // Un instantané complet du projet est écrit dans un dossier dédié du profil
 // utilisateur (userData/backups/nom du projet), avec rotation.
 // Les opérations sur les fichiers (écriture sécurisée, liste, rotation,
-// déplacement lors d'un renommage) sont dans ../backup-files.ts, testable
-// sans Electron.
+// versions nommées, déplacement lors d'un renommage) sont dans
+// ../backup-files.ts, testable sans Electron.
 //
-// Cas particulier : la sauvegarde faite juste avant la conversion du World
-// Building au format 2 porte le suffixe "-avant-conversion". Elle échappe
-// à la rotation normale (au plus MAX_PRE_CONVERSION_BACKUPS par projet).
+// Cas particuliers :
+// - la sauvegarde faite juste avant la conversion du World Building au
+//   format 2 porte le suffixe "-avant-conversion" (au plus
+//   MAX_PRE_CONVERSION_BACKUPS par projet) ;
+// - les versions nommées par l'auteur portent le suffixe "-version" et ne
+//   sont jamais supprimées automatiquement.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -16,12 +19,15 @@ import { app, ipcMain } from 'electron';
 import { sanitizeProjectData } from '../sanitize';
 import {
   backupTimestamp,
+  deleteNamedVersion,
   isSafeBackupFileName,
   listBackupEntries,
   moveProjectBackups,
+  NAMED_SUFFIX,
   PRE_CONVERSION_SUFFIX,
   projectBackupDir,
   rotateBackups,
+  sanitizeVersionLabel,
   writeBackupFile
 } from '../backup-files';
 import type { BackupEntry, ProjectData } from '../../shared/types';
@@ -84,6 +90,41 @@ export function registerBackupIpc(): void {
     }
   );
 
+  // Version nommée : créée par l'auteur, jamais supprimée automatiquement.
+  ipcMain.handle(
+    'backup:create-version',
+    (_e, payload: { projectName: string; projectData: ProjectData; label: unknown }) => {
+      if (
+        !payload ||
+        typeof payload.projectName !== 'string' ||
+        !payload.projectData ||
+        typeof payload.projectData !== 'object'
+      ) {
+        throw new Error('Données de version invalides.');
+      }
+
+      const label = sanitizeVersionLabel(payload.label);
+      if (!label) throw new Error('Le nom de la version est vide.');
+
+      const { projectName, projectData } = payload;
+      const dir = projectBackupDir(backupsDir(), projectName);
+      const now = new Date();
+      const fileName = backupTimestamp(now) + NAMED_SUFFIX;
+
+      writeBackupFile(
+        dir,
+        fileName,
+        JSON.stringify(
+          { projectName, projectData, savedAt: now.toISOString(), kind: 'named', label },
+          null,
+          2
+        )
+      );
+
+      return { fileName };
+    }
+  );
+
   // Liste rapide : la date est lue dans le nom du fichier.
   ipcMain.handle('backup:list', (_e, projectName: string): BackupEntry[] => {
     if (typeof projectName !== 'string') return [];
@@ -113,6 +154,20 @@ export function registerBackupIpc(): void {
       return sanitizeProjectData(data.projectData);
     }
   );
+
+  // Suppression d'une version nommée (les sauvegardes automatiques sont refusées).
+  ipcMain.handle('backup:delete-version', (_e, payload: unknown): boolean => {
+    const record = (payload && typeof payload === 'object' ? payload : {}) as {
+      projectName?: unknown;
+      fileName?: unknown;
+    };
+
+    if (typeof record.projectName !== 'string') {
+      throw new Error('Nom de projet invalide.');
+    }
+
+    return deleteNamedVersion(projectBackupDir(backupsDir(), record.projectName), record.fileName);
+  });
 
   // Renommage d'un projet : ses sauvegardes suivent le nouveau nom.
   ipcMain.handle('backup:rename-project', (_e, payload: unknown): boolean => {

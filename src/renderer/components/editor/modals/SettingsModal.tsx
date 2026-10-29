@@ -428,6 +428,7 @@ export function SettingsModal({
             open={open}
             projectName={controller.projectName}
             onRestore={(fileName) => controller.restoreBackup(fileName)}
+            onCreateVersion={(label) => controller.createNamedVersion(label)}
             onRestored={onClose}
           />
         )}

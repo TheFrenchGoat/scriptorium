@@ -848,6 +848,21 @@ export const fr = {
   backupRestoreError:
     'Erreur lors de la restauration : ',
   unknownDate: 'Date inconnue',
+  backupVersionsTitle: 'Mes versions',
+  backupVersionsDescription:
+    'Créez une version pour garder une copie du projet à un moment important (par exemple avant une réécriture). Les versions ne sont jamais supprimées automatiquement.',
+  backupVersionPlaceholder: 'Nom de la version, ex. : Avant réécriture du chapitre 3',
+  backupCreateVersionBtn: 'Créer une version',
+  backupVersionNameRequired: 'Donnez un nom à la version.',
+  backupVersionCreated: 'Version « {name} » créée.',
+  backupVersionCreateError: 'Erreur lors de la création de la version : ',
+  backupNoVersionYet: 'Aucune version pour le moment.',
+  backupUnnamedVersion: 'Version sans nom',
+  backupDeleteVersionBtn: 'Supprimer',
+  backupConfirmDeleteVersion: 'Supprimer définitivement la version « {name} » ?',
+  backupDeleteVersionError: 'Erreur lors de la suppression : ',
+  backupConfirmRestoreVersion:
+    "Restaurer la version « {name} » ({date}) ?\n\nLe contenu actuel du projet sera remplacé (une sauvegarde de l'état actuel sera créée juste avant, par sécurité).",
 
   // -------------------------------------------------------------------------
   // CORRECTEUR DE GRAMMAIRE
@@ -2018,6 +2033,21 @@ export const en: Record<TranslationKey, string> = {
   backupRestoreError:
     'Error while restoring: ',
   unknownDate: 'Unknown date',
+  backupVersionsTitle: 'My versions',
+  backupVersionsDescription:
+    'Create a version to keep a copy of the project at an important moment (for example before a rewrite). Versions are never deleted automatically.',
+  backupVersionPlaceholder: 'Version name, e.g. Before rewriting chapter 3',
+  backupCreateVersionBtn: 'Create version',
+  backupVersionNameRequired: 'Please give the version a name.',
+  backupVersionCreated: 'Version "{name}" created.',
+  backupVersionCreateError: 'Error while creating the version: ',
+  backupNoVersionYet: 'No versions yet.',
+  backupUnnamedVersion: 'Unnamed version',
+  backupDeleteVersionBtn: 'Delete',
+  backupConfirmDeleteVersion: 'Permanently delete the version "{name}"?',
+  backupDeleteVersionError: 'Error while deleting: ',
+  backupConfirmRestoreVersion:
+    "Restore the version \"{name}\" ({date})?\n\nThe project's current content will be replaced (a backup of the current state will be created first, as a safety net).",
 
   // -------------------------------------------------------------------------
   // GRAMMAR CHECKER

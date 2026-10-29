@@ -317,6 +317,8 @@ export interface EditorController {
   /** Debut du document pour l'apercu de la fenetre d'export. */
   buildExportPreview(settings: ExportSettings): ExportPreviewSource;
   restoreBackup(fileName: string): Promise<void>;
+  /** Crée une version nommée du projet (enregistre d'abord les modifications). */
+  createNamedVersion(label: string): Promise<void>;
   recordWritingStats(): Promise<void>;
   renameProject(newName: string): Promise<boolean>;
 }
@@ -3949,6 +3951,13 @@ export function useEditorController({
         } finally {
           setExportBusy(false);
         }
+      },
+
+      async createNamedVersion(label) {
+        // Les modifications en attente sont d'abord enregistrées : la version
+        // contient exactement ce qui est affiché.
+        await saveAll();
+        await window.api.createNamedVersion(projectName, s.projectData, label);
       },
 
       async restoreBackup(fileName) {

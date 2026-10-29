@@ -523,25 +523,34 @@ export function ReadingPreview({
 
 // ---------- Sauvegardes (éditeur uniquement) ----------
 
+/** Longueur maximale du nom d'une version (identique au processus principal). */
+const VERSION_LABEL_MAX = 80;
+
 export interface BackupsSectionProps {
   open: boolean;
-  /** Projet dont on affiche les sauvegardes automatiques. */
+  /** Projet dont on affiche les sauvegardes et les versions. */
   projectName: Parameters<typeof window.api.listBackups>[0];
-  /** Restaure une sauvegarde (fourni par l'éditeur). */
+  /** Restaure une sauvegarde ou une version (fourni par l'éditeur). */
   onRestore: (fileName: string) => unknown;
   /** Appelé après une restauration réussie (ferme les paramètres). */
   onRestored?: () => void;
+  /** Crée une version nommée (fourni par l'éditeur). */
+  onCreateVersion?: (label: string) => Promise<unknown>;
 }
 
 export function BackupsSection({
   open,
   projectName,
   onRestore,
-  onRestored
+  onRestored,
+  onCreateVersion
 }: BackupsSectionProps): ReactElement {
   const { t, lang } = useI18n();
   const { showInfo, showConfirm } = useDialogs();
   const [backups, setBackups] = useState<BackupEntry[] | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [versionLabel, setVersionLabel] = useState('');
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -561,7 +570,7 @@ export function BackupsSection({
     return () => {
       cancelled = true;
     };
-  }, [open, projectName, showInfo, t]);
+  }, [open, projectName, reloadKey, showInfo, t]);
 
   const formatDate = (iso: string | null): string => {
     if (!iso) return t('unknownDate');
@@ -571,7 +580,15 @@ export function BackupsSection({
   };
 
   const restore = async (backup: BackupEntry): Promise<void> => {
-    if (!(await showConfirm(t('backupConfirmRestore', { date: formatDate(backup.savedAt) })))) return;
+    const date = formatDate(backup.savedAt);
+    const message =
+      backup.kind === 'named'
+        ? t('backupConfirmRestoreVersion', {
+            name: backup.label || t('backupUnnamedVersion'),
+            date
+          })
+        : t('backupConfirmRestore', { date });
+    if (!(await showConfirm(message))) return;
     try {
       await onRestore(backup.fileName);
       onRestored?.();
@@ -582,23 +599,104 @@ export function BackupsSection({
     }
   };
 
+  const createVersion = async (): Promise<void> => {
+    if (!onCreateVersion || creating) return;
+    const label = versionLabel.replace(/\s+/g, ' ').trim();
+    if (!label) {
+      showInfo(t('backupVersionNameRequired'));
+      return;
+    }
+    setCreating(true);
+    try {
+      await onCreateVersion(label);
+      setVersionLabel('');
+      setReloadKey((key) => key + 1);
+      showInfo(t('backupVersionCreated', { name: label }));
+    } catch (err) {
+      console.error(err);
+      showInfo(t('backupVersionCreateError') + describeError(err));
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const removeVersion = async (backup: BackupEntry): Promise<void> => {
+    const name = backup.label || formatDate(backup.savedAt);
+    if (!(await showConfirm(t('backupConfirmDeleteVersion', { name })))) return;
+    try {
+      await window.api.deleteNamedVersion(projectName, backup.fileName);
+      setReloadKey((key) => key + 1);
+    } catch (err) {
+      console.error(err);
+      showInfo(t('backupDeleteVersionError') + describeError(err));
+    }
+  };
+
+  const versions = backups ? backups.filter((backup) => backup.kind === 'named') : null;
+  const automatic = backups ? backups.filter((backup) => backup.kind !== 'named') : null;
+
   return (
     <div className="settings-section">
-      <h4 className="settings-section-title">{t('backupsModalTitle')}</h4>
-      <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 15 }}>
-        {t('backupsDescription')}
-      </p>
-      <ul
-        id="backupsList"
-        className="item-list"
-        style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius)' }}
-      >
-        {backups === null ? (
-          <li style={{ padding: 15, color: 'var(--text-muted)' }}>{t('loadingBackups')}</li>
-        ) : backups.length === 0 ? (
-          <li style={{ padding: 15, color: 'var(--text-muted)' }}>{t('backupNoneYet')}</li>
+      <h4 className="settings-section-title">{t('backupVersionsTitle')}</h4>
+      <p className="backup-section-hint">{t('backupVersionsDescription')}</p>
+      {onCreateVersion && (
+        <div className="backup-version-form">
+          <input
+            type="text"
+            value={versionLabel}
+            maxLength={VERSION_LABEL_MAX}
+            placeholder={t('backupVersionPlaceholder')}
+            disabled={creating}
+            onChange={(e) => setVersionLabel(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                void createVersion();
+              }
+            }}
+          />
+          <button type="button" disabled={creating} onClick={() => void createVersion()}>
+            {t('backupCreateVersionBtn')}
+          </button>
+        </div>
+      )}
+      <ul className="item-list backup-list">
+        {versions === null ? (
+          <li className="backup-empty">{t('loadingBackups')}</li>
+        ) : versions.length === 0 ? (
+          <li className="backup-empty">{t('backupNoVersionYet')}</li>
         ) : (
-          backups.map((backup) => (
+          versions.map((backup) => (
+            <li className="backup-item" key={backup.fileName}>
+              <span className="backup-item-text">
+                <span className="backup-item-label">
+                  {backup.label || t('backupUnnamedVersion')}
+                </span>
+                <span className="backup-item-date">{formatDate(backup.savedAt)}</span>
+              </span>
+              <span className="backup-item-actions">
+                <button className="btn-restore-backup" onClick={() => void restore(backup)}>
+                  {t('backupRestoreBtn')}
+                </button>
+                <button className="danger" onClick={() => void removeVersion(backup)}>
+                  {t('backupDeleteVersionBtn')}
+                </button>
+              </span>
+            </li>
+          ))
+        )}
+      </ul>
+
+      <h4 className="settings-section-title">{t('backupsModalTitle')}</h4>
+      <p className="backup-section-hint">{t('backupsDescription')}</p>
+      <ul id="backupsList" className="item-list backup-list">
+        {automatic === null ? (
+          <li className="backup-empty">{t('loadingBackups')}</li>
+        ) : automatic.length === 0 ? (
+          <li className="backup-empty">{t('backupNoneYet')}</li>
+        ) : (
+          automatic.map((backup) => (
             <li className="backup-item" key={backup.fileName}>
               <span>{formatDate(backup.savedAt)}</span>
               <button className="btn-restore-backup" onClick={() => void restore(backup)}>

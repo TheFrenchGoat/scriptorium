@@ -1130,9 +1130,16 @@ export interface ImportedProject {
   rejoinLines?: boolean;
 }
 
+/** Type d'une sauvegarde : automatique, version nommée ou avant conversion. */
+export type BackupKind = 'auto' | 'named' | 'pre-conversion';
+
 export interface BackupEntry {
   fileName: string;
   savedAt: string | null;
+  /** Type de sauvegarde (absent : automatique). */
+  kind?: BackupKind;
+  /** Nom choisi par l'auteur (versions nommées uniquement). */
+  label?: string;
 }
 
 export interface LegacyData {
@@ -1374,6 +1381,21 @@ export interface ScriptoriumApi {
   renameProjectBackups(
     oldName: string,
     newName: string
+  ): Promise<boolean>;
+
+  /** Crée une version nommée du projet (jamais supprimée automatiquement). */
+  createNamedVersion(
+    projectName: string,
+    projectData: ProjectData,
+    label: string
+  ): Promise<{
+    fileName: string;
+  }>;
+
+  /** Supprime une version nommée (les sauvegardes automatiques sont refusées). */
+  deleteNamedVersion(
+    projectName: string,
+    fileName: string
   ): Promise<boolean>;
 
   // ------------------------------------------------------------------------

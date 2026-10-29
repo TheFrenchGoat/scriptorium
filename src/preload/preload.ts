@@ -383,6 +383,32 @@ const api: ScriptoriumApi = {
       }
     ),
 
+  createNamedVersion: (
+    projectName: string,
+    projectData: ProjectData,
+    label: string
+  ) =>
+    ipcRenderer.invoke(
+      'backup:create-version',
+      {
+        projectName,
+        projectData,
+        label
+      }
+    ),
+
+  deleteNamedVersion: (
+    projectName: string,
+    fileName: string
+  ) =>
+    ipcRenderer.invoke(
+      'backup:delete-version',
+      {
+        projectName,
+        fileName
+      }
+    ),
+
   // -----------------------------------------------------------------------
   // DÉSINFECTION HTML
   // -----------------------------------------------------------------------
