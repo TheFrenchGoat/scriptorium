@@ -21,6 +21,7 @@ import type { Readable } from 'node:stream';
 import { app, dialog, ipcMain, type BrowserWindow } from 'electron';
 import AdmZip from 'adm-zip';
 import { store } from '../store';
+import { mainText } from '../main-texts';
 import type { GrammarMatch, GrammarPrefs, JavaInfo, LanguageToolFolderResult } from '../../shared/types';
 
 /** Le process est lancé avec stdio: ['ignore', 'pipe', 'pipe'] : stdin est
@@ -125,20 +126,21 @@ function hasCompleteInstall(folderPath: string): boolean {
  *  d'origine reste utilisé si le code n'est pas reconnu. */
 function friendlyNetworkError(err: unknown): string {
   const code = (err as NodeJS.ErrnoException)?.code;
+  const netLang = store.get('language');
   switch (code) {
     case 'ENOTFOUND':
     case 'EAI_AGAIN':
-      return "Impossible de joindre languagetool.org : vérifiez votre connexion Internet (ou un pare-feu/proxy qui bloquerait l'accès), puis réessayez.";
+      return mainText('netNotFound', netLang);
     case 'ECONNREFUSED':
-      return 'Connexion refusée par le serveur de téléchargement. Réessayez plus tard.';
+      return mainText('netRefused', netLang);
     case 'ECONNRESET':
-      return 'La connexion a été interrompue pendant le téléchargement. Réessayez.';
+      return mainText('netReset', netLang);
     case 'ETIMEDOUT':
-      return 'Le téléchargement a expiré (délai dépassé). Vérifiez votre connexion et réessayez.';
+      return mainText('netTimeout', netLang);
     case 'CERT_HAS_EXPIRED':
     case 'UNABLE_TO_VERIFY_LEAF_SIGNATURE':
     case 'DEPTH_ZERO_SELF_SIGNED_CERT':
-      return 'Le certificat de sécurité du site de téléchargement est invalide (réseau ou proxy suspect).';
+      return mainText('netCertificate', netLang);
     default:
       return err instanceof Error ? err.message : String(err);
   }
@@ -582,7 +584,7 @@ export function registerGrammarIpc(getWindow: () => BrowserWindow | null): void 
 
   ipcMain.handle('dialog:select-languagetool-folder', async (): Promise<LanguageToolFolderResult> => {
     const result = await dialog.showOpenDialog({
-      title: 'Sélectionner le dossier LanguageTool',
+      title: mainText('dialogSelectLanguageToolFolder', store.get('language')),
       properties: ['openDirectory']
     });
     if (result.canceled || !result.filePaths[0]) return { canceled: true };

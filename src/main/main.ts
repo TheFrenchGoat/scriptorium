@@ -9,6 +9,7 @@ import { registerFileIpc } from './ipc/files';
 import { registerBackupIpc } from './ipc/backups';
 import { registerGrammarIpc, stopGrammarServer } from './ipc/grammar';
 import { checkForUpdates, setupAutoUpdater, FOUR_HOURS_MS } from './updater';
+import { mainText } from './main-texts';
 
 /** Fenêtre principale, augmentée de l'applicateur de préférence du correcteur
  *  natif (appelé depuis l'IPC quand l'utilisateur change le réglage). */
@@ -177,6 +178,7 @@ function createWindow(): void {
   // Menu contextuel (suggestions du correcteur orthographique natif)
   win.webContents.on('context-menu', (_event, params) => {
     const menu = new Menu();
+    const menuLang = store.get('language');
 
     if (params.misspelledWord) {
       if (params.dictionarySuggestions && params.dictionarySuggestions.length > 0) {
@@ -190,22 +192,22 @@ function createWindow(): void {
           );
         });
       } else {
-        menu.append(new MenuItem({ label: 'Aucune suggestion', enabled: false }));
+        menu.append(new MenuItem({ label: mainText('ctxNoSuggestions', menuLang), enabled: false }));
       }
 
       menu.append(new MenuItem({ type: 'separator' }));
       menu.append(
         new MenuItem({
-          label: 'Ajouter au dictionnaire',
+          label: mainText('ctxAddToDictionary', menuLang),
           click: () =>
             win?.webContents.session.addWordToSpellCheckerDictionary(params.misspelledWord)
         })
       );
     } else {
-      menu.append(new MenuItem({ role: 'copy', label: 'Copier' }));
-      menu.append(new MenuItem({ role: 'paste', label: 'Coller' }));
-      menu.append(new MenuItem({ role: 'cut', label: 'Couper' }));
-      menu.append(new MenuItem({ role: 'selectAll', label: 'Tout sélectionner' }));
+      menu.append(new MenuItem({ role: 'copy', label: mainText('ctxCopy', menuLang) }));
+      menu.append(new MenuItem({ role: 'paste', label: mainText('ctxPaste', menuLang) }));
+      menu.append(new MenuItem({ role: 'cut', label: mainText('ctxCut', menuLang) }));
+      menu.append(new MenuItem({ role: 'selectAll', label: mainText('ctxSelectAll', menuLang) }));
       // Commentaires (romans) : texte selectionne, hors des champs de saisie.
       const formControl: unknown = Reflect.get(params, 'formControlType');
       const inFormField = typeof formControl === 'string' && formControl !== 'none';
@@ -213,7 +215,7 @@ function createWindow(): void {
         menu.append(new MenuItem({ type: 'separator' }));
         menu.append(
           new MenuItem({
-            label: 'Ajouter un commentaire',
+            label: mainText('ctxAddComment', menuLang),
             click: () => win?.webContents.send('comments:add-request')
           })
         );
