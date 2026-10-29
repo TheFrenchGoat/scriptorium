@@ -175,6 +175,18 @@ function createWindow(): void {
     win.webContents.openDevTools();
   }
 
+  // Console de développement : F12 ou Ctrl+Maj+I. Ce raccourci venait du menu
+  // par défaut d'Electron, supprimé au démarrage (voir app.whenReady).
+  win.webContents.on('before-input-event', (event, input) => {
+    if (input.type !== 'keyDown' || input.isAutoRepeat) return;
+    const key = input.key.toLowerCase();
+    const wantsDevTools =
+      key === 'f12' || ((input.control || input.meta) && input.shift && !input.alt && key === 'i');
+    if (!wantsDevTools) return;
+    event.preventDefault();
+    win?.webContents.toggleDevTools();
+  });
+
   // Menu contextuel (suggestions du correcteur orthographique natif)
   win.webContents.on('context-menu', (_event, params) => {
     const menu = new Menu();
@@ -317,6 +329,10 @@ registerBackupIpc();
 registerGrammarIpc(getWindow);
 
 app.whenReady().then(() => {
+  // Pas de menu d'application : le menu par défaut d'Electron, même caché,
+  // gardait ses raccourcis (Ctrl+R recharge, Ctrl+W ferme, zoom, F11, etc.).
+  Menu.setApplicationMenu(null);
+
   setupContentSecurityPolicy();
   createWindow();
   setupAutoUpdater(getWindow, prepareForQuit);
