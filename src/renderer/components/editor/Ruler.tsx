@@ -236,6 +236,9 @@ export function Ruler({ controller }: RulerProps): React.ReactElement | null {
 
   const rulerHistoryActiveRef = useRef(false);
 
+  /** Ctrl+Y ne rétablit la règle que juste après une annulation de la règle. */
+  const rulerRedoActiveRef = useRef(false);
+
   const [values, setValuesState] = useState<RulerValues>(
     getValuesFromController(controller)
   );
@@ -320,6 +323,7 @@ export function Ruler({ controller }: RulerProps): React.ReactElement | null {
 
     historyRef.current = { undo: [], redo: [] };
     rulerHistoryActiveRef.current = false;
+    rulerRedoActiveRef.current = false;
   }, [controller, activeTab, activeType]);
 
   /**
@@ -451,6 +455,7 @@ export function Ruler({ controller }: RulerProps): React.ReactElement | null {
 
       history.redo = [];
       rulerHistoryActiveRef.current = true;
+      rulerRedoActiveRef.current = false;
     },
     []
   );
@@ -478,6 +483,7 @@ export function Ruler({ controller }: RulerProps): React.ReactElement | null {
     applyHistoryValues(previous);
 
     rulerHistoryActiveRef.current = history.undo.length > 0;
+    rulerRedoActiveRef.current = true;
 
     return true;
   }, [applyHistoryValues]);
@@ -540,15 +546,23 @@ export function Ruler({ controller }: RulerProps): React.ReactElement | null {
       const wantsUndo = key === 'z' && !event.shiftKey;
       const wantsRedo = (key === 'z' && event.shiftKey) || key === 'y';
 
-      if (wantsUndo && rulerHistoryActiveRef.current && undoRulerChange()) {
-        event.preventDefault();
-        event.stopPropagation();
-        event.stopImmediatePropagation();
+      if (wantsUndo) {
+        if (rulerHistoryActiveRef.current && undoRulerChange()) {
+          event.preventDefault();
+          event.stopPropagation();
+          event.stopImmediatePropagation();
+          return;
+        }
+
+        // Ce Ctrl+Z part au texte : le Ctrl+Y suivant doit rétablir le
+        // texte, pas une ancienne marge.
+        rulerRedoActiveRef.current = false;
         return;
       }
 
       if (
         wantsRedo &&
+        rulerRedoActiveRef.current &&
         historyRef.current.redo.length > 0 &&
         redoRulerChange()
       ) {
@@ -577,6 +591,7 @@ export function Ruler({ controller }: RulerProps): React.ReactElement | null {
 
     const onEditorInput = (): void => {
       rulerHistoryActiveRef.current = false;
+      rulerRedoActiveRef.current = false;
     };
 
     editor.addEventListener('input', onEditorInput);

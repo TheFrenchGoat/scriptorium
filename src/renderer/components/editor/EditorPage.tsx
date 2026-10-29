@@ -974,8 +974,8 @@ export function EditorPage({
       /*
        * Annuler / rétablir dans les zones d'écriture uniquement.
        */
-      // Dans le scénario, Ctrl+Z et Ctrl+Y sont laissés au navigateur :
-      // l'historique des chapitres ne connaît pas les scènes.
+      // Le scénario gère lui-même Ctrl+Z, Ctrl+Y et Ctrl+Maj+Z
+      // (ScreenplayEditor, handleHistoryKeyDown) : rien à faire ici.
       const focusInScreenplay =
         document.activeElement?.closest(
           '.screenplay-editor'

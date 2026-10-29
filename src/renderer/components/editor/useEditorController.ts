@@ -3502,6 +3502,10 @@ export function useEditorController({
 
         const editor = s.editorEl;
 
+        // La frappe en cours devient d'abord une étape : Ctrl+Z annule
+        // ensuite la correction seule.
+        flushPendingHistoryCommit();
+
         const caretRange = replaceGrammarGroup(editor, mark, replacement);
 
         if (!editor || !s.activeTab || s.activeType !== 'chapter') {
@@ -4442,14 +4446,18 @@ export function useEditorController({
     /**
      * Annuler / rétablir.
      *
-     * - Mode scène : historique natif du navigateur.
+     * - Mode scène : historique propre du scénario (SCREENPLAY_HISTORY_EVENT).
      * - Mode chapitre : historique Scriptorium (instantanés HTML). Le curseur
      *   est replacé à l'endroit de la modification (comme dans Word) au lieu
      *   d'être envoyé à la fin du chapitre.
      */
     function jumpInHistory(direction: 'undo' | 'redo'): void {
       if (s.activeType === 'scene') {
-        document.execCommand(direction);
+        // Historique propre du scénario. Nom identique à SCREENPLAY_HISTORY_EVENT
+        // (ScreenplayEditor.tsx), écrit en dur pour éviter un import circulaire.
+        window.dispatchEvent(
+          new CustomEvent('scriptorium:screenplay-history', { detail: direction })
+        );
         return;
       }
 

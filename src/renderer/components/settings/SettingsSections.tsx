@@ -757,7 +757,7 @@ export function BackupsSection({
 const SHORTCUTS: { labelKey: TranslationKey; kbd?: string; kbdKey?: TranslationKey }[] = [
   { labelKey: 'shortcutSave', kbd: 'Ctrl+S' },
   { labelKey: 'shortcutUndo', kbd: 'Ctrl+Z' },
-  { labelKey: 'shortcutRedo', kbd: 'Ctrl+Y' },
+  { labelKey: 'shortcutRedo', kbdKey: 'kbdRedo' },
   { labelKey: 'shortcutBold', kbd: 'Ctrl+B' },
   { labelKey: 'shortcutItalic', kbd: 'Ctrl+I' },
   { labelKey: 'shortcutUnderline', kbd: 'Ctrl+U' },
