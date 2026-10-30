@@ -15,6 +15,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { BackupEntry, BackupKind } from '../shared/types';
+import { mainMessage } from './main-texts';
 
 export const MAX_BACKUPS_PER_PROJECT = 10;
 export const MAX_PRE_CONVERSION_BACKUPS = 3;
@@ -70,7 +71,7 @@ export function projectBackupDir(root: string, projectName: string): string {
   const dir = path.join(base, sanitizeForFilesystem(projectName));
 
   if (path.dirname(dir) !== base) {
-    throw new Error('Nom de projet invalide pour une sauvegarde.');
+    throw new Error(mainMessage('backupInvalidProjectName'));
   }
 
   return dir;
@@ -323,7 +324,7 @@ export function listBackupEntries(dir: string): BackupEntry[] {
  */
 export function deleteNamedVersion(dir: string, fileName: unknown): boolean {
   if (!isSafeBackupFileName(fileName) || !fileName.endsWith(NAMED_SUFFIX)) {
-    throw new Error('Seules les versions nommées peuvent être supprimées.');
+    throw new Error(mainMessage('backupOnlyNamedVersionsDeletable'));
   }
 
   const filePath = path.join(dir, fileName);

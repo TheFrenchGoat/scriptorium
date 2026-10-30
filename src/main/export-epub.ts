@@ -22,6 +22,7 @@ import { hasTableOfContents } from '../shared/export-document';
 import type { EpubExportOptions, EpubExportResult } from '../shared/types';
 import { buildZip, type ZipEntry } from './zip-writer';
 import { decodeImageDataUrl } from './export-images';
+import { mainMessage } from './main-texts';
 
 const EPUB_MIME_TYPE = 'application/epub+zip';
 const XHTML_MEDIA_TYPE = 'application/xhtml+xml';
@@ -236,7 +237,7 @@ export async function generateExportEpub(
   options: EpubExportOptions
 ): Promise<EpubExportResult> {
   if (doc.chapters.length === 0) {
-    throw new Error('Aucun chapitre à exporter.');
+    throw new Error(mainMessage('epubNoChapters'));
   }
 
   const language = documentLanguage(doc);

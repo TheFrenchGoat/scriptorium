@@ -10,6 +10,7 @@
 // est très largement suffisant pour des documents texte.
 
 import zlib from 'node:zlib';
+import { mainMessage } from './main-texts';
 
 export interface ZipEntry {
   /** Chemin dans l'archive, avec des barres obliques (ex. META-INF/manifest.xml). */
@@ -60,7 +61,7 @@ function toDosDateTime(date: Date): { time: number; day: number } {
 /** Construit une archive ZIP en mémoire, fichiers dans l'ordre donné. */
 export function buildZip(entries: readonly ZipEntry[], date: Date = new Date()): Buffer {
   if (entries.length > 0xffff) {
-    throw new Error('Trop de fichiers pour une archive ZIP simple.');
+    throw new Error(mainMessage('zipTooManyFiles'));
   }
 
   const { time, day } = toDosDateTime(date);
@@ -117,7 +118,7 @@ export function buildZip(entries: readonly ZipEntry[], date: Date = new Date()):
     offset += local.length + name.length + body.length;
 
     if (offset > 0xffffffff) {
-      throw new Error('Archive ZIP trop volumineuse.');
+      throw new Error(mainMessage('zipTooLarge'));
     }
   }
 

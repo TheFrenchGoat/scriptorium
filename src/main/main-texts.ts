@@ -46,7 +46,30 @@ const fr = {
   importFileTooLarge: 'Le fichier est trop volumineux (50 Mo au maximum).',
   importFileEmpty: 'Le fichier est vide.',
   importFileUnreadable: "Le fichier sélectionné n'est pas un fichier texte lisible.",
-  importDefaultProjectName: 'Document importé'
+  importDefaultProjectName: 'Document importé',
+  // Sauvegardes, fichiers, enregistrement, export, mises à jour
+  backupInvalidProjectName: 'Nom de projet invalide pour une sauvegarde.',
+  backupOnlyNamedVersionsDeletable: 'Seules les versions nommées peuvent être supprimées.',
+  backupInvalidName: 'Nom de sauvegarde invalide.',
+  backupNotFound: 'Sauvegarde introuvable.',
+  backupUnreadable: 'Sauvegarde illisible.',
+  backupDataInvalid: 'Données de sauvegarde invalides.',
+  backupVersionDataInvalid: 'Données de version invalides.',
+  backupVersionNameEmpty: 'Le nom de la version est vide.',
+  backupRestoreDataInvalid: 'Données de restauration invalides.',
+  backupReadDataInvalid: 'Données de lecture invalides.',
+  backupProjectNameInvalid: 'Nom de projet invalide.',
+  backupProjectNamesInvalid: 'Noms de projet invalides.',
+  fileUnsupportedFormat: 'Format de fichier non pris en charge : {extension}',
+  fileNoExtension: 'sans extension',
+  fileExportDocumentInvalid: "Document d'export invalide.",
+  fileExternalUrlInvalid: 'URL externe invalide.',
+  persistChapterDataInvalid: 'Données de sauvegarde du chapitre invalides.',
+  persistProjectNotFound: 'Le projet « {name} » est introuvable.',
+  epubNoChapters: 'Aucun chapitre à exporter.',
+  zipTooManyFiles: 'Trop de fichiers pour une archive ZIP simple.',
+  zipTooLarge: 'Archive ZIP trop volumineuse.',
+  updaterDevOnly: "La vérification des mises à jour n'est disponible que dans une version installée de l'application (pas en développement)."
 };
 
 export type MainTextKey = keyof typeof fr;
@@ -84,7 +107,30 @@ const en: Record<MainTextKey, string> = {
   importFileTooLarge: 'The file is too large (50 MB maximum).',
   importFileEmpty: 'The file is empty.',
   importFileUnreadable: 'The selected file is not a readable text file.',
-  importDefaultProjectName: 'Imported document'
+  importDefaultProjectName: 'Imported document',
+  // Backups, files, saving, export, updates
+  backupInvalidProjectName: 'Invalid project name for a backup.',
+  backupOnlyNamedVersionsDeletable: 'Only named versions can be deleted.',
+  backupInvalidName: 'Invalid backup name.',
+  backupNotFound: 'Backup not found.',
+  backupUnreadable: 'The backup cannot be read.',
+  backupDataInvalid: 'Invalid backup data.',
+  backupVersionDataInvalid: 'Invalid version data.',
+  backupVersionNameEmpty: 'The version name is empty.',
+  backupRestoreDataInvalid: 'Invalid restore data.',
+  backupReadDataInvalid: 'Invalid read data.',
+  backupProjectNameInvalid: 'Invalid project name.',
+  backupProjectNamesInvalid: 'Invalid project names.',
+  fileUnsupportedFormat: 'Unsupported file format: {extension}',
+  fileNoExtension: 'no extension',
+  fileExportDocumentInvalid: 'Invalid export document.',
+  fileExternalUrlInvalid: 'Invalid external URL.',
+  persistChapterDataInvalid: 'Invalid chapter save data.',
+  persistProjectNotFound: 'The project "{name}" cannot be found.',
+  epubNoChapters: 'No chapters to export.',
+  zipTooManyFiles: 'Too many files for a simple ZIP archive.',
+  zipTooLarge: 'ZIP archive too large.',
+  updaterDevOnly: 'Update checks are only available in an installed version of the application (not in development).'
 };
 
 export const mainTexts: Record<MainLanguage, Record<MainTextKey, string>> = { fr, en };

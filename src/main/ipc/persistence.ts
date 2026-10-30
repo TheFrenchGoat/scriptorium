@@ -23,6 +23,7 @@ import type {
   UiState,
   WritingStats
 } from '../../shared/types';
+import { mainMessage } from '../main-texts';
 
 export interface NativeSpellcheckHost {
   /** Appliqué à la fenêtre courante quand la préférence change. */
@@ -124,7 +125,7 @@ export function registerPersistenceIpc(
         )
       ) {
         throw new Error(
-          'Données de sauvegarde du chapitre invalides.'
+          mainMessage('persistChapterDataInvalid')
         );
       }
 
@@ -142,7 +143,7 @@ export function registerPersistenceIpc(
 
       if (!project) {
         throw new Error(
-          `Le projet « ${projectName} » est introuvable.`
+          mainMessage('persistProjectNotFound', { name: String(projectName) })
         );
       }
 

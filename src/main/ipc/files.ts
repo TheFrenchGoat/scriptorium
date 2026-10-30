@@ -57,6 +57,7 @@ import type {
   ProjectData,
   SaveDialogOptions
 } from '../../shared/types';
+import { mainMessage } from '../main-texts';
 
 const SCHEMA_VERSION = 1;
 
@@ -270,9 +271,9 @@ async function importSupportedProject(
   }
 
   throw new Error(
-    `Format de fichier non pris en charge : ${
-      extension || 'sans extension'
-    }`
+    mainMessage('fileUnsupportedFormat', {
+      extension: extension || mainMessage('fileNoExtension')
+    })
   );
 }
 
@@ -473,7 +474,7 @@ function sanitizeExportDocument(value: unknown): ExportDocument {
     value === null ||
     !Array.isArray((value as ExportDocument).chapters)
   ) {
-    throw new Error("Document d'export invalide.");
+    throw new Error(mainMessage('fileExportDocumentInvalid'));
   }
 
   const doc = value as ExportDocument;
@@ -811,7 +812,7 @@ export function registerFileIpc(): void {
         !/^https?:\/\//i.test(url)
       ) {
         throw new Error(
-          'URL externe invalide.'
+          mainMessage('fileExternalUrlInvalid')
         );
       }
 

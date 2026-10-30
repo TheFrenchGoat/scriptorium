@@ -32,6 +32,7 @@ import {
 } from '../backup-files';
 import { readBackupProjectData } from '../backup-read';
 import type { BackupEntry, ProjectData } from '../../shared/types';
+import { mainMessage } from '../main-texts';
 
 /** Version actuelle du format du World Building (identique à WB_FORMAT_VERSION). */
 const WB_FORMAT_CURRENT = 2;
@@ -66,7 +67,7 @@ export function registerBackupIpc(): void {
         !payload.projectData ||
         typeof payload.projectData !== 'object'
       ) {
-        throw new Error('Données de sauvegarde invalides.');
+        throw new Error(mainMessage('backupDataInvalid'));
       }
 
       const { projectName, projectData } = payload;
@@ -101,11 +102,11 @@ export function registerBackupIpc(): void {
         !payload.projectData ||
         typeof payload.projectData !== 'object'
       ) {
-        throw new Error('Données de version invalides.');
+        throw new Error(mainMessage('backupVersionDataInvalid'));
       }
 
       const label = sanitizeVersionLabel(payload.label);
-      if (!label) throw new Error('Le nom de la version est vide.');
+      if (!label) throw new Error(mainMessage('backupVersionNameEmpty'));
 
       const { projectName, projectData } = payload;
       const dir = projectBackupDir(backupsDir(), projectName);
@@ -137,19 +138,19 @@ export function registerBackupIpc(): void {
     'backup:restore',
     (_e, payload: { projectName: string; fileName: string }): ProjectData => {
       if (!payload || typeof payload.projectName !== 'string') {
-        throw new Error('Données de restauration invalides.');
+        throw new Error(mainMessage('backupRestoreDataInvalid'));
       }
 
       const { projectName, fileName } = payload;
 
       // Sécurité : refuse tout nom de fichier contenant un chemin (par exemple "../").
       if (!isSafeBackupFileName(fileName)) {
-        throw new Error('Nom de sauvegarde invalide.');
+        throw new Error(mainMessage('backupInvalidName'));
       }
 
       const dir = projectBackupDir(backupsDir(), projectName);
       const filePath = path.join(dir, fileName);
-      if (!fs.existsSync(filePath)) throw new Error('Sauvegarde introuvable.');
+      if (!fs.existsSync(filePath)) throw new Error(mainMessage('backupNotFound'));
 
       const data = JSON.parse(fs.readFileSync(filePath, 'utf-8')) as { projectData?: unknown };
       return sanitizeProjectData(data.projectData);
@@ -161,7 +162,7 @@ export function registerBackupIpc(): void {
     'backup:read',
     (_e, payload: { projectName: string; fileName: string }): ProjectData => {
       if (!payload || typeof payload.projectName !== 'string') {
-        throw new Error('Données de lecture invalides.');
+        throw new Error(mainMessage('backupReadDataInvalid'));
       }
 
       const dir = projectBackupDir(backupsDir(), payload.projectName);
@@ -177,7 +178,7 @@ export function registerBackupIpc(): void {
     };
 
     if (typeof record.projectName !== 'string') {
-      throw new Error('Nom de projet invalide.');
+      throw new Error(mainMessage('backupProjectNameInvalid'));
     }
 
     return deleteNamedVersion(projectBackupDir(backupsDir(), record.projectName), record.fileName);
@@ -197,7 +198,7 @@ export function registerBackupIpc(): void {
       !oldName.trim() ||
       !newName.trim()
     ) {
-      throw new Error('Noms de projet invalides.');
+      throw new Error(mainMessage('backupProjectNamesInvalid'));
     }
 
     const root = backupsDir();

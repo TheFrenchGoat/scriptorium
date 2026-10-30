@@ -20,6 +20,7 @@
 
 import { app, ipcMain, type BrowserWindow } from 'electron';
 import { autoUpdater } from 'electron-updater';
+import { mainMessage } from './main-texts';
 
 export const FOUR_HOURS_MS = 4 * 60 * 60 * 1000;
 
@@ -103,7 +104,7 @@ export function checkForUpdates(manual = false): void {
     if (manual) {
       sendToWindow(
         'updater:error',
-        "La vérification des mises à jour n'est disponible que dans une version installée de l'application (pas en développement).",
+        mainMessage('updaterDevOnly'),
         'check'
       );
     }
