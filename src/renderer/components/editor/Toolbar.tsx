@@ -48,6 +48,7 @@ import {
   useWbHistoryScopeVersion
 } from '../../lib/wb-history';
 import { useEditorStatus } from './editor-status';
+import { useScreenplayHistoryState } from '../../lib/screenplay-history-state';
 import type { EditorController } from './useEditorController';
 import type {
   ScreenplayElementType,
@@ -611,6 +612,7 @@ export function Toolbar({
 }: ToolbarProps): React.ReactElement {
   const { t, lang } = useI18n();
   const status = useEditorStatus(controller.status);
+  const screenplayHistory = useScreenplayHistoryState();
 
   // World Building : les boutons annuler / rétablir suivent la zone active.
   useWbHistoryScopeVersion();
@@ -1192,7 +1194,7 @@ export function Toolbar({
       <button
         type="button"
         title={t('undoTitle')}
-        disabled={wbScope ? !canUndoWbHistory() : !isScreenplayMode && !status.canUndo}
+        disabled={wbScope ? !canUndoWbHistory() : isScreenplayMode ? !screenplayHistory.canUndo : !status.canUndo}
         onMouseDown={preventFocusLoss}
         onClick={() => {
           if (isWbHistoryScope()) {
@@ -1219,7 +1221,7 @@ export function Toolbar({
       <button
         type="button"
         title={t('redoTitle')}
-        disabled={wbScope ? !canRedoWbHistory() : !isScreenplayMode && !status.canRedo}
+        disabled={wbScope ? !canRedoWbHistory() : isScreenplayMode ? !screenplayHistory.canRedo : !status.canRedo}
         onMouseDown={preventFocusLoss}
         onClick={() => {
           if (isWbHistoryScope()) {

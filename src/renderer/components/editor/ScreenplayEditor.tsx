@@ -44,6 +44,12 @@ import { ScreenplayElementEditor, WB_OPEN_TAB_EVENT, type WbOpenTabEventDetail }
 
 import { openWbPanel } from './WbSidePanel';
 
+import {
+  computeScreenplayHistoryState,
+  publishScreenplayHistoryState,
+  resetScreenplayHistoryState
+} from '../../lib/screenplay-history-state';
+
 import type {
   FreeScreenplayHeading,
   ProjectData,
@@ -546,6 +552,29 @@ export function ScreenplayEditor({
   const lastGroupRef = useRef<{ key: string; time: number } | null>(null);
   const suppressHistoryRef = useRef(false);
 
+  // État des boutons Annuler / Rétablir de la barre d'outils (1.5.2), avec la
+  // même règle que performHistory : dans un en-tête de scène, Annuler reste
+  // possible (la modification en cours devient une étape quand on le quitte).
+  const publishHistoryState = useCallback((): void => {
+    const active = document.activeElement;
+    const activeHtml = active instanceof HTMLElement ? active : null;
+    const inHeading =
+      !!activeHtml && !!activeHtml.closest('.screenplay-editor') && !!activeHtml.dataset.screenplayHeadingId;
+
+    publishScreenplayHistoryState(
+      computeScreenplayHistoryState(undoStackRef.current.length, redoStackRef.current.length, inHeading)
+    );
+  }, []);
+
+  // Éditeur ouvert : historique vide. Éditeur fermé : boutons grisés.
+  useEffect(() => {
+    publishHistoryState();
+
+    return () => {
+      resetScreenplayHistoryState();
+    };
+  }, [publishHistoryState]);
+
   const scenes = screenplay.scenes ?? [];
   const language = screenplay.settings.conventionLanguage;
 
@@ -643,8 +672,9 @@ export function ScreenplayEditor({
       // celle-ci, et non de l'ancienne version.
       screenplayRef.current = next;
       onChange(next);
+      publishHistoryState();
     },
-    [onChange]
+    [onChange, publishHistoryState]
   );
 
   const changeHeading = useCallback(
@@ -811,8 +841,10 @@ export function ScreenplayEditor({
       if (focusId) {
         focusElementById(focusId);
       }
+
+      publishHistoryState();
     },
-    [onChange]
+    [onChange, publishHistoryState]
   );
 
   /** Ctrl+Z, Ctrl+Y et Ctrl+Maj+Z dans le scénario. */
@@ -918,6 +950,8 @@ export function ScreenplayEditor({
       data-bold-scene-headings={screenplay.settings.boldSceneHeadings ? 'true' : 'false'}
       style={{ zoom }}
       onKeyDown={handleHistoryKeyDown}
+      onFocus={publishHistoryState}
+      onBlur={publishHistoryState}
     >
       <div className="screenplay-document">
         {scenes.map((scene, sceneIndex) => {
