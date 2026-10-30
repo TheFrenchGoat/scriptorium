@@ -1955,7 +1955,22 @@ export function useEditorController({
           return;
         }
 
-        document.execCommand(command, false, value);
+        // Couleur : Chromium produit alors un <span style="color: ..."> au lieu
+        // d'une balise <font>, obsolète. Le mode CSS est remis à false juste
+        // après : gras, italique et souligné restent des balises <b>, <i>, <u>.
+        const useCssForColor = command === 'foreColor';
+
+        if (useCssForColor) {
+          document.execCommand('styleWithCSS', false, 'true');
+        }
+
+        try {
+          document.execCommand(command, false, value);
+        } finally {
+          if (useCssForColor) {
+            document.execCommand('styleWithCSS', false, 'false');
+          }
+        }
 
         if (s.activeType === 'chapter') {
           s.editorEl?.focus();

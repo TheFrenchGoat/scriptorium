@@ -73,8 +73,57 @@ const FONT_SIZE_PATTERN = /^[0-9]+(?:\.[0-9]+)?(?:px|pt)$/;
 const TEXT_DECORATION_PATTERN =
   /^(none|underline|line-through)(\s+(underline|line-through))*$/;
 
+/** Taille de l'ancien attribut <font size> (1 à 7) en pixels, comme à l'export. */
+const LEGACY_FONT_SIZE_PX: Record<string, number> = {
+  '1': 10,
+  '2': 13,
+  '3': 16,
+  '4': 18,
+  '5': 24,
+  '6': 32,
+  '7': 48
+};
+
+/**
+ * Convertit une ancienne balise <font> (couleur appliquée avant la 1.5.2) en
+ * <span style="..."> équivalent. Chaque valeur n'est reprise que si elle
+ * respecte déjà les motifs autorisés ; allowedStyles la revérifie ensuite.
+ * L'attribut data-user-color (couleur choisie par l'auteur) est conservé.
+ */
+const convertLegacyFontTag: sanitizeHtml.Transformer = (_tagName, attribs) => {
+  const declarations: string[] = [];
+
+  const color = (attribs.color ?? '').trim();
+  if (color && COLOR_PATTERNS.some((pattern) => pattern.test(color))) {
+    declarations.push('color: ' + color);
+  }
+
+  const face = (attribs.face ?? '').trim();
+  if (face && FONT_FAMILY_PATTERN.test(face)) {
+    declarations.push('font-family: ' + face);
+  }
+
+  const size = (attribs.size ?? '').trim();
+  if (/^[1-7]$/.test(size)) {
+    declarations.push('font-size: ' + LEGACY_FONT_SIZE_PX[size] + 'px');
+  }
+
+  const converted: sanitizeHtml.Attributes = {};
+
+  if (declarations.length > 0) {
+    converted.style = declarations.join('; ');
+  }
+
+  if (typeof attribs['data-user-color'] === 'string') {
+    converted['data-user-color'] = attribs['data-user-color'];
+  }
+
+  return { tagName: 'span', attribs: converted };
+};
+
 export const CHAPTER_HTML_SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
-  allowedTags: ['div', 'p', 'span', 'b', 'strong', 'i', 'em', 'u', 'font', 'br', 'mark'],
+  // 'font' n'est plus accepté : transformTags (plus bas) le change en <span>.
+  allowedTags: ['div', 'p', 'span', 'b', 'strong', 'i', 'em', 'u', 'br', 'mark'],
 
   allowedAttributes: {
     div: ['class', 'style', 'data-screenplay-element', 'data-screenplay-type'],
@@ -96,8 +145,6 @@ export const CHAPTER_HTML_SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
     ],
 
     mark: ['class', 'spellcheck'],
-
-    font: ['face', 'size', 'color', 'data-user-color']
   },
 
   allowedStyles: {
@@ -132,6 +179,11 @@ export const CHAPTER_HTML_SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
 
       'background-color': COLOR_PATTERNS
     }
+  },
+
+  // Anciennes balises <font> : converties en <span style> (voir plus haut).
+  transformTags: {
+    font: convertLegacyFontTag
   },
 
   disallowedTagsMode: 'discard'
