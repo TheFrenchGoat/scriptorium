@@ -69,7 +69,27 @@ const fr = {
   epubNoChapters: 'Aucun chapitre à exporter.',
   zipTooManyFiles: 'Trop de fichiers pour une archive ZIP simple.',
   zipTooLarge: 'Archive ZIP trop volumineuse.',
-  updaterDevOnly: "La vérification des mises à jour n'est disponible que dans une version installée de l'application (pas en développement)."
+  updaterDevOnly: "La vérification des mises à jour n'est disponible que dans une version installée de l'application (pas en développement).",
+  ltTooManyRedirects: 'Trop de redirections lors du téléchargement.',
+  ltDownloadHttp: 'Téléchargement échoué (HTTP {status}).',
+  ltExtractTimeout: "L'extraction de l'archive a dépassé le délai maximal.",
+  ltTarFailed: "L'outil tar a échoué (code {code}).",
+  ltArchiveSuspect: 'Archive LanguageTool invalide : entrée suspecte "{entry}".',
+  ltServerExited: "Le serveur LanguageTool s'est arrêté avant d'être prêt (code {code}).",
+  ltServerDetail: 'Détail : {detail}',
+  ltServerNoStderr: "Aucune sortie d'erreur capturée.",
+  ltStartTimeout: 'Délai dépassé (le serveur met parfois du temps à démarrer la première fois).',
+  ltInstallWait: 'Installation de LanguageTool en cours, veuillez patienter.',
+  ltNoFolder: 'Aucun dossier LanguageTool configuré.',
+  ltJarNotFound: 'languagetool-server.jar introuvable dans le dossier configuré.',
+  ltInstallIncompleteLibs: "Installation de LanguageTool incomplète (dossier « libs » manquant). Relancez l'installation automatique pour la réparer.",
+  ltServerSlow: 'Le serveur LanguageTool met trop de temps à répondre.',
+  ltServerNoResponse: 'Le serveur LanguageTool local ne répond pas.',
+  ltHttpResponse: 'Réponse HTTP {status} du serveur LanguageTool',
+  ltInstallAlreadyRunning: 'Une installation de LanguageTool est déjà en cours.',
+  ltArchiveIncomplete: "L'archive téléchargée est incomplète (languagetool-server.jar ou dossier « libs » manquant). Réessayez plus tard.",
+  ltInstallIncompleteAfterExtract: "Installation incomplète : fichiers LanguageTool introuvables après l'extraction.",
+  ltServerNotStarted: "Le serveur LanguageTool local n'est pas démarré."
 };
 
 export type MainTextKey = keyof typeof fr;
@@ -130,7 +150,27 @@ const en: Record<MainTextKey, string> = {
   epubNoChapters: 'No chapters to export.',
   zipTooManyFiles: 'Too many files for a simple ZIP archive.',
   zipTooLarge: 'ZIP archive too large.',
-  updaterDevOnly: 'Update checks are only available in an installed version of the application (not in development).'
+  updaterDevOnly: 'Update checks are only available in an installed version of the application (not in development).',
+  ltTooManyRedirects: 'Too many redirects during the download.',
+  ltDownloadHttp: 'Download failed (HTTP {status}).',
+  ltExtractTimeout: 'Extracting the archive took too long.',
+  ltTarFailed: 'The tar tool failed (code {code}).',
+  ltArchiveSuspect: 'Invalid LanguageTool archive: suspicious entry "{entry}".',
+  ltServerExited: 'The LanguageTool server stopped before it was ready (code {code}).',
+  ltServerDetail: 'Details: {detail}',
+  ltServerNoStderr: 'No error output was captured.',
+  ltStartTimeout: 'Timed out (the server sometimes takes a while to start the first time).',
+  ltInstallWait: 'LanguageTool is being installed, please wait.',
+  ltNoFolder: 'No LanguageTool folder is configured.',
+  ltJarNotFound: 'languagetool-server.jar was not found in the configured folder.',
+  ltInstallIncompleteLibs: 'Incomplete LanguageTool installation ("libs" folder missing). Run the automatic installation again to repair it.',
+  ltServerSlow: 'The LanguageTool server is taking too long to respond.',
+  ltServerNoResponse: 'The local LanguageTool server is not responding.',
+  ltHttpResponse: 'HTTP {status} response from the LanguageTool server',
+  ltInstallAlreadyRunning: 'A LanguageTool installation is already in progress.',
+  ltArchiveIncomplete: 'The downloaded archive is incomplete (languagetool-server.jar or "libs" folder missing). Please try again later.',
+  ltInstallIncompleteAfterExtract: 'Incomplete installation: LanguageTool files not found after extraction.',
+  ltServerNotStarted: 'The local LanguageTool server is not running.'
 };
 
 export const mainTexts: Record<MainLanguage, Record<MainTextKey, string>> = { fr, en };

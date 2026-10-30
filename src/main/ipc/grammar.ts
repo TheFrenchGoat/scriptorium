@@ -21,7 +21,7 @@ import type { Readable } from 'node:stream';
 import { app, dialog, ipcMain, type BrowserWindow } from 'electron';
 import AdmZip from 'adm-zip';
 import { store } from '../store';
-import { mainText } from '../main-texts';
+import { mainMessage, mainText } from '../main-texts';
 import type { GrammarMatch, GrammarPrefs, JavaInfo, LanguageToolFolderResult } from '../../shared/types';
 
 /** Le process est lancé avec stdio: ['ignore', 'pipe', 'pipe'] : stdin est
@@ -154,7 +154,7 @@ function downloadFile(
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     if (redirectCount > 5) {
-      reject(new Error('Trop de redirections lors du téléchargement.'));
+      reject(new Error(mainMessage('ltTooManyRedirects')));
       return;
     }
 
@@ -167,7 +167,7 @@ function downloadFile(
       }
       if (status !== 200) {
         res.resume();
-        reject(new Error(`Téléchargement échoué (HTTP ${status}).`));
+        reject(new Error(mainMessage('ltDownloadHttp', { status: String(status) })));
         return;
       }
 
@@ -230,7 +230,7 @@ function extractWithTar(zipPath: string, destDir: string): Promise<void> {
 
     const timer = setTimeout(() => {
       proc.kill();
-      finish(new Error("L'extraction de l'archive a dépassé le délai maximal."));
+      finish(new Error(mainMessage('ltExtractTimeout')));
     }, EXTRACT_TIMEOUT_MS);
 
     proc.stderr.on('data', (chunk: Buffer) => {
@@ -242,7 +242,7 @@ function extractWithTar(zipPath: string, destDir: string): Promise<void> {
         finish();
       } else {
         const detail = stderrTail.trim();
-        finish(new Error(`tar a échoué (code ${code})` + (detail ? ` : ${detail}` : '')));
+        finish(new Error(mainMessage('ltTarFailed', { code: String(code) }) + (detail ? ' : ' + detail : '')));
       }
     });
   });
@@ -263,7 +263,7 @@ function extractWithAdmZip(zipPath: string, destDir: string): Promise<void> {
     };
 
     const timer = setTimeout(() => {
-      finish(new Error("L'extraction de l'archive a dépassé le délai maximal."));
+      finish(new Error(mainMessage('ltExtractTimeout')));
     }, EXTRACT_TIMEOUT_MS);
 
     try {
@@ -275,7 +275,7 @@ function extractWithAdmZip(zipPath: string, destDir: string): Promise<void> {
       zip.getEntries().forEach((entry) => {
         const resolvedEntryPath = path.resolve(destDir, entry.entryName);
         if (!resolvedEntryPath.startsWith(resolvedDestDir) && resolvedEntryPath !== path.resolve(destDir)) {
-          throw new Error(`Archive LanguageTool invalide : entrée suspecte "${entry.entryName}".`);
+          throw new Error(mainMessage('ltArchiveSuspect', { entry: entry.entryName }));
         }
       });
 
@@ -364,8 +364,8 @@ function waitForServerReady(
       const detail = stderrTail.trim();
       reject(
         new Error(
-          `Le serveur LanguageTool s'est arrêté avant d'être prêt (code ${code}).` +
-            (detail ? `\nDétail : ${detail}` : " Aucune sortie d'erreur capturée.")
+          mainMessage('ltServerExited', { code: String(code) }) +
+            (detail ? '\n' + mainMessage('ltServerDetail', { detail }) : ' ' + mainMessage('ltServerNoStderr'))
         )
       );
     };
@@ -376,7 +376,7 @@ function waitForServerReady(
       if (Date.now() > deadline) {
         settled = true;
         proc.removeListener('exit', onExit);
-        reject(new Error('Délai dépassé (le serveur met parfois du temps à démarrer la première fois).'));
+        reject(new Error(mainMessage('ltStartTimeout')));
         return;
       }
       try {
@@ -399,19 +399,19 @@ function waitForServerReady(
  *  seul démarrage à la fois, même si l'éditeur le demande plusieurs fois). */
 async function startServer(getWindow: () => BrowserWindow | null): Promise<{ port: number }> {
   if (installInProgress) {
-    throw new Error('Installation de LanguageTool en cours, veuillez patienter.');
+    throw new Error(mainMessage('ltInstallWait'));
   }
 
   const prefs = store.get('grammarPrefs');
-  if (!prefs.languageToolPath) throw new Error('Aucun dossier LanguageTool configuré.');
+  if (!prefs.languageToolPath) throw new Error(mainMessage('ltNoFolder'));
 
   const jarPath = findLanguageToolJar(prefs.languageToolPath);
-  if (!jarPath) throw new Error('languagetool-server.jar introuvable dans le dossier configuré.');
+  if (!jarPath) throw new Error(mainMessage('ltJarNotFound'));
 
   const jarDir = path.dirname(jarPath);
   if (!isInstallComplete(jarDir)) {
     throw new Error(
-      "Installation de LanguageTool incomplète (dossier « libs » manquant). Relancez l'installation automatique pour la réparer."
+      mainMessage('ltInstallIncompleteLibs')
     );
   }
 
@@ -551,9 +551,9 @@ async function checkChunk(
   } catch (err) {
     const name = (err as Error)?.name;
     if (name === 'TimeoutError' || name === 'AbortError') {
-      throw new Error('Le serveur LanguageTool met trop de temps à répondre.');
+      throw new Error(mainMessage('ltServerSlow'));
     }
-    throw new Error("Le serveur LanguageTool local ne répond pas.");
+    throw new Error(mainMessage('ltServerNoResponse'));
   }
 
   if (!res.ok) {
@@ -566,7 +566,7 @@ async function checkChunk(
     } catch {
       /* corps non-JSON, on garde juste le code HTTP */
     }
-    throw new Error(`Réponse HTTP ${res.status} du serveur LanguageTool${detail}`);
+    throw new Error(mainMessage('ltHttpResponse', { status: res.status }) + detail);
   }
 
   const data = (await res.json()) as { matches?: LanguageToolRawMatch[] };
@@ -604,7 +604,7 @@ export function registerGrammarIpc(getWindow: () => BrowserWindow | null): void 
   // de l'utilisateur (impossible à embarquer proprement multiplateforme).
   ipcMain.handle('grammar:auto-install', async () => {
     if (installInProgress) {
-      throw new Error('Une installation de LanguageTool est déjà en cours.');
+      throw new Error(mainMessage('ltInstallAlreadyRunning'));
     }
 
     const userDataDir = app.getPath('userData');
@@ -632,7 +632,7 @@ export function registerGrammarIpc(getWindow: () => BrowserWindow | null): void 
 
       if (!hasCompleteInstall(stagingDir)) {
         throw new Error(
-          "L'archive téléchargée est incomplète (languagetool-server.jar ou dossier « libs » manquant). Réessayez plus tard."
+          mainMessage('ltArchiveIncomplete')
         );
       }
 
@@ -647,7 +647,7 @@ export function registerGrammarIpc(getWindow: () => BrowserWindow | null): void 
       const finalDir = await replaceDirectory(stagingDir, installDir);
       const jarPath = findLanguageToolJar(finalDir);
       if (!jarPath || !isInstallComplete(path.dirname(jarPath))) {
-        throw new Error("Installation incomplète : fichiers LanguageTool introuvables après l'extraction.");
+        throw new Error(mainMessage('ltInstallIncompleteAfterExtract'));
       }
 
       const folderPath = path.dirname(jarPath);
@@ -709,7 +709,7 @@ export function registerGrammarIpc(getWindow: () => BrowserWindow | null): void 
       // éditeur) s'applique dès la vérification suivante, sans redémarrage.
       const prefs = store.get('grammarPrefs');
       if (!languageToolProcess || languageToolReadyPort !== prefs.port) {
-        throw new Error("Le serveur LanguageTool local n'est pas démarré.");
+        throw new Error(mainMessage('ltServerNotStarted'));
       }
 
       // Correction exigeante activée par défaut : une valeur absente
