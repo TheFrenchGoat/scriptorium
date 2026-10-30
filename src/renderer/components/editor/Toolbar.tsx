@@ -1365,7 +1365,7 @@ export function Toolbar({
                     title={
                       isEnglish
                         ? 'This font is not in the list. Pick one below to harmonize the text.'
-                        : 'Cette police n’est pas dans la liste. Choisis-en une ci-dessous pour harmoniser le texte.'
+                        : 'Cette police n’est pas dans la liste. Choisissez-en une ci-dessous pour harmoniser le texte.'
                     }
                     style={{
                       padding: '6px 12px 8px',

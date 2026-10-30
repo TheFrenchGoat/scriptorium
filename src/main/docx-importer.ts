@@ -41,6 +41,7 @@ import {
   type RenderedInline
 } from './import-html';
 import type { ImportedProject, ProjectData } from '../shared/types';
+import { mainMessage } from './main-texts';
 
 /** Style Word tel qu'il est déclaré dans styles.xml. */
 interface DocxStyle {
@@ -580,11 +581,11 @@ function parseDocxBlocks(documentXml: string, data: DocxStyles): ImportBlock[] {
 /** Importe un fichier Word (.docx) et le transforme en projet Scriptorium. */
 export function importDocxProject(filePath: string): ImportedProject {
   if (typeof filePath !== 'string' || path.extname(filePath).toLowerCase() !== '.docx') {
-    throw new Error("Le fichier sélectionné n'est pas un document Word (.docx) valide.");
+    throw new Error(mainMessage('importDocxInvalid'));
   }
 
   if (!fs.existsSync(filePath)) {
-    throw new Error('Le fichier Word sélectionné est introuvable.');
+    throw new Error(mainMessage('importDocxNotFound'));
   }
 
   let archive: AdmZip;
@@ -592,13 +593,13 @@ export function importDocxProject(filePath: string): ImportedProject {
   try {
     archive = new AdmZip(filePath);
   } catch {
-    throw new Error("Impossible d'ouvrir le document Word. Le fichier est peut-être endommagé.");
+    throw new Error(mainMessage('importDocxOpenFailed'));
   }
 
   const documentEntry = archive.getEntry('word/document.xml');
 
   if (!documentEntry) {
-    throw new Error('Document Word invalide : le fichier word/document.xml est absent.');
+    throw new Error(mainMessage('importDocxMissingDocument'));
   }
 
   let documentXml: string;
@@ -609,13 +610,13 @@ export function importDocxProject(filePath: string): ImportedProject {
     const stylesEntry = archive.getEntry('word/styles.xml');
     stylesXml = stylesEntry ? stylesEntry.getData().toString('utf-8') : '';
   } catch {
-    throw new Error("Impossible de lire le document Word. Le fichier est peut-être endommagé.");
+    throw new Error(mainMessage('importDocxReadFailed'));
   }
 
   const blocks = parseDocxBlocks(documentXml, parseDocxStyles(stylesXml));
 
   if (!blocks.some((block) => block.text.length > 0)) {
-    throw new Error('Le document Word ne contient aucun texte importable.');
+    throw new Error(mainMessage('importDocxNoText'));
   }
 
   const split = splitDocument(blocks);

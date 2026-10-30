@@ -9,6 +9,7 @@ import { randomUUID } from 'node:crypto';
 import { parseFountain } from '../shared/fountain';
 import { decodeTextFile } from './text-importer';
 import { projectNameFromFilePath } from './import-html';
+import { mainMessage } from './main-texts';
 
 /** Taille maximale acceptée (50 Mo). */
 const MAX_FILE_BYTES = 50 * 1024 * 1024;
@@ -24,7 +25,7 @@ export interface FountainImportResult {
 
 export function importFountainProject(filePath: string): FountainImportResult {
   if (fs.statSync(filePath).size > MAX_FILE_BYTES) {
-    throw new Error('Fichier trop volumineux (50 Mo au maximum).');
+    throw new Error(mainMessage('importFileTooLarge'));
   }
 
   const parsed = parseFountain(decodeTextFile(fs.readFileSync(filePath)), () => randomUUID());

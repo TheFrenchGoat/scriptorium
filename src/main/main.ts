@@ -9,7 +9,10 @@ import { registerFileIpc } from './ipc/files';
 import { registerBackupIpc } from './ipc/backups';
 import { registerGrammarIpc, stopGrammarServer } from './ipc/grammar';
 import { checkForUpdates, setupAutoUpdater, FOUR_HOURS_MS } from './updater';
-import { mainText } from './main-texts';
+import { mainText, setMainLanguageSource } from './main-texts';
+
+// Langue des messages d'erreur du processus principal, relue à chaque message.
+setMainLanguageSource(() => store.get('language'));
 
 /** Fenêtre principale, augmentée de l'applicateur de préférence du correcteur
  *  natif (appelé depuis l'IPC quand l'utilisateur change le réglage). */

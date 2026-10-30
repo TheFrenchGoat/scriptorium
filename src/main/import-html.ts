@@ -11,6 +11,7 @@ import {
   normalizeVisibleText,
   type ImportBlock
 } from './import-chapters';
+import { mainMessage } from './main-texts';
 
 /** Texte brut et HTML d'une portion de paragraphe. */
 export interface RenderedInline {
@@ -269,5 +270,5 @@ export function pushRenderedBlock(
 export function projectNameFromFilePath(filePath: string): string {
   const baseName = path.basename(filePath, path.extname(filePath));
 
-  return normalizeVisibleText(baseName) || 'Document importé';
+  return normalizeVisibleText(baseName) || mainMessage('importDefaultProjectName');
 }

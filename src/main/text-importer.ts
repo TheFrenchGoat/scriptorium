@@ -33,6 +33,7 @@ import {
 } from './import-chapters';
 import { escapeHtml, projectNameFromFilePath, type RenderedInline } from './import-html';
 import type { ImportedProject, ProjectData } from '../shared/types';
+import { mainMessage } from './main-texts';
 
 /** Taille maximale acceptée (50 Mo). */
 const MAX_FILE_BYTES = 50 * 1024 * 1024;
@@ -163,7 +164,7 @@ function makeBlock(
 
 function ensureText(blocks: ImportBlock[]): void {
   if (!blocks.some((block) => block.text.length > 0)) {
-    throw new Error('Le fichier ne contient aucun texte importable.');
+    throw new Error(mainMessage('importNoText'));
   }
 }
 
@@ -487,7 +488,7 @@ function importPlainText(text: string, rejoinLines = false): SplitDocumentResult
   const first = firstNonBlank(lines, 0);
 
   if (first < 0) {
-    throw new Error('Le fichier ne contient aucun texte importable.');
+    throw new Error(mainMessage('importNoText'));
   }
 
   let titlePageEnd = first;
@@ -1064,25 +1065,25 @@ export function importTextProject(filePath: string, rejoinLines?: boolean): Impo
   const markdown = extension === '.md' || extension === '.markdown';
 
   if (!markdown && extension !== '.txt') {
-    throw new Error("Le fichier sélectionné n'est pas un fichier texte (.txt) ou Markdown (.md).");
+    throw new Error(mainMessage('importNotTextFile'));
   }
 
   const stats = fs.statSync(filePath);
 
   if (stats.size > MAX_FILE_BYTES) {
-    throw new Error('Le fichier est trop volumineux (50 Mo au maximum).');
+    throw new Error(mainMessage('importFileTooLarge'));
   }
 
   const buffer = fs.readFileSync(filePath);
 
   if (buffer.length === 0) {
-    throw new Error('Le fichier est vide.');
+    throw new Error(mainMessage('importFileEmpty'));
   }
 
   const text = decodeTextFile(buffer);
 
   if (text.includes('\u0000')) {
-    throw new Error("Le fichier sélectionné n'est pas un fichier texte lisible.");
+    throw new Error(mainMessage('importFileUnreadable'));
   }
 
   const rejoinSuggested = !markdown && looksHardWrapped(splitLines(text));

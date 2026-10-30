@@ -44,6 +44,7 @@ import type {
   ImportedProject,
   ProjectData
 } from '../shared/types';
+import { mainMessage } from './main-texts';
 
 interface OdtStyle {
   name: string;
@@ -686,13 +687,13 @@ export function importOdtProject(
       '.odt'
   ) {
     throw new Error(
-      "Le fichier sélectionné n'est pas un document ODT valide."
+      mainMessage('importOdtInvalid')
     );
   }
 
   if (!fs.existsSync(filePath)) {
     throw new Error(
-      'Le fichier ODT sélectionné est introuvable.'
+      mainMessage('importOdtNotFound')
     );
   }
 
@@ -702,7 +703,7 @@ export function importOdtProject(
     archive = new AdmZip(filePath);
   } catch {
     throw new Error(
-      "Impossible d'ouvrir le document ODT. Le fichier est peut-être endommagé."
+      mainMessage('importOdtOpenFailed')
     );
   }
 
@@ -711,7 +712,7 @@ export function importOdtProject(
 
   if (!contentEntry) {
     throw new Error(
-      "Document ODT invalide : le fichier content.xml est absent."
+      mainMessage('importOdtMissingContent')
     );
   }
 
@@ -737,7 +738,7 @@ export function importOdtProject(
 
   if (blocks.length === 0) {
     throw new Error(
-      'Le document ODT ne contient aucun texte importable.'
+      mainMessage('importOdtNoText')
     );
   }
 
