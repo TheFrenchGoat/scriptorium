@@ -9,6 +9,23 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    version: '1.5.1',
+    fr: [
+      'Sauvegardes plus sûres et plus fiables.',
+      'Versions nommées : donnez un nom à une version pour la retrouver facilement.',
+      'Aperçu d’une sauvegarde avant de la restaurer, et récupération d’un seul chapitre.',
+      'Traductions de l’interface complétées.',
+      'Annuler et Rétablir plus fiables ; Ctrl+R et Ctrl+W ne rechargent plus et ne ferment plus la fenêtre par erreur.'
+    ],
+    en: [
+      'Safer, more reliable backups.',
+      'Named versions: give a version a name so you can find it easily.',
+      'Preview a backup before restoring it, and recover a single chapter.',
+      'Interface translations completed.',
+      'More reliable Undo and Redo; Ctrl+R and Ctrl+W no longer reload or close the window by accident.'
+    ]
+  },
+  {
     version: '1.5.0',
     fr: [
       'Import de documents ODT (LibreOffice), Word (.docx), TXT et Markdown, avec découpage automatique en chapitres.',
