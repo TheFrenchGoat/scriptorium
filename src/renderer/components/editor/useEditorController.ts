@@ -20,7 +20,6 @@ import { applyChapterMetaPatch } from '../../lib/chapter-status';
 import type { ChapterComment } from '../../../shared/types';
 import { isCommentId, newCommentId, rangeTouchesComment, unwrapComment, unwrapCommentInHtml, wrapRangeWithComment } from '../../lib/comments';
 import { removeGrammarMarksOnMentions } from '../../lib/grammar-check';
-import { countWordsInHtml } from '../../lib/stats';
 import { insertChapterAfter, stripCommentAnchors, uniqueChapterCopyName } from '../../../shared/backup-preview';
 import { replaceLibreOfficeFontsInHtml } from './fontAliases';
 import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
@@ -221,7 +220,6 @@ export interface EditorController {
   getAutoReplace(): AutoReplaceSettings;
   /** Enregistre les remplacements automatiques du livre. */
   setAutoReplace(next: AutoReplaceSettings): void;
-  typedWords(): { total: number; byChapter: Record<string, number>; tracked: boolean };
   handlePaste(event: ReactClipboardEvent<HTMLElement>): void;
   handleEditorClick(event: ReactMouseEvent<HTMLElement>): void;
 
@@ -682,53 +680,6 @@ export function useEditorController({
     });
   }, [s, status]);
 
-  /*
-   * Compteur des mots tapés, utilisé par les sessions d'écriture.
-   * Seules les frappes dans le chapitre ouvert comptent : ouvrir, créer
-   * ou synchroniser un chapitre ne change rien. Les mots collés sont mis
-   * de côté pour être retirés des statistiques du jour.
-   */
-  const typedWordsRef = useRef<{
-    chapter: string | null;
-    total: number;
-    byChapter: Record<string, number>;
-  }>({ chapter: null, total: 0, byChapter: {} });
-
-  const pendingPastedWordsRef = useRef(0);
-
-  const recordTypedWords = (
-    chapterName: string,
-    previousHtml: string | undefined,
-    nextHtml: string,
-    pasted: boolean
-  ): void => {
-    const tracker = typedWordsRef.current;
-
-    // Premier changement vu dans ce chapitre : on prend seulement la référence.
-    if (tracker.chapter !== chapterName) {
-      tracker.chapter = chapterName;
-      return;
-    }
-
-    if (previousHtml === undefined || previousHtml === nextHtml) {
-      return;
-    }
-
-    const delta = countWordsInHtml(nextHtml) - countWordsInHtml(previousHtml);
-
-    if (delta === 0) {
-      return;
-    }
-
-    if (pasted) {
-      pendingPastedWordsRef.current += delta;
-      return;
-    }
-
-    tracker.total += delta;
-    tracker.byChapter[chapterName] = (tracker.byChapter[chapterName] ?? 0) + delta;
-  };
-
   const recordWritingStats = useCallback(async (): Promise<void> => {
     if (renamedRef.current) {
       return;
@@ -743,23 +694,10 @@ export function useEditorController({
         const todayKey = getDateKey(new Date());
         const currentTotal = getProjectWordTotal(s.projectData);
 
-        // Les mots collés depuis le dernier enregistrement ne comptent pas
-        // comme des mots écrits aujourd'hui.
-        const pastedWords = pendingPastedWordsRef.current;
-        pendingPastedWordsRef.current = 0;
-
-        if (
-          pastedWords !== 0 &&
-          bucket.baselineDate === todayKey &&
-          typeof bucket.baselineWords === 'number'
-        ) {
-          bucket.baselineWords += pastedWords;
-        }
-
         if (bucket.baselineDate !== todayKey) {
           // Nouveau jour : la référence devient le dernier total enregistré
           // (référence précédente + mots de ce jour-là), pour ne pas perdre
-          // les mots tapés avant le premier enregistrement de la journée.
+          // les mots écrits avant le premier enregistrement de la journée.
           const previousKey = bucket.baselineDate;
           const previousWords =
             previousKey &&
@@ -773,8 +711,7 @@ export function useEditorController({
               : bucket.baselineWords + previousWords;
 
           bucket.baselineDate = todayKey;
-          bucket.baselineWords =
-            previousWords === null ? lastKnownTotal : lastKnownTotal + pastedWords;
+          bucket.baselineWords = lastKnownTotal;
           bucket.history[todayKey] = currentTotal - bucket.baselineWords;
 
           if (bucket.history[todayKey] === undefined) {
@@ -1739,15 +1676,13 @@ export function useEditorController({
         const finalHtml = editor.innerHTML;
 
         s.projectData.chapters[name] = finalHtml;
-        // Chapitre chargé : nouvelle référence pour le compteur de frappe.
-        typedWordsRef.current.chapter = name;
 
         debouncedGrammarCheck();
         updateStats();
         updateUndoRedo();
       },
 
-      handleInput(options?: { pasted?: boolean }) {
+      handleInput(_options?: { pasted?: boolean }) {
         // Un remplacement automatique ne se défait que juste après (la frappe du séparateur compte pour 1).
         const autoUndo = autoReplaceRef.current;
         if (autoUndo) {
@@ -1762,8 +1697,6 @@ export function useEditorController({
         }
 
         const html = editor.innerHTML;
-
-        recordTypedWords(chapterName, s.projectData.chapters[chapterName], html, options?.pasted === true);
 
         s.projectData.chapters[chapterName] = html;
         s.projects[projectName] = s.projectData;
@@ -1807,15 +1740,6 @@ export function useEditorController({
         setSaveStatus('pending');
         bump();
         void saveAll();
-      },
-      typedWords() {
-        const tracker = typedWordsRef.current;
-
-        return {
-          total: tracker.total,
-          byChapter: { ...tracker.byChapter },
-          tracked: !isScreenplayData(s.projectData)
-        };
       },
 
       handlePaste(event) {

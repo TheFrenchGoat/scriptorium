@@ -157,8 +157,6 @@ interface ActiveWritingSession {
    */
   activeMs: number;
   lastTickAt: number;
-  /** Compteur de frappe au début de la session. */
-  typedAtStart: { total: number; byChapter: Record<string, number>; tracked: boolean };
 }
 
 export interface TimerProps {
@@ -652,44 +650,14 @@ export function Timer({
         documentName;
     };
 
-  /*
-   * Mots écrits pendant la session.
-   * Roman : seuls les mots tapés comptent. Ouvrir, créer ou supprimer un
-   * chapitre et coller du texte ne changent rien.
-   * Scénario : différence du total du projet, comme avant.
-   * Le résultat n'est jamais négatif.
+  /**
+   * Mots écrits pendant la session : total du projet à la fin moins total au début.
+   * Tout compte (texte tapé, collé ou supprimé) : le résultat peut donc être négatif.
    */
   const getSessionWords = (
     activeSession: ActiveWritingSession
   ): number => {
-    const typed = controller.typedWords();
-
-    if (!typed.tracked) {
-      return Math.max(
-        0,
-        countProjectWords(controller.data()) - activeSession.wordsBefore
-      );
-    }
-
-    return Math.max(0, typed.total - activeSession.typedAtStart.total);
-  };
-
-  const getDocumentSessionWords = (
-    activeSession: ActiveWritingSession,
-    documentName: string,
-    fallback: number
-  ): number => {
-    const typed = controller.typedWords();
-
-    if (!typed.tracked) {
-      return Math.max(0, fallback);
-    }
-
-    return Math.max(
-      0,
-      (typed.byChapter[documentName] ?? 0) -
-        (activeSession.typedAtStart.byChapter[documentName] ?? 0)
-    );
+    return countProjectWords(controller.data()) - activeSession.wordsBefore;
   };
 
   const persistSession = (
@@ -790,7 +758,7 @@ export function Timer({
             wordsAfter:
               documentWordsFinal,
             wordsWritten:
-              getDocumentSessionWords(activeSession, documentName, documentWordsFinal - documentWordsBefore)
+              documentWordsFinal - documentWordsBefore
           };
         }
       );
@@ -1090,7 +1058,6 @@ export function Timer({
         activeSeconds: 0,
         activeMs: 0,
         lastTickAt: Date.now(),
-        typedAtStart: controller.typedWords(),
         plannedSeconds:
           normalizedPlannedSeconds
       };
