@@ -152,6 +152,7 @@ import { createExportActions } from './controller/export-actions';
 import { createSearchActions } from './controller/search-actions';
 import { createChapterMetaActions } from './controller/chapter-meta-actions';
 import { createGrammarActions } from './controller/grammar-actions';
+import { createProjectActions } from './controller/project-actions';
 
 // Ré-exports : les autres fichiers continuent d'importer depuis useEditorController.
 export type { EditorController, EditorControllerDeps } from './controller/types';
@@ -2790,207 +2791,27 @@ export function useEditorController({
 
       ...createExportActions({ projectName, s, registry, showInfo, save }),
 
-      async createNamedVersion(label) {
-        // Les modifications en attente sont d'abord enregistrées : la version
-        // contient exactement ce qui est affiché.
-        await saveAll();
-        await window.api.createNamedVersion(projectName, s.projectData, label);
-      },
-
-      recoverChapterCopy(sourceName, html, suffix) {
-        if (isScreenplayData(s.projectData)) {
-          return null;
-        }
-
-        // La copie porte un nom libre et prend place juste après l'original
-        // (à la fin s'il n'existe plus). Le chapitre actuel ne change pas.
-        const newName = uniqueChapterCopyName(
-          sourceName,
-          suffix,
-          Object.keys(s.projectData.chapters)
-        );
-
-        const next = insertChapterAfter(
-          s.projectData.chapters,
-          sourceName,
-          newName,
-          stripCommentAnchors(html)
-        );
-
-        if (!next) {
-          return null;
-        }
-
-        s.projectData.chapters = next;
-        s.projects[projectName] = s.projectData;
-        s.hasUnsavedChangesSinceLastBackup = true;
-
-        invalidateProjectWordCache(s.projectData);
-        mentionIndex.rebuildChapterOrder();
-        mentionIndex.rebuildAll();
-
-        setSaveStatus('pending');
-        updateStats();
-        bump();
-
-        void saveAll();
-
-        return newName;
-      },
-
-      async restoreBackup(fileName) {
-        await window.api.createBackup(projectName, s.projectData);
-
-        const restored = await window.api.restoreBackup(projectName, fileName);
-
-        cancelAllPendingChapterSaves();
-        cancelPendingScreenplaySave();
-        cancelPendingWbSave();
-
-        if (historyTimerRef.current) {
-          clearTimeout(historyTimerRef.current);
-          historyTimerRef.current = null;
-        }
-
-        pendingHistoryRef.current = null;
-
-        // L'historique d'annulation portait sur l'ancien contenu.
-        Object.keys(s.projectData.chapters).forEach((chapterName) => {
-          history.remove(chapterName);
-        });
-
-        ensureProjectDefaults(restored);
-
-        // Une sauvegarde ancienne peut être au format 1 : on la convertit.
-        let nextData = prepareWorldBuilding(restored, currentWbLang()).data;
-
-        ensureProjectDefaults(nextData);
-
-        if (
-          nextData.projectType === 'screenplay' &&
-          nextData.screenplay &&
-          nextData.screenplay.scenes.length === 0
-        ) {
-          nextData = {
-            ...nextData,
-            screenplay: {
-              ...nextData.screenplay,
-              scenes: [createScreenplayScene()]
-            }
-          };
-        }
-
-        s.projectData = nextData;
-
-        registry.bumpVersion();
-
-        s.wbColorVersion += 1;
-        s.chapterColorSyncVersion.clear();
-
-        if (!isScreenplayData(s.projectData)) {
-          invalidateProjectWordCache(s.projectData);
-        }
-
-        mentionIndex.rebuildAll();
-
-        s.projects[projectName] = s.projectData;
-
-        await window.api.saveProjects(s.projects);
-
-        s.activeTab = null;
-        s.openTabs = [];
-
-        if (isScreenplayData(s.projectData)) {
-          const firstScene = s.projectData.screenplay.scenes[0];
-
-          if (firstScene) {
-            s.activeTab = firstScene.id;
-            s.activeType = 'scene';
-            s.openTabs = [{ name: firstScene.id, type: 'scene' }];
-          }
-        } else {
-          s.activeType = 'chapter';
-        }
-
-        await persistUiState();
-
-        updateStats();
-        updateUndoRedo();
-        bump();
-      },
-
-      async renameProject(newName) {
-        const trimmed = newName.trim();
-
-        if (!trimmed || trimmed === projectName) {
-          return false;
-        }
-
-        await saveAll();
-
-        const allProjects = await window.api.getProjects();
-
-        if (allProjects[trimmed]) {
-          showInfo(t('alreadyExists'));
-          return false;
-        }
-
-        // Comme le renommage depuis la page des projets : les sessions et le
-        // titre du scénario (s'il est vide) prennent le nouveau nom.
-        s.projectData.writingSessions = (s.projectData.writingSessions || []).map(
-          (session) => ({ ...session, projectName: trimmed })
-        );
-
-        if (s.projectData.screenplay && !s.projectData.screenplay.titlePage.title) {
-          s.projectData.screenplay.titlePage.title = trimmed;
-        }
-
-        const next: ProjectsMap = {};
-
-        Object.keys(allProjects).forEach((key) => {
-          next[key === projectName ? trimmed : key] =
-            key === projectName ? s.projectData : allProjects[key];
-        });
-
-        await window.api.saveProjects(next);
-
-        // Le projet est enregistré sous son nouveau nom : plus aucune
-        // sauvegarde ne doit partir avec l'ancien (elle échouerait ou
-        // recréerait l'ancien projet). L'éditeur est ensuite recréé
-        // sous le nouveau nom (key dans App.tsx).
-        renamedRef.current = true;
-        cancelAllPendingChapterSaves();
-        cancelPendingScreenplaySave();
-        cancelPendingWbSave();
-        delete s.projects[projectName];
-        s.projects[trimmed] = s.projectData;
-
-        const uiState = await window.api.getUiState();
-
-        if (uiState[projectName]) {
-          uiState[trimmed] = uiState[projectName];
-          delete uiState[projectName];
-
-          await window.api.saveUiState(uiState);
-        }
-
-        // Historique quotidien des statistiques : déplacé vers le nouveau nom,
-        // dans la file pour passer après les enregistrements en cours.
-        await enqueuePersistence(() =>
-          renameWritingStatsProject(projectName, trimmed)
-        );
-
-        // Sauvegardes horodatées : déplacées vers le nouveau nom (sans bloquer).
-        try {
-          await window.api.renameProjectBackups(projectName, trimmed);
-        } catch (error) {
-          console.error('Échec du déplacement des sauvegardes du projet renommé :', error);
-        }
-
-        await window.api.setCurrentProject(trimmed);
-
-        return true;
-      }
+      ...createProjectActions({
+        projectName,
+        showInfo,
+        bump,
+        s,
+        historyTimerRef,
+        pendingHistoryRef,
+        renamedRef,
+        history,
+        registry,
+        mentionIndex,
+        enqueuePersistence,
+        setSaveStatus,
+        updateUndoRedo,
+        updateStats,
+        persistUiState,
+        cancelAllPendingChapterSaves,
+        cancelPendingScreenplaySave,
+        cancelPendingWbSave,
+        saveAll,
+      }),
     };
 
     /** Chapitre affiché dans l'éditeur, s'il y en a un. */
