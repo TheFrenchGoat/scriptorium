@@ -1,34 +1,11 @@
 // src/renderer/components/editor/useEditorController.ts
 
 import { wbLinksEnabled } from '../../lib/wb-links';
-import { isExportBusy, setExportBusy } from '../../lib/export/export-busy';
-import { buildScreenplayExportDocument } from '../../lib/screenplay-export';
-import { buildExportDocument } from '../../lib/export/build-document';
-import {
-  createBibleSource,
-  listBibleCategories,
-  type ExportBibleCategory
-} from '../../lib/export/build-bible';
-import { prepareExportImages } from '../../lib/export/prepare-images';
-import { renderExportHtml, type ExportPreviewSource } from '../../lib/export/render-html';
-import { renderExportMarkdown, renderExportText } from '../../lib/export/render-text';
-import { normalizeExportSettings } from '../../../shared/export-settings';
-import { buildFountainText } from '../../../shared/fountain';
-import { getSceneHeadingText as getFountainSceneHeading } from '../../lib/screenplay';
-import type { ChapterMeta, ChapterMetaPatch, ExportSettings } from '../../../shared/types';
-import { applyChapterMetaPatch } from '../../lib/chapter-status';
-import type { ChapterComment } from '../../../shared/types';
-import { isCommentId, newCommentId, rangeTouchesComment, unwrapComment, unwrapCommentInHtml, wrapRangeWithComment } from '../../lib/comments';
 import { removeGrammarMarksOnMentions } from '../../lib/grammar-check';
-import { insertChapterAfter, stripCommentAnchors, uniqueChapterCopyName } from '../../../shared/backup-preview';
 import { replaceLibreOfficeFontsInHtml } from './fontAliases';
 import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
-import type {
-  ClipboardEvent as ReactClipboardEvent,
-  MouseEvent as ReactMouseEvent
-} from 'react';
 
-import { getLanguage, t } from '../../i18n';
+import { t } from '../../i18n';
 import { createEditHistory, type EditHistory } from '../../lib/edit-history';
 import {
   applyAutoReplaceBeforeCaret,
@@ -41,12 +18,9 @@ import {
 import { createMentionIndex, type MentionIndex } from '../../lib/mention-index';
 import {
   createWbRegistry,
-  type WbLang,
   type WbRegistry
 } from '../../lib/wb-registry';
 import {
-  createWbItemRecord,
-  findWbItemByName,
   migrateUiTabs,
   needsWbUpgrade,
   prepareWorldBuilding
@@ -66,10 +40,8 @@ import {
   clearGrammarMarks,
   getPlainTextWithMap,
   grammarIgnoreKey,
-  removeGrammarGroup,
-  replaceGrammarGroup
 } from '../../lib/grammar-check';
-import { countInHtmlString, debounce, replaceInHtmlString, type ReplaceMatchInfo, type ReplaceOptions } from '../../lib/dom';
+import { debounce } from '../../lib/dom';
 import { withPreservedSelection } from '../../lib/selection';
 import {
   captureHistoryCaretState,
@@ -80,11 +52,8 @@ import {
   invalidateProjectWordCache
 } from '../../lib/project-word-cache';
 import { getDateKey, getStatsBucket } from '../../lib/stats';
-import { renameWritingStatsProject } from '../../lib/writing-stats-rename';
 import { describeError } from '../../lib/errors';
 import {
-  buildBasicScreenplayPrintHtml,
-  buildScreenplayPlainText,
   getScenePlainText
 } from '../../lib/screenplay-print';
 import {
@@ -92,26 +61,15 @@ import {
   createScreenplayScene,
   getSceneDisplayTitle,
   getScreenplayTextStatistics,
-  type CreateScreenplaySceneOptions
 } from '../../lib/screenplay';
-import { createStatusStore, type StatusStore } from './editor-status';
+import { createStatusStore } from './editor-status';
 import { openWbPanel } from './WbSidePanel';
 import { WB_OPEN_TAB_EVENT, type WbOpenTabEventDetail } from './ScreenplayElementEditor';
 import { cloneWbData, pushWbHistory, type WbHistoryEntry } from '../../lib/wb-history';
-import type { InfoAction } from '../common/Dialogs';
 import type {
-  EditorPrefs,
-  GrammarPrefs,
   ItemType,
   ProjectData,
-  ProjectsMap,
-  ScreenplayProjectData,
-  TabRef,
-  UiState,
-  WbCategoryDef,
-  WbField,
   WbItem,
-  WbType
 } from '../../../shared/types';
 
 import type {
@@ -141,12 +99,9 @@ import {
   countText,
   createBlankNovelData,
   currentWbLang,
-  detachWbItem,
   ensureProjectDefaults,
   getProjectWordTotal,
   isScreenplayData,
-  slugify,
-  touchWbItem
 } from './controller/utils';
 import { createExportActions } from './controller/export-actions';
 import { createSearchActions } from './controller/search-actions';
