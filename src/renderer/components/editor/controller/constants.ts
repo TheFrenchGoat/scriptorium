@@ -13,6 +13,8 @@ export const SCREENPLAY_SAVE_DEBOUNCE_MS = 1500;
 /** Délai avant d'enregistrer les modifications d'une fiche (champs, mode lecture). */
 export const WB_SAVE_DEBOUNCE_MS = 800;
 export const BACKUP_INTERVAL_MS = 5 * 60 * 1000;
+/** Compteur de mots pendant la frappe : au plus un calcul par intervalle (étape 4d). */
+export const TYPING_STATS_DELAY_MS = 400;
 
 /**
  * Langue de vérification grammaticale.

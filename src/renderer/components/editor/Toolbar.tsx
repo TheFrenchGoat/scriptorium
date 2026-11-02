@@ -48,6 +48,7 @@ import {
   useWbHistoryScopeVersion
 } from '../../lib/wb-history';
 import { useEditorStatus } from './editor-status';
+import { shallowEqual } from './typing-helpers';
 import { useScreenplayHistoryState } from '../../lib/screenplay-history-state';
 import type { EditorController } from './useEditorController';
 import type {
@@ -743,7 +744,8 @@ export function Toolbar({
       return;
     }
 
-    setFormatting(next);
+    // Pas de nouvel affichage si le format n'a pas changé (étape 4d).
+    setFormatting((previous) => (shallowEqual(previous, next) ? previous : next));
 
     if (!isScreenplayMode) {
       setSizeDraft(
@@ -766,16 +768,38 @@ export function Toolbar({
       refreshScreenplayElement();
     };
 
-    document.addEventListener('selectionchange', update);
+    /*
+     * Frappe et déplacement du curseur (étape 4d) : une seule vérification
+     * par image. Les clics et le retour dans le texte restent immédiats.
+     */
+    let frame: number | null = null;
+
+    const scheduleUpdate = (): void => {
+      if (frame !== null) {
+        return;
+      }
+
+      frame = window.requestAnimationFrame(() => {
+        frame = null;
+        update();
+      });
+    };
+
+    document.addEventListener('selectionchange', scheduleUpdate);
     document.addEventListener('focusin', update, true);
-    document.addEventListener('keyup', update, true);
+    document.addEventListener('keyup', scheduleUpdate, true);
     document.addEventListener('mouseup', update, true);
 
     return () => {
-      document.removeEventListener('selectionchange', update);
+      document.removeEventListener('selectionchange', scheduleUpdate);
       document.removeEventListener('focusin', update, true);
-      document.removeEventListener('keyup', update, true);
+      document.removeEventListener('keyup', scheduleUpdate, true);
       document.removeEventListener('mouseup', update, true);
+
+      if (frame !== null) {
+        window.cancelAnimationFrame(frame);
+        frame = null;
+      }
     };
   }, [refreshFormatting, refreshScreenplayElement, rememberCurrentSelection]);
 

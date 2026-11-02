@@ -63,6 +63,7 @@ import {
   getScreenplayTextStatistics,
 } from '../../lib/screenplay';
 import { createStatusStore } from './editor-status';
+import { createTrailingThrottle } from './typing-helpers';
 import { openWbPanel } from './WbSidePanel';
 import { WB_OPEN_TAB_EVENT, type WbOpenTabEventDetail } from './ScreenplayElementEditor';
 import { cloneWbData, pushWbHistory, type WbHistoryEntry } from '../../lib/wb-history';
@@ -92,7 +93,8 @@ import {
   HIGHLIGHT_SIZE_THRESHOLD,
   HISTORY_DEBOUNCE_MS,
   SCREENPLAY_SAVE_DEBOUNCE_MS,
-  WB_SAVE_DEBOUNCE_MS
+  WB_SAVE_DEBOUNCE_MS,
+  TYPING_STATS_DELAY_MS
 } from './controller/constants';
 import {
   activeEditableElement,
@@ -361,6 +363,22 @@ export function useEditorController({
       totalWords: totalStats.words
     });
   }, [s, status]);
+
+  /**
+   * Compteur de mots pendant la frappe (étape 4d) : au plus un calcul toutes
+   * les TYPING_STATS_DELAY_MS, et le dernier caractère tapé est toujours compté.
+   * Les autres mises à jour (onglets, sélection, remplacements...) restent immédiates.
+   */
+  const typingStats = useMemo(
+    () => createTrailingThrottle(updateStats, TYPING_STATS_DELAY_MS),
+    [updateStats]
+  );
+
+  useEffect(() => {
+    return () => {
+      typingStats.cancel();
+    };
+  }, [typingStats]);
 
   const recordWritingStats = useCallback(async (): Promise<void> => {
     if (renamedRef.current) {
@@ -1385,7 +1403,8 @@ export function useEditorController({
         s.hasUnsavedChangesSinceLastBackup = true;
 
         setSaveStatus('pending');
-        updateStats();
+        // Compteur de mots regroupé pendant la frappe (étape 4d).
+        typingStats.schedule();
 
         scheduleHistoryCommit(chapterName, html);
         scheduleChapterSave(chapterName, html);

@@ -240,6 +240,28 @@ export function StatusBar({
 
     const updateSelectionStats =
       (): void => {
+        /*
+         * Étape 4d : en mode chapitre, un simple déplacement du curseur
+         * (sans sélection) ne change pas les nombres affichés, et la frappe
+         * les met déjà à jour. On ne recalcule que s'il y a une
+         * sélection, ou si une sélection vient de disparaître.
+         */
+        const selection =
+          window.getSelection();
+
+        const hasSelection =
+          selection !== null &&
+          selection.rangeCount > 0 &&
+          !selection.isCollapsed;
+
+        if (
+          !hasSelection &&
+          controller.activeType() === 'chapter' &&
+          !controller.status.get().selectionActive
+        ) {
+          return;
+        }
+
         if (
           animationFrame !==
           null
