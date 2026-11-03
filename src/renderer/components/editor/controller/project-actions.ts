@@ -15,6 +15,7 @@ import { invalidateProjectWordCache } from '../../../lib/project-word-cache';
 import { prepareWorldBuilding } from '../../../lib/wb-migration';
 import { renameWritingStatsProject } from '../../../lib/writing-stats-rename';
 import type { EditHistory } from '../../../lib/edit-history';
+import type { ProjectHistory } from '../../../lib/project-history';
 import type { MentionIndex } from '../../../lib/mention-index';
 import type { WbRegistry } from '../../../lib/wb-registry';
 import { t } from '../../../i18n';
@@ -48,6 +49,8 @@ export interface ProjectActionsContext {
   cancelPendingScreenplaySave: () => void;
   cancelPendingWbSave: () => void;
   saveAll: () => Promise<void>;
+  /** Historique des actions de projet : vidé quand le contenu est remplacé. */
+  projectHistory: ProjectHistory;
 }
 
 /** Les 4 méthodes de projet du contrôleur. */
@@ -77,6 +80,7 @@ export function createProjectActions(ctx: ProjectActionsContext): ProjectActions
     cancelPendingScreenplaySave,
     cancelPendingWbSave,
     saveAll,
+    projectHistory,
   } = ctx;
 
   return {
@@ -115,6 +119,9 @@ export function createProjectActions(ctx: ProjectActionsContext): ProjectActions
       s.projects[projectName] = s.projectData;
       s.hasUnsavedChangesSinceLastBackup = true;
 
+      // Chapitre ajouté hors historique : les actions mémorisées sont oubliées.
+      projectHistory.clear();
+
       invalidateProjectWordCache(s.projectData);
       mentionIndex.rebuildChapterOrder();
       mentionIndex.rebuildAll();
@@ -145,6 +152,7 @@ export function createProjectActions(ctx: ProjectActionsContext): ProjectActions
       pendingHistoryRef.current = null;
 
       // L'historique d'annulation portait sur l'ancien contenu.
+      projectHistory.clear();
       Object.keys(s.projectData.chapters).forEach((chapterName) => {
         history.remove(chapterName);
       });

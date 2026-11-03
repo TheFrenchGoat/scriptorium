@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
 
 import { t } from '../../i18n';
 import { createEditHistory, type EditHistory } from '../../lib/edit-history';
+import { PROJECT_HISTORY_LIMIT, ProjectHistory } from '../../lib/project-history';
 import {
   applyAutoReplaceBeforeCaret,
   isAutoReplaceTrigger,
@@ -161,6 +162,11 @@ export function useEditorController({
 
   const historyRef = useRef<EditHistory>(createEditHistory());
 
+  /** Historique des actions de projet (chapitres) ; repart de zéro à chaque projet. */
+  const projectHistoryRef = useRef<ProjectHistory>(
+    new ProjectHistory(PROJECT_HISTORY_LIMIT)
+  );
+
   const registryRef = useRef<WbRegistry>(
     createWbRegistry(() => stateRef.current.projectData, currentWbLang)
   );
@@ -210,6 +216,7 @@ export function useEditorController({
   const api = useRef<EditorController | null>(null);
 
   const history = historyRef.current;
+  const projectHistory = projectHistoryRef.current;
   const registry = registryRef.current;
   const mentionIndex = indexRef.current;
 
@@ -1796,6 +1803,7 @@ export function useEditorController({
         renameWbMentionsEverywhere,
         recordWbChange,
         resyncChapters,
+        projectHistory,
         ctrl: {
           deleteItem: (...args) => ctrl.deleteItem(...args),
           openItem: (...args) => ctrl.openItem(...args),
@@ -1881,6 +1889,7 @@ export function useEditorController({
         cancelPendingScreenplaySave,
         cancelPendingWbSave,
         saveAll,
+        projectHistory,
       }),
     };
 

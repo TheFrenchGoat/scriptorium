@@ -15,6 +15,15 @@ import {
 import { transformScenesHtml } from '../../../lib/mention-index';
 import type { MentionIndex } from '../../../lib/mention-index';
 import { invalidateProjectWordCache } from '../../../lib/project-word-cache';
+import {
+  captureChapter,
+  chapterOrder,
+  type ChapterStore,
+  type ProjectHistory,
+  type ProjectHistoryDirection,
+  type ProjectHistoryResult,
+  type ProjectHistoryTarget,
+} from '../../../lib/project-history';
 import { createScreenplayScene, getSceneDisplayTitle } from '../../../lib/screenplay';
 import { withPreservedSelection } from '../../../lib/selection';
 import type { WbHistoryEntry } from '../../../lib/wb-history';
@@ -56,6 +65,8 @@ export interface ItemActionsContext {
     extras?: { undoExtra?: () => void; redoExtra?: () => void },
   ) => void;
   resyncChapters: (changedChapters: string[], openChapter: string | null) => void;
+  /** Historique des actions de projet (chapitres). */
+  projectHistory: ProjectHistory;
   ctrl: Pick<EditorController, 'deleteItem' | 'openItem' | 'renameScene' | 'reorderSidebar'>;
 }
 
@@ -71,6 +82,8 @@ export type ItemActions = Pick<
   | 'deleteItem'
   | 'renameItem'
   | 'reorderSidebar'
+  | 'undoProjectAction'
+  | 'redoProjectAction'
 >;
 
 export function createItemActions(ctx: ItemActionsContext): ItemActions {
@@ -98,8 +111,172 @@ export function createItemActions(ctx: ItemActionsContext): ItemActions {
     renameWbMentionsEverywhere,
     recordWbChange,
     resyncChapters,
+    projectHistory,
     ctrl,
   } = ctx;
+
+  // ----- Historique des actions de projet (chapitres) -----
+
+  /** Les chapitres du projet, vus par l'historique des actions. */
+  function chapterStore(): ChapterStore {
+    return s.projectData as unknown as ChapterStore;
+  }
+
+  function sameOrder(a: readonly string[], b: readonly string[]): boolean {
+    return a.length === b.length && a.every((name, i) => name === b[i]);
+  }
+
+  /** Oublie l'instantané d'historique de frappe en attente pour ce chapitre. */
+  function dropPendingHistory(name: string): void {
+    if (pendingHistoryRef.current?.name !== name) {
+      return;
+    }
+
+    if (historyTimerRef.current) {
+      clearTimeout(historyTimerRef.current);
+      historyTimerRef.current = null;
+    }
+
+    pendingHistoryRef.current = null;
+  }
+
+  /** Ferme l'onglet d'un chapitre retiré ; s'il était affiché, le précédent prend sa place. */
+  function closeChapterTab(name: string): void {
+    const wasActive = s.activeTab === name && s.activeType === 'chapter';
+
+    if (wasActive) {
+      s.activeTab = null;
+    }
+
+    const index = s.openTabs.findIndex(
+      (tab) => tab.name === name && tab.type === 'chapter'
+    );
+
+    if (index === -1) {
+      return;
+    }
+
+    const nextTabs = s.openTabs.slice();
+    nextTabs.splice(index, 1);
+
+    s.openTabs = nextTabs;
+
+    if (wasActive && nextTabs.length > 0) {
+      const next = nextTabs[Math.max(0, index - 1)];
+
+      s.activeTab = next.name;
+      s.activeType = next.type;
+    }
+  }
+
+  /**
+   * Annule ou rétablit la dernière action de projet. Si l'action demande
+   * une confirmation ou ne peut pas être défaite, rien n'est modifié :
+   * le résultat est simplement renvoyé.
+   */
+  function runProjectHistory(
+    direction: ProjectHistoryDirection,
+    confirmed: boolean
+  ): ProjectHistoryResult {
+    const novel = !isScreenplayData(s.projectData);
+
+    if (novel && projectHistory.peek(direction)) {
+      // Le texte affiché passe d'abord dans les données.
+      flushPendingHistoryCommit();
+
+      const open = activeChapterEditor();
+
+      if (open && s.projectData.chapters[open.name] !== undefined) {
+        s.projectData.chapters[open.name] = open.editor.innerHTML;
+      }
+    }
+
+    const target: ProjectHistoryTarget = {
+      chapters: novel ? chapterStore() : null,
+      scenes: null,
+    };
+
+    const result =
+      direction === 'undo'
+        ? projectHistory.undo(target, confirmed)
+        : projectHistory.redo(target, confirmed);
+
+    const entry = result.entry;
+
+    if (result.status !== 'ok' || !entry) {
+      return result;
+    }
+
+    const undo = direction === 'undo';
+    let reopen: string | null = null;
+
+    switch (entry.kind) {
+      case 'chapter-delete':
+      case 'chapter-create': {
+        const restored = (entry.kind === 'chapter-delete') === undo;
+
+        cancelPendingChapterSave(entry.name);
+        dropPendingHistory(entry.name);
+        // L'historique de frappe de ce chapitre repart de zéro.
+        history.remove(entry.name);
+
+        if (restored) {
+          mentionIndex.rebuildChapterOrder();
+          mentionIndex.rebuildAll();
+          reopen = entry.name;
+        } else {
+          mentionIndex.removeChapter(entry.name);
+          closeChapterTab(entry.name);
+        }
+        break;
+      }
+
+      case 'chapter-rename': {
+        const from = undo ? entry.to : entry.from;
+        const to = undo ? entry.from : entry.to;
+
+        cancelPendingChapterSave(from);
+        dropPendingHistory(from);
+        history.rename(from, to);
+        mentionIndex.renameChapter(from, to);
+
+        s.openTabs = s.openTabs.map((tab) =>
+          tab.name === from && tab.type === 'chapter'
+            ? { ...tab, name: to }
+            : tab
+        );
+
+        if (s.activeTab === from && s.activeType === 'chapter') {
+          s.activeTab = to;
+        }
+        break;
+      }
+
+      case 'chapter-reorder':
+        mentionIndex.rebuildChapterOrder();
+        break;
+
+      default:
+        break;
+    }
+
+    invalidateProjectWordCache(s.projectData);
+    s.projects[projectName] = s.projectData;
+    s.hasUnsavedChangesSinceLastBackup = true;
+
+    setSaveStatus('pending');
+    updateStats();
+    updateUndoRedo();
+    bump();
+
+    void saveAll();
+
+    if (reopen) {
+      ctrl.openItem(reopen, 'chapter');
+    }
+
+    return result;
+  }
 
   return {
     createChapter(name) {
@@ -114,6 +291,8 @@ export function createItemActions(ctx: ItemActionsContext): ItemActions {
       }
 
       s.projectData.chapters[trimmed] = '';
+
+      projectHistory.record({ kind: 'chapter-create', name: trimmed, snap: null });
 
       mentionIndex.rebuildChapterOrder();
 
@@ -344,6 +523,14 @@ export function createItemActions(ctx: ItemActionsContext): ItemActions {
       }
 
       if (type === 'chapter') {
+        // Photo du chapitre avant suppression (avec le texte affiché), pour l'annulation.
+        const shown = activeChapterEditor();
+        let snap = captureChapter(chapterStore(), key);
+
+        if (snap && shown && shown.name === key) {
+          snap = { ...snap, html: shown.editor.innerHTML };
+        }
+
         if (s.activeTab === key && s.activeType === 'chapter') {
           s.activeTab = null;
         }
@@ -366,6 +553,10 @@ export function createItemActions(ctx: ItemActionsContext): ItemActions {
         if (s.projectData.chapterNotes) delete s.projectData.chapterNotes[key];
         if (s.projectData.chapterComments) delete s.projectData.chapterComments[key];
         mentionIndex.removeChapter(key);
+
+        if (snap) {
+          projectHistory.record({ kind: 'chapter-delete', name: key, snap });
+        }
       } else {
         const wbBefore = takeWbSnapshot();
 
@@ -500,6 +691,8 @@ export function createItemActions(ctx: ItemActionsContext): ItemActions {
           delete s.projectData.chapterComments[key];
         }
         mentionIndex.renameChapter(key, trimmed);
+
+        projectHistory.record({ kind: 'chapter-rename', from: key, to: trimmed });
 
         s.openTabs = s.openTabs.map((tab) =>
           tab.name === key && tab.type === 'chapter'
@@ -663,6 +856,7 @@ export function createItemActions(ctx: ItemActionsContext): ItemActions {
           scenes: orderedScenes
         };
       } else if (type === 'chapter') {
+        const orderBefore = chapterOrder(chapterStore());
         const next: Record<string, string> = {};
 
         newOrder.forEach((key) => {
@@ -681,6 +875,12 @@ export function createItemActions(ctx: ItemActionsContext): ItemActions {
         s.projectData.chapters = next;
 
         mentionIndex.rebuildChapterOrder();
+
+        const orderAfter = Object.keys(next);
+
+        if (!sameOrder(orderBefore, orderAfter)) {
+          projectHistory.record({ kind: 'chapter-reorder', before: orderBefore, after: orderAfter });
+        }
       } else {
         const next: ProjectData['world'] = {};
 
@@ -711,6 +911,14 @@ export function createItemActions(ctx: ItemActionsContext): ItemActions {
       bump();
 
       void saveAll();
+    },
+
+    undoProjectAction(confirmed = false) {
+      return runProjectHistory('undo', confirmed);
+    },
+
+    redoProjectAction(confirmed = false) {
+      return runProjectHistory('redo', confirmed);
     },
   };
 }

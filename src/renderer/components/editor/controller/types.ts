@@ -10,6 +10,7 @@ import type { ExportBibleCategory } from '../../../lib/export/build-bible';
 import type { ExportPreviewSource } from '../../../lib/export/render-html';
 import type { AutoReplaceSettings } from '../../../lib/auto-replace';
 import type { WbRegistry } from '../../../lib/wb-registry';
+import type { ProjectHistoryResult } from '../../../lib/project-history';
 import type { ReplaceMatchInfo, ReplaceOptions } from '../../../lib/dom';
 import type { CreateScreenplaySceneOptions } from '../../../lib/screenplay';
 import type { StatusStore } from '../editor-status';
@@ -123,6 +124,10 @@ export interface EditorController {
   insertText(text: string): void;
   undo(): void;
   redo(): void;
+  /** Annule la dernière action de projet (chapitres) ; confirmed : création remplie acceptée. */
+  undoProjectAction(confirmed?: boolean): ProjectHistoryResult;
+  /** Rétablit la dernière action de projet annulée. */
+  redoProjectAction(confirmed?: boolean): ProjectHistoryResult;
   setZoom(next: number): void;
   zoomBy(direction: number): void;
 
