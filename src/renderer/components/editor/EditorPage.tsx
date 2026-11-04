@@ -63,6 +63,7 @@ import { WbRelationsView } from './WbRelationsView';
 import { WbTimelineView } from './WbTimelineView';
 import { WbWorkspace } from './WbWorkspace';
 import { WbHoverPreview } from './WbHoverPreview';
+import { ProjectHistoryToast } from './ProjectHistoryToast';
 
 import { GrammarPopup } from './GrammarPopup';
 
@@ -1861,6 +1862,8 @@ export function EditorPage({
           }}
         />
       </Modal>
+
+      <ProjectHistoryToast controller={controller} />
 
       <span
         style={{

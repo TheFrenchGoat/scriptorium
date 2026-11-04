@@ -223,6 +223,8 @@ function zoneOf(target: EventTarget | null): 'wb' | 'text' | null {
   if (target.closest(MODAL_SELECTOR)) return null;
   if (target.closest(WORKSPACE_SELECTOR)) return 'wb';
   if (target.closest(TEXT_ZONE_SELECTOR)) return 'text';
+  // Liste des chapitres : Ctrl+Z / Ctrl+Y y annulent les actions sur les chapitres.
+  if (target.closest('#sectionChapters')) return 'text';
   if (target.closest(WB_ZONE_SELECTOR)) return 'wb';
   // Barre d'outils, onglets, etc. : la zone ne change pas.
   return null;

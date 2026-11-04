@@ -653,6 +653,15 @@ export function describeEntry(entry: ProjectHistoryEntry): ProjectHistoryInfo {
   }
 }
 
+/** Événement envoyé sur window quand l'historique change (message Annuler / Rétablir). */
+export const PROJECT_HISTORY_EVENT = 'scriptorium:project-history';
+
+export interface ProjectHistoryEventDetail {
+  /** record : nouvelle action mémorisée ; clear : historique vidé. */
+  type: 'record' | 'clear';
+  entry: ProjectHistoryEntry | null;
+}
+
 // ----- Historique -----
 
 export class ProjectHistory {
@@ -669,6 +678,7 @@ export class ProjectHistory {
     this.undoStack.push(entry);
     while (this.undoStack.length > this.limit) this.undoStack.shift();
     this.redoStack = [];
+    this.emit({ type: 'record', entry });
   }
 
   canUndo(): boolean {
@@ -691,6 +701,17 @@ export class ProjectHistory {
   clear(): void {
     this.undoStack = [];
     this.redoStack = [];
+    this.emit({ type: 'clear', entry: null });
+  }
+
+  /** Prévient l'interface (message temporaire) ; sans effet hors navigateur. */
+  private emit(detail: ProjectHistoryEventDetail): void {
+    if (typeof window === 'undefined' || typeof CustomEvent === 'undefined') return;
+    try {
+      window.dispatchEvent(new CustomEvent<ProjectHistoryEventDetail>(PROJECT_HISTORY_EVENT, { detail }));
+    } catch {
+      // Le message est facultatif : l'historique reste valable.
+    }
   }
 
   undo<S extends SceneLike>(target: ProjectHistoryTarget<S>, confirmed = false): ProjectHistoryResult {

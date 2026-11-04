@@ -579,6 +579,28 @@ export const fr = {
   wbHistCategoryEdit: 'catégorie modifiée',
   wbHistCategoryDelete: 'catégorie supprimée',
 
+  // Actions sur les chapitres : message Annuler / Rétablir (Ctrl+Z / Ctrl+Y)
+  phUndo: 'Annuler',
+  phRedo: 'Rétablir',
+  phChapterDeleted: 'Chapitre « {name} » supprimé',
+  phChapterCreated: 'Chapitre « {name} » créé',
+  phChapterRenamed: 'Chapitre « {previous} » renommé en « {name} »',
+  phChaptersReordered: 'Chapitres réordonnés',
+  phChapterDeleteUndone: 'Suppression du chapitre « {name} » annulée',
+  phChapterCreateUndone: 'Création du chapitre « {name} » annulée',
+  phChapterRenameUndone: 'Renommage annulé : le chapitre s’appelle de nouveau « {previous} »',
+  phChaptersReorderUndone: 'Réorganisation des chapitres annulée',
+  phConfirmUndoCreate: 'Ce chapitre contient du texte. Annuler sa création le supprimera. Continuer ?',
+  phConfirmRedo: 'Ce chapitre contient du texte. Rétablir cette action le supprimera. Continuer ?',
+  phUndoFailed: 'Impossible d’annuler : {reason} L’historique des chapitres a été vidé.',
+  phRedoFailed: 'Impossible de rétablir : {reason} L’historique des chapitres a été vidé.',
+  phReasonNotEmpty: 'le chapitre contient du texte.',
+  phReasonNameExists: 'un chapitre porte déjà ce nom.',
+  phReasonMissing: 'le chapitre est introuvable.',
+  phReasonChanged: 'les chapitres ont changé entre-temps.',
+  phReasonUnavailable: 'action indisponible dans ce projet.',
+  phReasonError: 'une erreur inattendue est survenue.',
+
   // -------------------------------------------------------------------------
   // BARRE DE STATUT
   // -------------------------------------------------------------------------
@@ -2495,7 +2517,29 @@ export const en: Record<TranslationKey, string> = {
   grammarSuggPossibleError: 'Possible error.',
   screenplayDataMissingTitle: 'Screenplay data unavailable',
   screenplayDataMissingText:
-    'This project is marked as a screenplay, but its screenplay data is missing.'
+    'This project is marked as a screenplay, but its screenplay data is missing.',
+
+  // Chapter actions: Undo / Redo message (Ctrl+Z / Ctrl+Y)
+  phUndo: 'Undo',
+  phRedo: 'Redo',
+  phChapterDeleted: 'Chapter “{name}” deleted',
+  phChapterCreated: 'Chapter “{name}” created',
+  phChapterRenamed: 'Chapter “{previous}” renamed to “{name}”',
+  phChaptersReordered: 'Chapters reordered',
+  phChapterDeleteUndone: 'Deletion of chapter “{name}” undone',
+  phChapterCreateUndone: 'Creation of chapter “{name}” undone',
+  phChapterRenameUndone: 'Rename undone: the chapter is called “{previous}” again',
+  phChaptersReorderUndone: 'Chapter reordering undone',
+  phConfirmUndoCreate: 'This chapter contains text. Undoing its creation will delete it. Continue?',
+  phConfirmRedo: 'This chapter contains text. Redoing this action will delete it. Continue?',
+  phUndoFailed: 'Cannot undo: {reason} The chapter history has been cleared.',
+  phRedoFailed: 'Cannot redo: {reason} The chapter history has been cleared.',
+  phReasonNotEmpty: 'the chapter contains text.',
+  phReasonNameExists: 'a chapter already has this name.',
+  phReasonMissing: 'the chapter can no longer be found.',
+  phReasonChanged: 'the chapters have changed in the meantime.',
+  phReasonUnavailable: 'this action is not available in this project.',
+  phReasonError: 'an unexpected error occurred.',
 };
 
 export const dict = {
