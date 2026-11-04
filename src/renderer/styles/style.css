@@ -1940,6 +1940,8 @@ button.btn-primary.replace-run-btn:disabled {
 .import-preview-text h5 { margin: 14px 0 8px; font-size: 1em; }
 .import-preview-text p { margin: 0 0 8px; white-space: pre-wrap; }
 .import-preview-reset { margin-right: auto; }
+.modal-content .import-preview-option select { width: auto; margin: 0; padding: 4px 8px; }
+.import-preview-text p.import-preview-blank { height: 1em; margin: 0 0 8px; background: linear-gradient(var(--border), var(--border)) left center / 48px 1px no-repeat; cursor: help; }
 
 /* Aperçu avant import d'un scénario Fountain */
 .screenplay-import-scene { align-items: flex-start; }

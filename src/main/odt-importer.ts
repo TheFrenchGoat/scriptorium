@@ -544,6 +544,45 @@ function measureFormatting(
   };
 }
 
+const ODT_SPACE = '[' + String.fromCharCode(32, 9, 10, 13) + ']';
+
+/** Expression trouvant un élément et son contenu (sans imbrication du même élément). */
+function odtElementPattern(tagName: string): RegExp {
+  return new RegExp(
+    '<' + tagName + '(?:' + ODT_SPACE + '(?:[^>]*[^/>])?)?>[^]*?</' + tagName + '>',
+    'gi'
+  );
+}
+
+/**
+ * Contenus qui ne font pas partie du texte : modifications suivies (le texte
+ * supprimé y est conservé), commentaires et notes. Ils contiennent leurs propres
+ * paragraphes, qui seraient sinon importés ou couperaient le paragraphe qui les
+ * entoure.
+ */
+const ODT_IGNORED_PATTERNS: RegExp[] = [
+  odtElementPattern('text:tracked-changes'),
+  odtElementPattern('office:annotation'),
+  new RegExp('<office:annotation-end(?:' + ODT_SPACE + '[^>]*)?>', 'gi'),
+  odtElementPattern('text:note')
+];
+
+function removeIgnoredOdtContent(xml: string): string {
+  return ODT_IGNORED_PATTERNS.reduce((result, pattern) => result.replace(pattern, ''), xml);
+}
+
+/**
+ * Paragraphe sans texte qui ne contenait qu'une image ou un objet : dans
+ * LibreOffice, il ne se voit pas comme une ligne vide.
+ */
+function isPhantomOdtParagraph(rendered: { text: string; html: string }, innerXml: string): boolean {
+  return (
+    !normalizeVisibleText(rendered.text) &&
+    !/<img/i.test(rendered.html) &&
+    /<draw:/i.test(innerXml)
+  );
+}
+
 /**
  * Analyse les paragraphes et titres contenus dans content.xml.
  */
@@ -663,6 +702,11 @@ function parseBlocks(
       baseInlineStyle
     );
 
+    /* Paragraphe qui ne contenait qu'une image ou un objet : pas de ligne vide. */
+    if (isPhantomOdtParagraph(rendered, innerXml)) {
+      continue;
+    }
+
     pushRenderedBlock(
       blocks,
       rendered,
@@ -732,7 +776,7 @@ export function importOdtProject(
   );
 
   const blocks = parseBlocks(
-    contentXml,
+    removeIgnoredOdtContent(contentXml),
     styles
   );
 

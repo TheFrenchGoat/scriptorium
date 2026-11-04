@@ -520,12 +520,82 @@ function renderPieces(pieces: DocxPiece[], base: InlineStyle): RenderedInline {
   return { text, html };
 }
 
+/* ---------------------------------------------------------------------------
+ * Lignes fantômes : paragraphes qui ne se voient pas comme une ligne vide
+ * dans Word, mais en créeraient une à l'import.
+ * ------------------------------------------------------------------------- */
+
+const DOCX_SPACE = '[' + String.fromCharCode(32, 9, 10, 13) + ']';
+
+/** Placée devant les images et objets, que cleanDocumentXml retire ensuite. */
+const REMOVED_CONTENT_MARK = '<w:scriptoriumRemoved/>';
+
+/** Placée dans les propriétés d'un paragraphe qui rejoint le suivant. */
+const MERGE_NEXT_MARK = '<w:scriptoriumMergeNext/>';
+
+const REMOVED_CONTENT_PATTERN = new RegExp('<w:(?:drawing|pict|object)(?=' + DOCX_SPACE + '|/|>)', 'gi');
+const PARAGRAPH_PROPS_PATTERN = new RegExp('<w:pPr(?:' + DOCX_SPACE + '(?:[^>]*[^/>])?)?>([^]*?)</w:pPr>', 'gi');
+const MARK_PROPS_PATTERN = new RegExp('<w:rPr(?:' + DOCX_SPACE + '(?:[^>]*[^/>])?)?>([^]*?)</w:rPr>', 'i');
+const REMOVED_MARK_PATTERN = new RegExp('<w:(?:del|moveFrom)(?:' + DOCX_SPACE + '|/|>)', 'i');
+const PAGE_BREAK_PATTERN = new RegExp('<w:br' + DOCX_SPACE + '[^>]*w:type=.(?:page|column)', 'i');
+const HIDDEN_RUN_PATTERN = new RegExp('<w:vanish(?:' + DOCX_SPACE + '|/|>)', 'i');
+const SECTION_PATTERN = new RegExp('<w:sectPr(?:' + DOCX_SPACE + '|/|>)', 'i');
+
+/**
+ * Prépare le document avant le nettoyage :
+ * - marque l'emplacement des images et objets, qui seront retirés ;
+ * - repère les paragraphes dont la marque de fin est supprimée (révision) ou
+ *   masquée : Word les affiche fusionnés avec le paragraphe suivant.
+ */
+function markDocxRemovals(xml: string): string {
+  return xml
+    .replace(REMOVED_CONTENT_PATTERN, (tag: string) => REMOVED_CONTENT_MARK + tag)
+    .replace(PARAGRAPH_PROPS_PATTERN, (props: string, inner: string) => {
+      const markProps = MARK_PROPS_PATTERN.exec(inner)?.[1] ?? '';
+      const vanish = findElement(markProps, 'w:vanish');
+      const removed = REMOVED_MARK_PATTERN.test(markProps) || (vanish !== undefined && isOn(vanish));
+
+      if (!removed) {
+        return props;
+      }
+
+      const openEnd = props.indexOf('>') + 1;
+      return props.slice(0, openEnd) + MERGE_NEXT_MARK + props.slice(openEnd);
+    });
+}
+
+/** Le paragraphe contient-il du texte visible ? */
+function hasVisibleText(pieces: DocxPiece[]): boolean {
+  return pieces.some((piece) => piece.kind === 'text' && normalizeVisibleText(piece.text ?? '') !== '');
+}
+
+/**
+ * Paragraphe sans texte dont le contenu n'est pas importé (image, objet, saut
+ * de page ou de colonne, texte masqué), ou qui ne porte qu'une fin de section :
+ * dans Word, il ne se voit pas comme une ligne vide entre deux paragraphes.
+ */
+function isPhantomParagraph(pieces: DocxPiece[], content: string, paragraphProps: string): boolean {
+  if (hasVisibleText(pieces)) {
+    return false;
+  }
+
+  return (
+    content.includes(REMOVED_CONTENT_MARK) ||
+    PAGE_BREAK_PATTERN.test(content) ||
+    HIDDEN_RUN_PATTERN.test(content) ||
+    SECTION_PATTERN.test(paragraphProps)
+  );
+}
+
 /** Analyse les paragraphes de word/document.xml (tableaux compris). */
 function parseDocxBlocks(documentXml: string, data: DocxStyles): ImportBlock[] {
   const blocks: ImportBlock[] = [];
-  const xml = cleanDocumentXml(documentXml);
+  const xml = cleanDocumentXml(markDocxRemovals(documentXml));
   const paragraphPattern = /<w:p(?:\s[^>]*)?\/>|<w:p(?:\s(?:[^>]*[^\/>])?)?>([\s\S]*?)<\/w:p>/gi;
   let match: RegExpExecArray | null;
+
+  /* Contenu d'un paragraphe dont la marque de fin a disparu : il rejoint le suivant. */
+  let carry: DocxPiece[] = [];
 
   while ((match = paragraphPattern.exec(xml)) !== null) {
     const inner = match[1] ?? '';
@@ -542,7 +612,19 @@ function parseDocxBlocks(documentXml: string, data: DocxStyles): ImportBlock[] {
     const blockStyle = textAlign ? `text-align: ${textAlign}` : '';
     const base = style?.run ?? {};
     const centered = textAlign === 'center';
-    const pieces = parseRuns(content, data, base);
+    const pieces = carry.concat(parseRuns(content, data, base));
+    carry = [];
+
+    /* Marque de fin supprimée (révision) ou masquée : Word affiche ce paragraphe fusionné avec le suivant. */
+    if (paragraphProps.includes(MERGE_NEXT_MARK)) {
+      carry = pieces;
+      continue;
+    }
+
+    /* Image, saut de page, fin de section ou texte masqué seul : pas de ligne vide. */
+    if (isPhantomParagraph(pieces, content, paragraphProps)) {
+      continue;
+    }
 
     const formatOf = (part: DocxPiece[]): BlockFormat => ({
       centered,
@@ -573,6 +655,11 @@ function parseDocxBlocks(documentXml: string, data: DocxStyles): ImportBlock[] {
     }
 
     pushRenderedBlock(blocks, renderPieces(pieces, base), headingLevel, blockStyle, formatOf(pieces));
+  }
+
+  /* Dernière marque de paragraphe supprimée : son texte forme un paragraphe. */
+  if (hasVisibleText(carry)) {
+    pushRenderedBlock(blocks, renderPieces(carry, {}), null, '', { centered: false, ...measurePieces(carry) });
   }
 
   return blocks;

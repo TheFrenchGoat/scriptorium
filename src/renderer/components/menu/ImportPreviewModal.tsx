@@ -5,6 +5,8 @@
 // trace. L'auteur peut renommer le projet, écarter, renommer ou fusionner
 // des chapitres. Pour un texte brut, l'option "Recoller les lignes coupées"
 // relance l'analyse du fichier.
+// Le réglage "Lignes vides entre les paragraphes" s'applique sans relire le
+// fichier (voir src/shared/import-blank-lines.ts).
 //
 // Le texte est affiché en lecture seule, sans insérer de HTML dans la page :
 // DOMParser produit un document inerte (aucun script, aucune image chargée).
@@ -15,6 +17,11 @@ import { Modal } from '../common/Modal';
 import { describeError } from '../../lib/errors';
 import { countWordsInHtml } from '../../lib/stats';
 import type { ImportedProject, ProjectData } from '../../../shared/types';
+import {
+  analyzeBlankLines,
+  applyBlankLines,
+  type BlankLineMode
+} from '../../../shared/import-blank-lines';
 
 export interface ImportPreviewModalProps {
   /** Fichier choisi (nouvelle analyse d'un texte brut). */
@@ -40,6 +47,8 @@ interface PreviewChapter {
 }
 
 interface PreviewBlock {
+  /** Ligne vide (affichée par une marque discrète). */
+  blank?: boolean;
   text: string;
   heading: boolean;
 }
@@ -178,6 +187,8 @@ function collectBlocks(parent: Node, out: PreviewBlock[]): void {
 
           if (text) {
             out.push({ text, heading: /^H[1-6]$/.test(tag) });
+          } else if (!element.querySelector('img')) {
+            out.push({ text: '', heading: false, blank: true });
           }
         }
 
@@ -217,6 +228,7 @@ export function ImportPreviewModal({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [reloading, setReloading] = useState(false);
   const [reloadError, setReloadError] = useState<string | null>(null);
+  const [blankMode, setBlankMode] = useState<BlankLineMode>('auto');
   const aliveRef = useRef(true);
 
   useEffect(() => {
@@ -239,9 +251,18 @@ export function ImportPreviewModal({
   const baseName = projectName.trim() || t('defaultProjectName');
   const finalName = uniqueName(baseName, taken);
 
+  /* Lignes vides : réglage appliqué à l'aperçu et à l'import, sans relire le fichier. */
+  const blankApplies =
+    source.format === 'odt' || source.format === 'docx' || source.format === 'txt' || source.format === 'md';
+  const blankAnalysis = useMemo(
+    () => analyzeBlankLines(Object.values(source.projectData.chapters ?? {})),
+    [source]
+  );
+  const effectiveBlankMode: BlankLineMode = blankApplies ? blankMode : 'keep';
+
   const selected = chapters.find((chapter) => chapter.id === selectedId) ?? chapters[0] ?? null;
   const selectedIndex = selected ? chapters.indexOf(selected) : -1;
-  const selectedHtml = selected ? selected.html : '';
+  const selectedHtml = selected ? applyBlankLines(selected.html, effectiveBlankMode, blankAnalysis) : '';
   const previewBlocks = useMemo(() => htmlToBlocks(selectedHtml), [selectedHtml]);
 
   const includedCount = chapters.filter((chapter) => chapter.included).length;
@@ -282,7 +303,7 @@ export function ImportPreviewModal({
     /* Le titre du chapitre fusionné devient un paragraphe du texte,
        sauf s'il y figure déjà. */
     const title = current.name.trim() || current.sourceName.trim();
-    const first = htmlToBlocks(current.html)[0];
+    const first = htmlToBlocks(current.html).find((block) => !block.blank);
     const titleHtml =
       title && !(first && first.text === title) ? '<p>' + escapeHtml(title) + '</p>' : '';
     const html = before.html + titleHtml + current.html;
@@ -298,6 +319,7 @@ export function ImportPreviewModal({
     setChapters(buildChapters(source));
     setSelectedId(null);
     setReloadError(null);
+    setBlankMode('auto');
   };
 
   const changeRejoin = async (value: boolean): Promise<void> => {
@@ -345,7 +367,7 @@ export function ImportPreviewModal({
 
       const name = uniqueName(chapterLabel(chapter, index), used);
       used.add(name);
-      result[name] = chapter.html;
+      result[name] = applyBlankLines(chapter.html, effectiveBlankMode, blankAnalysis);
     });
 
     onConfirm(projectName, { ...source.projectData, chapters: result });
@@ -433,6 +455,35 @@ export function ImportPreviewModal({
           </div>
         )}
 
+        {blankApplies && blankAnalysis.blankLines > 0 && (
+          <div className="import-preview-option">
+            <label>
+              <span>{t('importPreviewBlankLines')}</span>
+              <select
+                value={blankMode}
+                disabled={reloading}
+                onChange={(event) => {
+                  setBlankMode(event.target.value as BlankLineMode);
+                }}
+              >
+                <option value="auto">{t('importPreviewBlankAuto')}</option>
+                <option value="remove">{t('importPreviewBlankRemove')}</option>
+                <option value="keep">{t('importPreviewBlankKeep')}</option>
+              </select>
+            </label>
+            <div className="import-preview-hint">
+              {t('importPreviewBlankFound', { count: formatNumber(blankAnalysis.blankLines) })}{' '}
+              {t(
+                blankMode === 'auto'
+                  ? 'importPreviewBlankHintAuto'
+                  : blankMode === 'remove'
+                    ? 'importPreviewBlankHintRemove'
+                    : 'importPreviewBlankHintKeep'
+              )}
+            </div>
+          </div>
+        )}
+
         {reloading && <div className="import-preview-muted">{t('importPreviewReloading')}</div>}
 
         {reloadError !== null && <div className="import-preview-warning">{reloadError}</div>}
@@ -501,6 +552,12 @@ export function ImportPreviewModal({
                 {previewBlocks.slice(0, PREVIEW_MAX_BLOCKS).map((block, blockIndex) =>
                   block.heading ? (
                     <h5 key={blockIndex}>{block.text}</h5>
+                  ) : block.blank === true ? (
+                    <p
+                      key={blockIndex}
+                      className="import-preview-blank"
+                      title={t('importPreviewBlankMark')}
+                    />
                   ) : (
                     <p key={blockIndex}>{block.text}</p>
                   )

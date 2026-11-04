@@ -244,8 +244,8 @@ export function fontSizeToPt(value: string | undefined): number | null {
 
 /**
  * Ajoute un paragraphe analysé à la liste.
- * Les paragraphes entièrement vides sont conservés afin de garder les
- * espacements du document.
+ * Un paragraphe sans texte visible (ni image) devient une ligne vide
+ * normalisée : l'aperçu d'import décide ensuite de la garder ou non.
  */
 export function pushRenderedBlock(
   blocks: ImportBlock[],
@@ -262,7 +262,12 @@ export function pushRenderedBlock(
     centered: format.centered,
     bold: format.bold,
     fontSizePt: format.fontSizePt,
-    html: `<div${styleAttribute}>${rendered.html || '<br>'}</div>`
+    html:
+      '<div' +
+      styleAttribute +
+      '>' +
+      (normalizeVisibleText(rendered.text) || /<img/i.test(rendered.html) ? rendered.html || '<br>' : '<br>') +
+      '</div>'
   });
 }
 
