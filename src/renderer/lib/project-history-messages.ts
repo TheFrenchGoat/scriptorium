@@ -8,6 +8,7 @@
 import type { TranslationKey } from '../i18n/dict';
 import {
   describeEntry,
+  type ProjectHistoryInfo,
   type ProjectHistoryDirection,
   type ProjectHistoryEntry,
   type ProjectHistoryReason,
@@ -54,10 +55,33 @@ function toastSpec(
   return { key, vars, reasonKey, action };
 }
 
+/** Message pour une action sur une scène (faite, rétablie ou annulée). */
+function sceneMessage(info: ProjectHistoryInfo, undone: boolean): ProjectToastSpec | null {
+  const action: ProjectHistoryDirection = undone ? 'redo' : 'undo';
+
+  switch (info.action) {
+    case 'delete':
+      return toastSpec(undone ? 'phSceneDeleteUndone' : 'phSceneDeleted', { name: info.label }, action);
+    case 'create':
+      return toastSpec(undone ? 'phSceneCreateUndone' : 'phSceneCreated', { name: info.label }, action);
+    case 'rename': {
+      const previous = info.previous ?? '';
+      if (!info.label || !previous) {
+        return toastSpec(undone ? 'phSceneTitleUndone' : 'phSceneTitleChanged', {}, action);
+      }
+      return toastSpec(undone ? 'phSceneRenameUndone' : 'phSceneRenamed', { name: info.label, previous }, action);
+    }
+    case 'reorder':
+      return toastSpec(undone ? 'phScenesReorderUndone' : 'phScenesReordered', {}, action);
+    default:
+      return null;
+  }
+}
+
 /** Message après une action (ou son rétablissement) : propose de l'annuler. */
 export function doneMessage(entry: ProjectHistoryEntry): ProjectToastSpec | null {
   const info = describeEntry(entry);
-  if (info.target !== 'chapter') return null;
+  if (info.target === 'scene') return sceneMessage(info, false);
 
   switch (info.action) {
     case 'delete':
@@ -76,7 +100,7 @@ export function doneMessage(entry: ProjectHistoryEntry): ProjectToastSpec | null
 /** Message après une annulation : propose de rétablir. */
 export function undoneMessage(entry: ProjectHistoryEntry): ProjectToastSpec | null {
   const info = describeEntry(entry);
-  if (info.target !== 'chapter') return null;
+  if (info.target === 'scene') return sceneMessage(info, true);
 
   switch (info.action) {
     case 'delete':
@@ -93,7 +117,25 @@ export function undoneMessage(entry: ProjectHistoryEntry): ProjectToastSpec | nu
 }
 
 /** Clé de traduction de la raison d'un échec. */
-export function failureReasonKey(reason: ProjectHistoryReason | null): TranslationKey {
+export function failureReasonKey(
+  reason: ProjectHistoryReason | null,
+  target: ProjectHistoryInfo['target'] = 'chapter'
+): TranslationKey {
+  if (target === 'scene') {
+    switch (reason) {
+      case 'not-empty':
+        return 'phSceneReasonNotEmpty';
+      case 'name-exists':
+        return 'phSceneReasonNameExists';
+      case 'missing':
+        return 'phSceneReasonMissing';
+      case 'changed':
+        return 'phSceneReasonChanged';
+      default:
+        break;
+    }
+  }
+
   switch (reason) {
     case 'not-empty':
       return 'phReasonNotEmpty';
@@ -113,10 +155,14 @@ export function failureReasonKey(reason: ProjectHistoryReason | null): Translati
 /** Message d'échec (l'historique a été vidé). */
 export function failureMessage(
   direction: ProjectHistoryDirection,
-  reason: ProjectHistoryReason | null
+  reason: ProjectHistoryReason | null,
+  target: ProjectHistoryInfo['target'] = 'chapter'
 ): ProjectToastSpec {
-  const key: TranslationKey = direction === 'undo' ? 'phUndoFailed' : 'phRedoFailed';
-  return toastSpec(key, {}, null, failureReasonKey(reason));
+  let key: TranslationKey = direction === 'undo' ? 'phUndoFailed' : 'phRedoFailed';
+  if (target === 'scene') {
+    key = direction === 'undo' ? 'phSceneUndoFailed' : 'phSceneRedoFailed';
+  }
+  return toastSpec(key, {}, null, failureReasonKey(reason, target));
 }
 
 /** Message après Annuler / Rétablir ; null : rien à afficher. */
@@ -128,14 +174,24 @@ export function resultMessage(result: ProjectHistoryResult): ProjectToastSpec | 
     case 'empty':
       return toastSpec(result.direction === 'undo' ? 'wbHistNothingUndo' : 'wbHistNothingRedo', {}, null);
     case 'failed':
-      return failureMessage(result.direction, result.reason);
+      return failureMessage(
+        result.direction,
+        result.reason,
+        result.entry ? describeEntry(result.entry).target : 'chapter'
+      );
     default:
       return null;
   }
 }
 
 /** Question posée quand un chapitre rempli serait supprimé. */
-export function confirmMessageKey(direction: ProjectHistoryDirection): TranslationKey {
+export function confirmMessageKey(
+  direction: ProjectHistoryDirection,
+  entry: ProjectHistoryEntry | null = null
+): TranslationKey {
+  if (entry && describeEntry(entry).target === 'scene') {
+    return direction === 'undo' ? 'phSceneConfirmUndoCreate' : 'phSceneConfirmRedo';
+  }
   return direction === 'undo' ? 'phConfirmUndoCreate' : 'phConfirmRedo';
 }
 

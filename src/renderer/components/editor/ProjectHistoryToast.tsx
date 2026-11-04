@@ -101,7 +101,7 @@ export function ProjectHistoryToast({ controller }: ProjectHistoryToastProps) {
         let result = perform(false);
 
         if (result.status === 'needs-confirm') {
-          const accepted = await showConfirm(t(confirmMessageKey(direction)));
+          const accepted = await showConfirm(t(confirmMessageKey(direction, result.entry)));
           // Refus : rien ne change.
           if (!accepted) return;
           result = perform(true);

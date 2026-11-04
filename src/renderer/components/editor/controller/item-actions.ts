@@ -3,7 +3,7 @@
 // Code déplacé tel quel depuis useEditorController.ts (étape 4c-8 du découpage).
 // Les valeurs du hook arrivent par le contexte ; les appels ctrl.xxx passent par des relais.
 
-import type { ProjectData } from '../../../../shared/types';
+import type { ProjectData, ScreenplayScene } from '../../../../shared/types';
 import { t } from '../../../i18n';
 import type { EditHistory } from '../../../lib/edit-history';
 import {
@@ -18,11 +18,15 @@ import { invalidateProjectWordCache } from '../../../lib/project-word-cache';
 import {
   captureChapter,
   chapterOrder,
+  isHtmlBlank,
+  removeSceneItem,
+  sceneOrder,
   type ChapterStore,
   type ProjectHistory,
   type ProjectHistoryDirection,
   type ProjectHistoryResult,
   type ProjectHistoryTarget,
+  type SceneAccess,
 } from '../../../lib/project-history';
 import { createScreenplayScene, getSceneDisplayTitle } from '../../../lib/screenplay';
 import { withPreservedSelection } from '../../../lib/selection';
@@ -65,7 +69,7 @@ export interface ItemActionsContext {
     extras?: { undoExtra?: () => void; redoExtra?: () => void },
   ) => void;
   resyncChapters: (changedChapters: string[], openChapter: string | null) => void;
-  /** Historique des actions de projet (chapitres). */
+  /** Historique des actions de projet (chapitres et scènes). */
   projectHistory: ProjectHistory;
   ctrl: Pick<EditorController, 'deleteItem' | 'openItem' | 'renameScene' | 'reorderSidebar'>;
 }
@@ -85,6 +89,9 @@ export type ItemActions = Pick<
   | 'undoProjectAction'
   | 'redoProjectAction'
 >;
+
+/** Scènes créées par l'application et jamais modifiées depuis (même objet). */
+const untouchedScenes = new WeakSet<ScreenplayScene>();
 
 export function createItemActions(ctx: ItemActionsContext): ItemActions {
   const {
@@ -124,6 +131,109 @@ export function createItemActions(ctx: ItemActionsContext): ItemActions {
 
   function sameOrder(a: readonly string[], b: readonly string[]): boolean {
     return a.length === b.length && a.every((name, i) => name === b[i]);
+  }
+
+  // ----- Historique des actions de projet (scènes) -----
+
+  /** Les scènes du scénario (liste vide pour un roman). */
+  function screenplayScenes(): ScreenplayScene[] {
+    return isScreenplayData(s.projectData) ? s.projectData.screenplay.scenes : [];
+  }
+
+  function conventionLanguage(): 'fr' | 'en' {
+    return isScreenplayData(s.projectData)
+      ? s.projectData.screenplay.settings.conventionLanguage
+      : 'fr';
+  }
+
+  /** Scène vide qui remplace la dernière scène supprimée. */
+  function createReplacementScene(): ScreenplayScene {
+    const scene = createScreenplayScene({
+      interiorExterior: 'INT.',
+      time: conventionLanguage() === 'en' ? 'DAY' : 'JOUR'
+    });
+
+    untouchedScenes.add(scene);
+
+    return scene;
+  }
+
+  /** Vrai si la scène n'a ni titre de travail, ni lieu, ni texte. */
+  function isSceneBlank(scene: ScreenplayScene): boolean {
+    if ((scene.workingTitle || '').trim()) {
+      return false;
+    }
+
+    const heading = scene.heading;
+
+    if (heading && heading.mode === 'free') {
+      if (!isHtmlBlank(heading.html)) {
+        return false;
+      }
+    } else if (
+      heading &&
+      ((heading.location || '').trim() || (heading.customInteriorExterior || '').trim())
+    ) {
+      return false;
+    }
+
+    return (scene.elements || []).every((element) => isHtmlBlank(element.html));
+  }
+
+  /** Les scènes, vues par l'historique des actions. */
+  function sceneAccess(): SceneAccess<ScreenplayScene> {
+    return {
+      get: () => screenplayScenes(),
+      set: (scenes) => {
+        if (!isScreenplayData(s.projectData)) {
+          return;
+        }
+
+        s.projectData.screenplay = {
+          ...s.projectData.screenplay,
+          scenes
+        };
+      },
+      isPristine: (scene) => untouchedScenes.has(scene) || isSceneBlank(scene),
+      makeReplacement: () => createReplacementScene(),
+    };
+  }
+
+  /** Nom de la scène tel qu'il est affiché dans la barre latérale. */
+  function sceneLabel(id: string): string {
+    const scenes = screenplayScenes();
+    const index = scenes.findIndex((scene) => scene.id === id);
+    const scene = index >= 0 ? scenes[index] : undefined;
+
+    return scene ? getSceneDisplayTitle(scene, index, conventionLanguage()) : '';
+  }
+
+  /** Ferme les onglets des scènes disparues et garde une scène affichée. */
+  function syncSceneTabs(activeIndexBefore: number): void {
+    const scenes = screenplayScenes();
+    const ids = new Set(scenes.map((scene) => scene.id));
+
+    s.openTabs = s.openTabs.filter(
+      (tab) => tab.type !== 'scene' || ids.has(tab.name)
+    );
+
+    if (s.activeType !== 'scene' || (s.activeTab !== null && ids.has(s.activeTab))) {
+      return;
+    }
+
+    if (scenes.length === 0) {
+      s.activeTab = null;
+      return;
+    }
+
+    const next = scenes[Math.max(0, Math.min(activeIndexBefore, scenes.length - 1))];
+
+    s.activeTab = next.id;
+    s.activeType = 'scene';
+
+    if (!s.openTabs.some((tab) => tab.type === 'scene' && tab.name === next.id)) {
+      s.openTabs = [...s.openTabs, { name: next.id, type: 'scene' }];
+    }
   }
 
   /** Oublie l'instantané d'historique de frappe en attente pour ce chapitre. */
@@ -191,9 +301,14 @@ export function createItemActions(ctx: ItemActionsContext): ItemActions {
       }
     }
 
-    const target: ProjectHistoryTarget = {
+    const activeSceneIndex =
+      s.activeType === 'scene'
+        ? screenplayScenes().findIndex((scene) => scene.id === s.activeTab)
+        : -1;
+
+    const target: ProjectHistoryTarget<ScreenplayScene> = {
       chapters: novel ? chapterStore() : null,
-      scenes: null,
+      scenes: novel ? null : sceneAccess(),
     };
 
     const result =
@@ -208,7 +323,7 @@ export function createItemActions(ctx: ItemActionsContext): ItemActions {
     }
 
     const undo = direction === 'undo';
-    let reopen: string | null = null;
+    let reopen: { name: string; type: 'chapter' | 'scene' } | null = null;
 
     switch (entry.kind) {
       case 'chapter-delete':
@@ -223,7 +338,7 @@ export function createItemActions(ctx: ItemActionsContext): ItemActions {
         if (restored) {
           mentionIndex.rebuildChapterOrder();
           mentionIndex.rebuildAll();
-          reopen = entry.name;
+          reopen = { name: entry.name, type: 'chapter' };
         } else {
           mentionIndex.removeChapter(entry.name);
           closeChapterTab(entry.name);
@@ -256,11 +371,30 @@ export function createItemActions(ctx: ItemActionsContext): ItemActions {
         mentionIndex.rebuildChapterOrder();
         break;
 
+      case 'scene-delete':
+      case 'scene-create': {
+        const restored = (entry.kind === 'scene-delete') === undo;
+
+        syncSceneTabs(activeSceneIndex);
+
+        if (restored) {
+          reopen = { name: entry.id, type: 'scene' };
+        }
+        break;
+      }
+
+      case 'scene-rename':
+      case 'scene-reorder':
+        break;
+
       default:
         break;
     }
 
-    invalidateProjectWordCache(s.projectData);
+    if (novel) {
+      invalidateProjectWordCache(s.projectData);
+    }
+
     s.projects[projectName] = s.projectData;
     s.hasUnsavedChangesSinceLastBackup = true;
 
@@ -272,7 +406,7 @@ export function createItemActions(ctx: ItemActionsContext): ItemActions {
     void saveAll();
 
     if (reopen) {
-      ctrl.openItem(reopen, 'chapter');
+      ctrl.openItem(reopen.name, reopen.type);
     }
 
     return result;
@@ -317,6 +451,16 @@ export function createItemActions(ctx: ItemActionsContext): ItemActions {
         scenes: [...s.projectData.screenplay.scenes, scene]
       };
 
+      untouchedScenes.add(scene);
+
+      projectHistory.record({
+        kind: 'scene-create',
+        id: scene.id,
+        label: sceneLabel(scene.id),
+        snap: null,
+        replacementId: null,
+      });
+
       s.projects[projectName] = s.projectData;
       s.hasUnsavedChangesSinceLastBackup = true;
 
@@ -353,22 +497,29 @@ export function createItemActions(ctx: ItemActionsContext): ItemActions {
         return false;
       }
 
-      const sceneExists = s.projectData.screenplay.scenes.some(
+      const existing = s.projectData.screenplay.scenes.find(
         (scene) => scene.id === sceneId
       );
 
-      if (!sceneExists) {
+      if (!existing) {
         return false;
       }
+
+      const previousTitle = existing.workingTitle || '';
+      const nextTitle = workingTitle.trim();
 
       s.projectData.screenplay = {
         ...s.projectData.screenplay,
         scenes: s.projectData.screenplay.scenes.map((scene) =>
           scene.id === sceneId
-            ? { ...scene, workingTitle: workingTitle.trim() }
+            ? { ...scene, workingTitle: nextTitle }
             : scene
         )
       };
+
+      if (previousTitle !== nextTitle) {
+        projectHistory.record({ kind: 'scene-rename', id: sceneId, from: previousTitle, to: nextTitle });
+      }
 
       s.projects[projectName] = s.projectData;
 
@@ -474,24 +625,35 @@ export function createItemActions(ctx: ItemActionsContext): ItemActions {
           return;
         }
 
-        let nextScenes = currentScenes.filter((scene) => scene.id !== key);
+        const label = sceneLabel(key);
+        const removed = removeSceneItem(currentScenes, key);
+
+        if (!removed) {
+          return;
+        }
+
+        let nextScenes = removed.scenes;
+        let replacementId: string | null = null;
 
         if (nextScenes.length === 0) {
-          const replacementScene = createScreenplayScene({
-            interiorExterior: 'INT.',
-            time:
-              s.projectData.screenplay.settings.conventionLanguage === 'en'
-                ? 'DAY'
-                : 'JOUR'
-          });
+          const replacementScene = createReplacementScene();
 
           nextScenes = [replacementScene];
+          replacementId = replacementScene.id;
         }
 
         s.projectData.screenplay = {
           ...s.projectData.screenplay,
           scenes: nextScenes
         };
+
+        projectHistory.record({
+          kind: 'scene-delete',
+          id: key,
+          label,
+          snap: removed.snap,
+          replacementId,
+        });
 
         s.openTabs = s.openTabs.filter(
           (tab) => !(tab.type === 'scene' && tab.name === key)
@@ -835,6 +997,8 @@ export function createItemActions(ctx: ItemActionsContext): ItemActions {
           return;
         }
 
+        const sceneOrderBefore = sceneOrder(s.projectData.screenplay.scenes);
+
         const sceneMap = new Map(
           s.projectData.screenplay.scenes.map((scene) => [scene.id, scene])
         );
@@ -855,6 +1019,12 @@ export function createItemActions(ctx: ItemActionsContext): ItemActions {
           ...s.projectData.screenplay,
           scenes: orderedScenes
         };
+
+        const sceneOrderAfter = sceneOrder(orderedScenes);
+
+        if (!sameOrder(sceneOrderBefore, sceneOrderAfter)) {
+          projectHistory.record({ kind: 'scene-reorder', before: sceneOrderBefore, after: sceneOrderAfter });
+        }
       } else if (type === 'chapter') {
         const orderBefore = chapterOrder(chapterStore());
         const next: Record<string, string> = {};
