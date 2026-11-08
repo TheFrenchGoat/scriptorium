@@ -812,6 +812,8 @@ export interface ProjectData {
   chapterMeta?: Record<string, ChapterMeta>;
   /** Remplacements automatiques pendant la frappe (propres à ce livre). */
   autoReplace?: AutoReplaceSettings;
+  /** Typographie : langue du texte, espaces, dialogues et cas ignores (shared/typography-project.ts). */
+  typography?: import('./typography-project').TypoProjectSettings;
   /** Note libre de chaque chapitre (texte simple), indexee par nom de chapitre. Jamais exportee. */
   chapterNotes?: Record<string, string>;
   /** Commentaires poses sur des passages, par nom de chapitre. Jamais exportes. */

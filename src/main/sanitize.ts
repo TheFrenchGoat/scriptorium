@@ -14,6 +14,7 @@
 // réalisée par le renderer (lib/wb-migration.ts), qui dispose des libellés
 // traduits et des modèles de fiches.
 
+import { normalizeTypoSettings } from '../shared/typography-project';
 import { randomUUID } from 'node:crypto';
 import sanitizeHtml from 'sanitize-html';
 import type {
@@ -1477,6 +1478,11 @@ function sanitizeAutoReplace(value: unknown): ProjectData['autoReplace'] {
   return { enabled: value['enabled'] !== false, rules };
 }
 /** Nettoie les notes de chapitre : texte simple, uniquement pour des chapitres existants. */
+/** Typographie : reglages du projet et cas ignores (voir shared/typography-project.ts). */
+function sanitizeTypography(value: unknown): ProjectData['typography'] {
+  return normalizeTypoSettings(value);
+}
+
 function sanitizeChapterNotes(value: unknown, chapters: Record<string, string>): Record<string, string> | undefined {
   if (!isRecord(value)) return undefined;
   const result: Record<string, string> = {};
@@ -1569,6 +1575,9 @@ export function sanitizeProjectData(projectData: unknown): ProjectData {
   if (projectData.autoReplace !== undefined) {
     const autoReplace = sanitizeAutoReplace(projectData.autoReplace);
     if (autoReplace) result.autoReplace = autoReplace;
+  }
+  if (projectData.typography !== undefined) {
+    result.typography = sanitizeTypography(projectData.typography);
   }
   if (projectData.chapterNotes !== undefined) {
     const chapterNotes = sanitizeChapterNotes(projectData.chapterNotes, result.chapters);
