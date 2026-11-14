@@ -4,6 +4,7 @@
 // Les valeurs du hook arrivent par le contexte ; les appels ctrl.xxx passent par des relais.
 
 import type { ProjectData, ScreenplayScene } from '../../../../shared/types';
+import { renameTypoIgnoredChapter } from '../../../../shared/typography-project';
 import { t } from '../../../i18n';
 import type { EditHistory } from '../../../lib/edit-history';
 import {
@@ -354,6 +355,9 @@ export function createItemActions(ctx: ItemActionsContext): ItemActions {
         dropPendingHistory(from);
         history.rename(from, to);
         mentionIndex.renameChapter(from, to);
+        if (s.projectData.typography) {
+          s.projectData.typography = renameTypoIgnoredChapter(s.projectData.typography, from, to);
+        }
 
         s.openTabs = s.openTabs.map((tab) =>
           tab.name === from && tab.type === 'chapter'
@@ -370,6 +374,37 @@ export function createItemActions(ctx: ItemActionsContext): ItemActions {
       case 'chapter-reorder':
         mentionIndex.rebuildChapterOrder();
         break;
+
+      case 'chapter-text': {
+        const shown = activeChapterEditor();
+
+        for (const change of entry.changes) {
+          const previous = undo ? change.after : change.before;
+          const current = s.projectData.chapters[change.name];
+
+          if (typeof current !== 'string') {
+            continue;
+          }
+
+          cancelPendingChapterSave(change.name);
+          dropPendingHistory(change.name);
+          history.sync(change.name, previous);
+
+          let finalHtml = current;
+
+          if (shown && shown.name === change.name) {
+            shown.editor.innerHTML = current;
+            highlight();
+            finalHtml = shown.editor.innerHTML;
+            s.projectData.chapters[change.name] = finalHtml;
+          }
+
+          history.commit(change.name, finalHtml);
+        }
+
+        mentionIndex.rebuildAll();
+        break;
+      }
 
       case 'scene-delete':
       case 'scene-create': {
@@ -853,6 +888,9 @@ export function createItemActions(ctx: ItemActionsContext): ItemActions {
           delete s.projectData.chapterComments[key];
         }
         mentionIndex.renameChapter(key, trimmed);
+        if (s.projectData.typography) {
+          s.projectData.typography = renameTypoIgnoredChapter(s.projectData.typography, key, trimmed);
+        }
 
         projectHistory.record({ kind: 'chapter-rename', from: key, to: trimmed });
 

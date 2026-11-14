@@ -9,6 +9,9 @@ import type {
 import type { ExportBibleCategory } from '../../../lib/export/build-bible';
 import type { ExportPreviewSource } from '../../../lib/export/render-html';
 import type { AutoReplaceSettings } from '../../../lib/auto-replace';
+import type { TypoHtmlIssue } from '../../../lib/typography-html';
+import type { TypoCategory, TypoLanguage } from '../../../../shared/typography';
+import type { TypoProjectSettings } from '../../../../shared/typography-project';
 import type { WbRegistry } from '../../../lib/wb-registry';
 import type { ProjectHistoryResult } from '../../../lib/project-history';
 import type { ReplaceMatchInfo, ReplaceOptions } from '../../../lib/dom';
@@ -70,6 +73,37 @@ export interface PendingHistoryCommit {
   html: string;
 }
 
+/** Un cas typographique trouve dans un chapitre. */
+export interface TypoReportItem extends TypoHtmlIssue {
+  chapter: string;
+}
+
+/** Resultat d'une analyse typographique. */
+export interface TypoReport {
+  /** Cas trouves, dans l'ordre du livre (au plus TYPO_REPORT_LIMIT). */
+  items: TypoReportItem[];
+  /** Nombre de cas par categorie. */
+  counts: Partial<Record<TypoCategory, number>>;
+  /** Nombre total de cas (meme au-dela de la limite). */
+  total: number;
+  /** Nombre de chapitres concernes. */
+  chapters: number;
+  /** Liste coupee a TYPO_REPORT_LIMIT. */
+  truncated: boolean;
+  /** Portee chapitre sans chapitre ouvert. */
+  noChapter: boolean;
+  /** Projet sans chapitres (scenario). */
+  unavailable: boolean;
+}
+
+/** Resultat d'une correction de toute la portee. */
+export interface TypoFixResult {
+  count: number;
+  chapters: number;
+  noChapter: boolean;
+  unavailable: boolean;
+}
+
 export interface EditorController {
   projectName: string;
   ready: boolean;
@@ -102,6 +136,22 @@ export interface EditorController {
   getAutoReplace(): AutoReplaceSettings;
   /** Enregistre les remplacements automatiques du livre. */
   setAutoReplace(next: AutoReplaceSettings): void;
+  /** Reglages typographiques du livre (copie normalisee). */
+  getTypography(): TypoProjectSettings;
+  /** Enregistre les reglages typographiques (les cas ignores sont conserves). */
+  setTypography(next: TypoProjectSettings): void;
+  /** Langue du texte : reglage du livre, sinon langue de l'interface. */
+  getTypographyLanguage(): TypoLanguage;
+  /** Cas typographiques du chapitre ouvert ou de tout le livre. */
+  analyzeTypography(wholeProject: boolean, categories?: readonly TypoCategory[]): TypoReport;
+  /** Corrige un seul cas (false s'il ne correspond plus au texte). */
+  fixTypographyCase(item: TypoReportItem): boolean;
+  /** Ignore un cas : il ne sera plus signale. */
+  ignoreTypographyCase(item: TypoReportItem): void;
+  /** Corrige tout ce qui peut l'etre dans le chapitre ouvert ou dans tout le livre. */
+  fixAllTypography(wholeProject: boolean, categories?: readonly TypoCategory[]): TypoFixResult;
+  /** Restaure tous les cas ignores ; renvoie leur nombre. */
+  restoreTypographyIgnored(): number;
   handlePaste(event: ReactClipboardEvent<HTMLElement>): void;
   handleEditorClick(event: ReactMouseEvent<HTMLElement>): void;
 

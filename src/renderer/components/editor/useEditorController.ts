@@ -113,6 +113,7 @@ import { createGrammarActions } from './controller/grammar-actions';
 import { createProjectActions } from './controller/project-actions';
 import { createWorldbuildingActions } from './controller/worldbuilding-actions';
 import { createItemActions } from './controller/item-actions';
+import { createTypographyActions } from './controller/typography-actions';
 
 // Ré-exports : les autres fichiers continuent d'importer depuis useEditorController.
 export type { EditorController, EditorControllerDeps } from './controller/types';
@@ -1850,6 +1851,20 @@ export function useEditorController({
         ctrl: { updateScreenplay: (screenplay) => ctrl.updateScreenplay(screenplay) },
       }),
 
+      ...createTypographyActions({
+        s,
+        bump,
+        history,
+        projectHistory,
+        mentionIndex,
+        highlight,
+        flushPendingHistoryCommit,
+        saveAll,
+        scheduleChapterSave,
+        setSaveStatus,
+        updateStats,
+        updateUndoRedo,
+      }),
       ...createGrammarActions({
         s,
         bump,

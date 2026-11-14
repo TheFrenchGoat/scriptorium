@@ -131,6 +131,21 @@ export interface SceneReorderEntry {
   after: string[];
 }
 
+/** Un chapitre dont le texte a change d'un coup. */
+export interface ChapterTextChange {
+  name: string;
+  before: string;
+  after: string;
+}
+
+/** Corrections typographiques sur tout le livre (annulables d'un coup). */
+export interface ChapterTextEntry {
+  kind: 'chapter-text';
+  reason: 'typography';
+  changes: ChapterTextChange[];
+  count: number;
+}
+
 export type ProjectHistoryEntry =
   | ChapterDeleteEntry
   | ChapterCreateEntry
@@ -139,7 +154,8 @@ export type ProjectHistoryEntry =
   | SceneDeleteEntry
   | SceneCreateEntry
   | SceneRenameEntry
-  | SceneReorderEntry;
+  | SceneReorderEntry
+  | ChapterTextEntry;
 
 export type ProjectHistoryDirection = 'undo' | 'redo';
 export type ProjectHistoryStatus = 'ok' | 'empty' | 'needs-confirm' | 'failed';
@@ -160,7 +176,7 @@ export interface ProjectHistoryResult {
 
 export interface ProjectHistoryInfo {
   target: 'chapter' | 'scene';
-  action: 'delete' | 'create' | 'rename' | 'reorder';
+  action: 'delete' | 'create' | 'rename' | 'reorder' | 'text';
   label: string;
   previous: string | null;
 }
@@ -596,6 +612,19 @@ function reorderScenes<S extends SceneLike>(
   return done(entry);
 }
 
+/** Remet les textes d'avant (annuler) ou d'apres (retablir) ; tout est verifie avant d'ecrire. */
+function swapChapterTexts(entry: ChapterTextEntry, store: ChapterStore | null, undo: boolean): Applied {
+  if (!store) return refused(entry, 'unavailable');
+  for (const change of entry.changes) {
+    if (!hasOwn(store.chapters, change.name)) return refused(entry, 'missing');
+    if (store.chapters[change.name] !== (undo ? change.after : change.before)) return refused(entry, 'changed');
+  }
+  for (const change of entry.changes) {
+    store.chapters[change.name] = undo ? change.before : change.after;
+  }
+  return done(entry);
+}
+
 function applyEntry<S extends SceneLike>(
   entry: ProjectHistoryEntry,
   direction: ProjectHistoryDirection,
@@ -624,6 +653,8 @@ function applyEntry<S extends SceneLike>(
         : renameScene(entry, target.scenes, entry.from, entry.to);
     case 'scene-reorder':
       return reorderScenes(entry, target.scenes, undo ? entry.before : entry.after);
+    case 'chapter-text':
+      return swapChapterTexts(entry, target.chapters, undo);
     default:
       return refused(entry, 'error');
   }
@@ -648,6 +679,8 @@ export function describeEntry(entry: ProjectHistoryEntry): ProjectHistoryInfo {
       return { target: 'scene', action: 'rename', label: entry.to, previous: entry.from };
     case 'scene-reorder':
       return { target: 'scene', action: 'reorder', label: '', previous: null };
+    case 'chapter-text':
+      return { target: 'chapter', action: 'text', label: '', previous: null };
     default:
       return { target: 'chapter', action: 'reorder', label: '', previous: null };
   }

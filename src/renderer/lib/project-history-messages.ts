@@ -80,6 +80,14 @@ function sceneMessage(info: ProjectHistoryInfo, undone: boolean): ProjectToastSp
 
 /** Message après une action (ou son rétablissement) : propose de l'annuler. */
 export function doneMessage(entry: ProjectHistoryEntry): ProjectToastSpec | null {
+  if (entry.kind === 'chapter-text') {
+    return toastSpec(
+      'phTypoFixed',
+      { count: String(entry.count), chapters: String(entry.changes.length) },
+      'undo'
+    );
+  }
+
   const info = describeEntry(entry);
   if (info.target === 'scene') return sceneMessage(info, false);
 
@@ -99,6 +107,14 @@ export function doneMessage(entry: ProjectHistoryEntry): ProjectToastSpec | null
 
 /** Message après une annulation : propose de rétablir. */
 export function undoneMessage(entry: ProjectHistoryEntry): ProjectToastSpec | null {
+  if (entry.kind === 'chapter-text') {
+    return toastSpec(
+      'phTypoUndone',
+      { count: String(entry.count), chapters: String(entry.changes.length) },
+      'redo'
+    );
+  }
+
   const info = describeEntry(entry);
   if (info.target === 'scene') return sceneMessage(info, true);
 
