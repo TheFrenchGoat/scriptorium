@@ -114,6 +114,7 @@ import { createProjectActions } from './controller/project-actions';
 import { createWorldbuildingActions } from './controller/worldbuilding-actions';
 import { createItemActions } from './controller/item-actions';
 import { createTypographyActions } from './controller/typography-actions';
+import { createTypographyReveal } from './controller/typography-reveal';
 
 // Ré-exports : les autres fichiers continuent d'importer depuis useEditorController.
 export type { EditorController, EditorControllerDeps } from './controller/types';
@@ -1865,6 +1866,7 @@ export function useEditorController({
         updateStats,
         updateUndoRedo,
       }),
+      ...createTypographyReveal({ s }),
       ...createGrammarActions({
         s,
         bump,

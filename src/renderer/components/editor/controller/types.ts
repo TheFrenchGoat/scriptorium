@@ -152,6 +152,8 @@ export interface EditorController {
   fixAllTypography(wholeProject: boolean, categories?: readonly TypoCategory[]): TypoFixResult;
   /** Restaure tous les cas ignores ; renvoie leur nombre. */
   restoreTypographyIgnored(): number;
+  /** Selectionne un cas dans le chapitre affiche (false si impossible). */
+  revealTypographyCase(item: TypoReportItem): boolean;
   handlePaste(event: ReactClipboardEvent<HTMLElement>): void;
   handleEditorClick(event: ReactMouseEvent<HTMLElement>): void;
 

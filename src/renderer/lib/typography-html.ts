@@ -51,7 +51,7 @@ function blockOf(node: Node, root: Node): Node | null {
 }
 
 /** Paragraphes du fragment (les paragraphes vides sont laisses de cote). */
-function collectParagraphs(root: DocumentFragment): Paragraph[] {
+function collectParagraphs(root: Node): Paragraph[] {
   const all: Paragraph[] = [];
   let current: Paragraph | null = null;
   let currentBlock: Node | null = null;
@@ -126,4 +126,39 @@ export function fixOneTypoInHtml(html: string, found: TypoHtmlIssue): { html: st
   if (next.join('') === found.text) return { html: source, count: 0 };
   writeSegments(paragraph, next);
   return { html: template.innerHTML, count: 1 };
+}
+
+/** Position d'un caractere du paragraphe dans ses segments (noeuds de texte). */
+export function segmentOffset(
+  segments: readonly string[],
+  position: number,
+  atEnd: boolean
+): { index: number; offset: number } | null {
+  if (segments.length === 0 || position < 0) return null;
+  let start = 0;
+  for (let index = 0; index < segments.length; index += 1) {
+    const end = start + (segments[index] ?? '').length;
+    if (atEnd ? position <= end : position < end) return { index, offset: position - start };
+    start = end;
+  }
+  if (position !== start) return null;
+  const last = segments.length - 1;
+  return { index: last, offset: (segments[last] ?? '').length };
+}
+
+/** Passage d'un cas dans un element affiche, ou null s'il ne correspond plus au texte. */
+export function rangeForTypoIssue(root: Node, found: TypoHtmlIssue): Range | null {
+  const paragraph = collectParagraphs(root)[found.paragraph];
+  if (!paragraph || paragraph.segments.join('') !== found.text) return null;
+  const from = segmentOffset(paragraph.segments, found.issue.start, false);
+  const to =
+    found.issue.end === found.issue.start ? from : segmentOffset(paragraph.segments, found.issue.end, true);
+  if (!from || !to) return null;
+  const startNode = paragraph.nodes[from.index];
+  const endNode = paragraph.nodes[to.index];
+  if (!startNode || !endNode) return null;
+  const range = document.createRange();
+  range.setStart(startNode, from.offset);
+  range.setEnd(endNode, to.offset);
+  return range;
 }

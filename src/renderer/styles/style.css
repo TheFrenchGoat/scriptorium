@@ -1966,3 +1966,167 @@ button.btn-primary.replace-run-btn:disabled {
 .export-cover-thumb { flex-shrink: 0; width: 40px; height: 60px; object-fit: cover; border: 1px solid var(--border); border-radius: 3px; background: var(--bg-input); }
 .export-cover-alert { color: #ef4444; }
 .export-cover-advice { color: #d9822b; }
+
+/* === Typographie (onglet de Rechercher / Remplacer, 2b-2) === */
+.modal-content:has(.typo-panel) {
+  width: 680px;
+  max-width: calc(100vw - 40px);
+}
+.typo-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.typo-panel .typo-label {
+  display: block;
+  margin: 0 0 6px;
+  font-size: 0.85em;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.typo-settings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 18px;
+}
+.typo-panel .replace-row {
+  margin: 0;
+}
+.typo-panel .typo-analyze-btn {
+  width: auto;
+  margin: 0;
+}
+.typo-panel .typo-categories {
+  display: flex;
+  flex-wrap: wrap;
+}
+.typo-panel .typo-summary {
+  margin: 0;
+  min-height: 1.4em;
+  font-size: 0.85em;
+}
+.typo-panel .typo-message {
+  margin: 0;
+  font-size: 0.85em;
+  color: var(--accent);
+}
+.typo-results {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 42vh;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+.typo-group-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 6px;
+  font-size: 0.9em;
+  font-weight: 600;
+}
+.typo-group-count {
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--bg-hover);
+  font-size: 0.85em;
+  font-variant-numeric: tabular-nums;
+}
+.typo-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0 0 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-app);
+}
+.typo-item-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.typo-item-chapter {
+  font-size: 11px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.typo-excerpt {
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.typo-context {
+  color: var(--text-muted);
+}
+.typo-old {
+  background: rgba(229, 72, 77, 0.18);
+  color: var(--text-main);
+  text-decoration: line-through;
+}
+.typo-new {
+  background: rgba(16, 185, 129, 0.2);
+  color: var(--text-main);
+  text-decoration: none;
+}
+.typo-flag {
+  background: rgba(217, 119, 6, 0.22);
+  color: var(--text-main);
+}
+.typo-space {
+  display: inline-block;
+  margin: 0 1px;
+  padding: 0 4px;
+  border: 1px dashed currentColor;
+  border-radius: 4px;
+  font-size: 10px;
+  line-height: 1.3;
+  vertical-align: middle;
+  opacity: 0.85;
+}
+.typo-badge {
+  padding: 0 6px;
+  border-radius: 4px;
+  background: rgba(217, 119, 6, 0.15);
+  color: #d97706;
+  font-size: 11px;
+  font-weight: 600;
+}
+.typo-item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.typo-item-actions button,
+.typo-panel .typo-more {
+  width: auto;
+  margin: 0;
+  padding: 2px 8px;
+  font-size: 11px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: inherit;
+  cursor: pointer;
+  box-shadow: none;
+}
+.typo-item-actions button:hover,
+.typo-panel .typo-more:hover {
+  background: var(--bg-hover);
+}
+.typo-note {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+button.typo-restore-btn:disabled,
+.typo-panel .typo-analyze-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
