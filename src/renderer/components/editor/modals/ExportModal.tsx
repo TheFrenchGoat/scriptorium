@@ -576,6 +576,13 @@ export function ExportModal({
           >
             {t('exportKeepFormatting')}
           </CheckRow>
+
+          <CheckRow
+            checked={content.fixTypography}
+            onChange={(checked) => setContent({ fixTypography: checked })}
+          >
+            {t('exportFixTypography')}
+          </CheckRow>
         </section>
 
         <section className="export-section">

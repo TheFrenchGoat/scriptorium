@@ -22,6 +22,14 @@ import {
   applyBlankLines,
   type BlankLineMode
 } from '../../../shared/import-blank-lines';
+import { fixTypoInHtml } from '../../lib/typography-html';
+import { TYPO_CATEGORIES, TYPO_REPORT_ONLY, type TypoCategory } from '../../../shared/typography';
+import { typoOptionsFor } from '../../../shared/typography-project';
+
+/** Typographie a l'import : regles corrigibles seulement (dialogues et chiffres jamais touches). */
+const TYPO_FIXABLE: readonly TypoCategory[] = TYPO_CATEGORIES.filter(
+  (category) => TYPO_REPORT_ONLY.indexOf(category) < 0
+);
 
 export interface ImportPreviewModalProps {
   /** Fichier choisi (nouvelle analyse d'un texte brut). */
@@ -229,6 +237,7 @@ export function ImportPreviewModal({
   const [reloading, setReloading] = useState(false);
   const [reloadError, setReloadError] = useState<string | null>(null);
   const [blankMode, setBlankMode] = useState<BlankLineMode>('auto');
+  const [fixTypo, setFixTypo] = useState<boolean>(false);
   const aliveRef = useRef(true);
 
   useEffect(() => {
@@ -260,9 +269,39 @@ export function ImportPreviewModal({
   );
   const effectiveBlankMode: BlankLineMode = blankApplies ? blankMode : 'keep';
 
+  /* Typographie : correction facultative du texte importe (aucun cas ignore a ce stade). */
+  const typoOptions = useMemo(
+    () => typoOptionsFor(source.projectData.typography, lang === 'en' ? 'en' : 'fr', TYPO_FIXABLE),
+    [source, lang]
+  );
+  const typoCache = useMemo(() => new Map<string, { html: string; count: number }>(), [typoOptions]);
+  const fixTypoCached = (html: string): { html: string; count: number } => {
+    const known = typoCache.get(html);
+    if (known) return known;
+    let fixed: { html: string; count: number } = { html, count: 0 };
+    try {
+      fixed = fixTypoInHtml(html, typoOptions);
+    } catch (error) {
+      console.error(error);
+    }
+    typoCache.set(html, fixed);
+    return fixed;
+  };
+  const withTypo = (html: string): string => (fixTypo ? fixTypoCached(html).html : html);
+  const typoCount = useMemo(() => {
+    if (!fixTypo) return 0;
+    let total = 0;
+    for (const chapter of chapters) {
+      if (chapter.included) {
+        total += fixTypoCached(applyBlankLines(chapter.html, effectiveBlankMode, blankAnalysis)).count;
+      }
+    }
+    return total;
+  }, [fixTypo, chapters, effectiveBlankMode, blankAnalysis, typoCache]);
+
   const selected = chapters.find((chapter) => chapter.id === selectedId) ?? chapters[0] ?? null;
   const selectedIndex = selected ? chapters.indexOf(selected) : -1;
-  const selectedHtml = selected ? applyBlankLines(selected.html, effectiveBlankMode, blankAnalysis) : '';
+  const selectedHtml = selected ? withTypo(applyBlankLines(selected.html, effectiveBlankMode, blankAnalysis)) : '';
   const previewBlocks = useMemo(() => htmlToBlocks(selectedHtml), [selectedHtml]);
 
   const includedCount = chapters.filter((chapter) => chapter.included).length;
@@ -320,6 +359,7 @@ export function ImportPreviewModal({
     setSelectedId(null);
     setReloadError(null);
     setBlankMode('auto');
+    setFixTypo(false);
   };
 
   const changeRejoin = async (value: boolean): Promise<void> => {
@@ -367,7 +407,7 @@ export function ImportPreviewModal({
 
       const name = uniqueName(chapterLabel(chapter, index), used);
       used.add(name);
-      result[name] = applyBlankLines(chapter.html, effectiveBlankMode, blankAnalysis);
+      result[name] = withTypo(applyBlankLines(chapter.html, effectiveBlankMode, blankAnalysis));
     });
 
     onConfirm(projectName, { ...source.projectData, chapters: result });
@@ -454,6 +494,25 @@ export function ImportPreviewModal({
             <div className="import-preview-hint">{t('importPreviewRejoinHint')}</div>
           </div>
         )}
+
+        <div className="import-preview-option">
+          <label>
+            <input
+              type="checkbox"
+              checked={fixTypo}
+              disabled={reloading}
+              onChange={(event) => {
+         setFixTypo(event.target.checked);
+              }}
+            />
+            <span>{t('importPreviewTypo')}</span>
+          </label>
+          <div className="import-preview-hint">
+            {fixTypo
+              ? t('importPreviewTypoCount', { count: formatNumber(typoCount) })
+              : t('importPreviewTypoHint')}
+          </div>
+        </div>
 
         {blankApplies && blankAnalysis.blankLines > 0 && (
           <div className="import-preview-option">

@@ -141,7 +141,8 @@ export function createDefaultExportSettings(
       ignoreEmptyLines: true,
       sceneSeparators: true,
       sceneSeparator: preset.sceneSeparator,
-      keepEditorFormatting: false
+      keepEditorFormatting: false,
+      fixTypography: false
     },
     bible: {
       mode: 'none',
@@ -305,7 +306,8 @@ export function normalizeExportSettings(value: unknown): ExportSettings {
       keepEditorFormatting: pickBoolean(
         content.keepEditorFormatting,
         defaults.content.keepEditorFormatting
-      )
+      ),
+      fixTypography: pickBoolean(content.fixTypography, defaults.content.fixTypography)
     },
     bible: {
       mode: pickOne(bible.mode, EXPORT_BIBLE_MODES, defaults.bible.mode),

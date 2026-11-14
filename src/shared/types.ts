@@ -881,6 +881,8 @@ export interface ExportContentSettings {
    * (gras, italique et souligné sont toujours conservés).
    */
   keepEditorFormatting: boolean;
+  /** Vrai : la typographie est corrigee dans le fichier exporte (le projet reste intact). */
+  fixTypography: boolean;
   /**
    * Vrai : les lignes laissées vides entre les paragraphes sont retirées,
    * et les paragraphes reçoivent leur retrait de première ligne.

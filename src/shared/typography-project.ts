@@ -214,7 +214,11 @@ export function applyTypoIssuesToSegments(segments: readonly string[], issues: r
   return out;
 }
 
-/** Corrige un paragraphe decoupe en morceaux (quelques passes, jusqu'a stabilite). */
+/**
+ * Corrige un paragraphe decoupe en morceaux (quelques passes, jusqu'a stabilite).
+ * Les cas ignores sont reperes des la premiere passe, puis suivis d'une passe a
+ * l'autre : une correction voisine peut changer leur entourage sans les reveiller.
+ */
 export function fixTypoSegments(
   segments: readonly string[],
   options: TypoOptions,
@@ -224,14 +228,38 @@ export function fixTypoSegments(
     ? segments.map((part) => (typeof part === 'string' ? part : ''))
     : [];
   let count = 0;
+  let kept: { rule: string; start: number; end: number }[] = [];
   for (let pass = 0; pass < 5; pass++) {
     const text = current.join('');
-    const fixes = findTypoIssues(text, options).filter(
-      (issue) => issue.replacement !== null && (!keep || keep(text, issue))
-    );
+    const fixes: TypoIssue[] = [];
+    for (const issue of findTypoIssues(text, options)) {
+      if (issue.replacement === null) continue;
+      const known = kept.some((k) => k.rule === issue.rule && k.start === issue.start && k.end === issue.end);
+      if (known) continue;
+      if (keep && !keep(text, issue)) {
+        kept.push({ rule: issue.rule, start: issue.start, end: issue.end });
+        continue;
+      }
+      fixes.push(issue);
+    }
     if (fixes.length === 0) break;
-    current = applyTypoIssuesToSegments(current, fixes);
-    count += fixes.length;
+    fixes.sort(rangeOrder);
+    const applied: TypoIssue[] = [];
+    let cursor = 0;
+    for (const issue of fixes) {
+      if (issue.start < cursor) continue;
+      applied.push(issue);
+      cursor = issue.end;
+    }
+    current = applyTypoIssuesToSegments(current, applied);
+    count += applied.length;
+    kept = kept.map((k) => {
+      let shift = 0;
+      for (const issue of applied) {
+        if (issue.end <= k.start) shift += (issue.replacement ?? '').length - (issue.end - issue.start);
+      }
+      return { rule: k.rule, start: k.start + shift, end: k.end + shift };
+    });
   }
   return { segments: current, count };
 }

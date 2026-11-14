@@ -19,6 +19,9 @@ import { renderExportHtml } from '../../../lib/export/render-html';
 import { renderExportMarkdown, renderExportText } from '../../../lib/export/render-text';
 import type { WbRegistry } from '../../../lib/wb-registry';
 import { isScreenplayData } from './utils';
+import { fixTypoInHtml } from '../../../lib/typography-html';
+import { TYPO_CATEGORIES, TYPO_REPORT_ONLY, type TypoCategory, type TypoLanguage } from '../../../../shared/typography';
+import { createTypoKeep, normalizeTypoSettings, typoOptionsFor } from '../../../../shared/typography-project';
 import type { EditorController, EditorControllerDeps, MutableState } from './types';
 
 /** Ce dont les actions d'export ont besoin ; fourni par useEditorController. */
@@ -43,6 +46,18 @@ export type ExportActions = Pick<
 
 export function createExportActions(ctx: ExportActionsContext): ExportActions {
   const { projectName, s, registry, showInfo, save } = ctx;
+
+  /**
+   * Typographie corrigee dans la copie exportee seulement (reglage
+   * fixTypography) ; les cas ignores par l'auteur sont respectes.
+   */
+  const typographyFixer = (): ((chapterName: string, html: string) => string) => {
+    const current = normalizeTypoSettings(s.projectData.typography);
+    const fallback: TypoLanguage = String(getLanguage()) === 'en' ? 'en' : 'fr';
+    const categories: TypoCategory[] = TYPO_CATEGORIES.filter((category) => TYPO_REPORT_ONLY.indexOf(category) < 0);
+    const options = typoOptionsFor(current, fallback, categories);
+    return (chapterName, html) => fixTypoInHtml(html, options, createTypoKeep(current, chapterName)).html;
+  };
   return {
     getExportSettings() {
       return normalizeExportSettings(s.projectData.exportSettings);
@@ -79,6 +94,7 @@ export function createExportActions(ctx: ExportActionsContext): ExportActions {
         },
         {
           projectName,
+          typography: typographyFixer(),
           bible: createBibleSource(registry, t, getLanguage()),
           language: getLanguage(),
           labels: { tableOfContents: t('exportTableOfContents') }
@@ -195,6 +211,7 @@ export function createExportActions(ctx: ExportActionsContext): ExportActions {
           normalizeExportSettings(s.projectData.exportSettings),
           {
             projectName,
+            typography: typographyFixer(),
             bible: createBibleSource(registry, t, getLanguage()),
             language: getLanguage(),
             labels: { tableOfContents: t('exportTableOfContents') }

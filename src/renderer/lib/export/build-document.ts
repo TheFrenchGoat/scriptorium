@@ -67,6 +67,8 @@ export interface BuildExportOptions {
   labels: ExportDocumentLabels;
   /** Bible de l'univers ; absente, elle n'est jamais exportée. */
   bible?: BibleSource;
+  /** Correction typographique d'un chapitre (reglage fixTypography). */
+  typography?: (chapterName: string, html: string) => string;
 }
 
 // ----------------------------------------------------------------------------
@@ -396,11 +398,23 @@ export function buildExportDocument(
       ? []
       : Object.keys(projectData.chapters);
 
+  // Typographie corrigee dans la copie exportee seulement (le projet reste intact).
+  const typography = settings.content.fixTypography ? options.typography : undefined;
+  const prepareHtml = (name: string, html: string): string => {
+    if (!typography) return html;
+    try {
+      return typography(name, html);
+    } catch (error) {
+      console.error(error);
+      return html;
+    }
+  };
+
   const chapters: ExportChapter[] = novelNames
     .filter((name) => !excluded.has(name))
     .map((name) => ({
       title: name,
-      blocks: parseChapterHtml(projectData.chapters[name] ?? '', parseOptions)
+      blocks: parseChapterHtml(prepareHtml(name, projectData.chapters[name] ?? ''), parseOptions)
     }));
 
   // La bible (si elle est demandée) suit le roman.
