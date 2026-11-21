@@ -168,3 +168,89 @@ export function ignoredCases(config: unknown, project: string): number {
   const list = root?.projects?.[project]?.typography?.ignored;
   return Array.isArray(list) ? list.length : -1;
 }
+
+/** Reglages initiaux : un roman de plusieurs chapitres (tous ouverts en onglets, le premier affiche). */
+export function novelConfigChapters(
+  name: string,
+  chapters: ReadonlyArray<readonly [string, readonly string[]]>,
+  extra?: Record<string, unknown>
+): Record<string, unknown> {
+  const html: Record<string, string> = {};
+  for (const [chapter, paragraphs] of chapters) {
+    html[chapter] = paragraphs.map((text) => '<p>' + escapeHtml(text) + '</p>').join('');
+  }
+  return {
+    language: 'fr',
+    theme: 'dark',
+    currentProject: null,
+    nativeSpellcheckEnabled: false,
+    projects: {
+      [name]: {
+        projectType: 'novel',
+ chapters: html,
+        world: {},
+        wbFolders: [],
+ wbRelationTypes: [],
+        wbRelations: [],
+ wbTimeline: [],
+        writingSessions: [],
+        goals: [],
+        ...(extra || {})
+      }
+    },
+    uiState: {
+      [name]: {
+        openTabs: chapters.map(([chapter]) => ({ name: chapter, type: 'chapter' })),
+        activeTab: chapters[0][0],
+ activeType: 'chapter'
+      }
+    }
+  };
+}
+
+/** Donne le focus a la zone d'ecriture et place le curseur a la fin du dernier texte. */
+export async function caretAtEnd(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const editorEl = document.getElementById('editor');
+    if (!editorEl) throw new Error('zone d ecriture absente');
+    editorEl.focus();
+    const walker = document.createTreeWalker(editorEl, NodeFilter.SHOW_TEXT);
+    let last: Text | null = null;
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      if ((node.textContent || '') !== '') last = node as Text;
+    }
+    if (!last) throw new Error('aucun texte dans la zone d ecriture');
+    const range = document.createRange();
+    range.setStart(last, last.length);
+    range.collapse(true);
+    const selection = window.getSelection();
+    if (!selection) throw new Error('selection indisponible');
+    selection.removeAllRanges();
+    selection.addRange(range);
+  });
+}
+
+export interface EditorBlocks {
+  paragraphs: number;
+  divs: number;
+}
+
+/** Nombre de paragraphes (vides compris) et de div dans la zone d'ecriture. */
+export async function editorBlocks(page: Page): Promise<EditorBlocks> {
+  return page.evaluate(() => {
+    const editorEl = document.getElementById('editor');
+    if (!editorEl) return { paragraphs: -1, divs: -1 };
+    return {
+      paragraphs: editorEl.querySelectorAll('p').length,
+      divs: editorEl.querySelectorAll('div').length
+    };
+  });
+}
+
+/** Affiche un chapitre deja ouvert en onglet (clic sur l'onglet). */
+export async function switchToChapter(page: Page, chapter: string): Promise<void> {
+  const tab = page.locator('#tabs [role="tab"]').filter({ hasText: chapter });
+  await expect(tab).toHaveCount(1);
+  await tab.click();
+  await expect(tab).toHaveAttribute('aria-selected', 'true');
+}
