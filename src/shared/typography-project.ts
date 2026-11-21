@@ -36,6 +36,8 @@ export interface TypoProjectSettings {
   spacing: TypoSpacing;
   dialogueStyle: TypoDialogueStyle;
   ignored: TypoIgnoredCase[];
+  /** Vrai : apostrophes, guillemets, points de suspension et espaces corriges pendant la frappe. */
+  fixWhileTyping?: boolean;
 }
 
 /** Garde un cas (true) ou l'ecarte parce qu'il est ignore (false). */
@@ -73,6 +75,7 @@ export function normalizeTypoSettings(value: unknown): TypoProjectSettings {
   if (spacing === 'thin' || spacing === 'quebec') result.spacing = spacing;
   const style = value['dialogueStyle'];
   if (style === 'quotes' || style === 'dash') result.dialogueStyle = style;
+  if (value['fixWhileTyping'] === true) result.fixWhileTyping = true;
   const list: unknown[] = Array.isArray(value['ignored']) ? value['ignored'] : [];
   const seen = new Set<string>();
   for (const raw of list) {

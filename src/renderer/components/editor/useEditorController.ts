@@ -12,10 +12,10 @@ import {
   applyAutoReplaceBeforeCaret,
   isAutoReplaceTrigger,
   normalizeAutoReplace,
-  revertAutoReplace,
   type AutoReplaceSettings,
   type AutoReplaceUndo
 } from '../../lib/auto-replace';
+import { applyTypingFix, revertTypingUndo } from '../../lib/typo-typing';
 import { createMentionIndex, type MentionIndex } from '../../lib/mention-index';
 import {
   createWbRegistry,
@@ -1426,17 +1426,33 @@ export function useEditorController({
         const editor = s.editorEl;
         const chapterName = s.activeTab;
         if (!editor || !chapterName || s.activeType !== 'chapter') return;
-        if (!isAutoReplaceTrigger(event)) return;
-        const done = applyAutoReplaceBeforeCaret(editor, s.projectData.autoReplace, () =>
-          flushPendingHistoryCommit()
-        );
-        if (done) {
-          // Le remplacement devient une étape d'annulation à part entière :
-          // des Ctrl+Z successifs finissent toujours par remettre le mot tapé.
-          historyRef.current.commit(chapterName, editor.innerHTML);
-          updateUndoRedo();
+        if (isAutoReplaceTrigger(event)) {
+          const done = applyAutoReplaceBeforeCaret(editor, s.projectData.autoReplace, () =>
+            flushPendingHistoryCommit()
+          );
+          if (done) {
+            // Le remplacement devient une etape d'annulation a part entiere :
+            // des Ctrl+Z successifs finissent toujours par remettre le mot tape.
+            historyRef.current.commit(chapterName, editor.innerHTML);
+            updateUndoRedo();
+          }
+          autoReplaceRef.current = done ? { ...done, chapter: chapterName, inputs: 0 } : null;
         }
-        autoReplaceRef.current = done ? { ...done, chapter: chapterName, inputs: 0 } : null;
+        // Typographie pendant la frappe (etape 2d, reglage du livre) : la touche est
+        // ecrite sous sa forme typographique ; Ctrl+Z juste apres remet la touche tapee.
+        let typed: AutoReplaceUndo | null = null;
+        try {
+          typed = applyTypingFix(editor, event, s.projectData.typography, () => ctrl.getTypographyLanguage(), () => flushPendingHistoryCommit());
+        } catch (error) {
+          console.error('[typo-typing]', error);
+          return;
+        }
+        if (!typed) return;
+        event.preventDefault();
+        historyRef.current.commit(chapterName, editor.innerHTML);
+        updateUndoRedo();
+        autoReplaceRef.current = { ...typed, chapter: chapterName, inputs: 0 };
+        ctrl.handleInput();
       },
 
       getAutoReplace(): AutoReplaceSettings {
@@ -1743,9 +1759,13 @@ export function useEditorController({
           s.editorEl &&
           s.activeType === 'chapter' &&
           s.activeTab === autoUndo.chapter &&
-          revertAutoReplace(s.editorEl, autoUndo)
+          revertTypingUndo(s.editorEl, autoUndo)
         ) {
           ctrl.handleInput();
+          // L'etat remis devient la reference de l'historique : un second Ctrl+Z
+          // revient a l'etat d'avant la frappe (etape 2d).
+          const restored = s.editorEl;
+          if (restored) historyRef.current.resyncOnly(autoUndo.chapter, restored.innerHTML);
           return;
         }
         jumpInHistory('undo');

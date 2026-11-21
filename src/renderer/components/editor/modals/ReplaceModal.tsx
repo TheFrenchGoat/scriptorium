@@ -209,6 +209,7 @@ export function ReplaceModal({ open, controller, onClose }: ReplaceModalProps): 
     language?: TypoLanguageChoice;
     spacing?: TypoSpacing;
     dialogueStyle?: TypoDialogueStyle;
+    fixWhileTyping?: boolean;
   }) => {
     setRestoreArmed(false);
     try {
@@ -218,7 +219,8 @@ export function ReplaceModal({ open, controller, onClose }: ReplaceModalProps): 
       const next: TypoProjectSettings = {
  spacing: patch.spacing ?? current.spacing,
         dialogueStyle: patch.dialogueStyle ?? current.dialogueStyle,
-        ignored: current.ignored
+        ignored: current.ignored,
+        fixWhileTyping: patch.fixWhileTyping ?? current.fixWhileTyping === true
       };
       if (language !== 'auto') next.language = language;
       controller.setTypography(next);
@@ -686,6 +688,22 @@ value={repStr}
       ))}
     </div>
   </div>
+         {typoSettings ? (
+           <div className="typo-setting">
+             <span className="typo-label">{t('typoTypingLabel')}</span>
+             <div className="replace-toggles" role="group" aria-label={t('typoTypingLabel')}>
+               <button
+                 type="button"
+                 className={'replace-toggle' + (typoSettings.fixWhileTyping === true ? ' active' : '')}
+                 aria-pressed={typoSettings.fixWhileTyping === true}
+                 title={t('typoTypingHint')}
+                 onClick={() => updateTypography({ fixWhileTyping: typoSettings.fixWhileTyping !== true })}
+               >
+          {t('typoTyping')}
+               </button>
+             </div>
+           </div>
+         ) : null}
          {typoLanguage === 'fr' && typoSettings ? (
     <>
       <div className="typo-setting">
