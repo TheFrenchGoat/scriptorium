@@ -9,6 +9,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    version: '1.5.2',
+    fr: [
+      'Rechercher et remplacer : les boutons restent toujours visibles.',
+      'Fiabilité renforcée : la frappe, Annuler et Rétablir, la typographie, les séparateurs de scène, l’import et l’export sont désormais vérifiés automatiquement avant chaque version.'
+    ],
+    en: [
+      'Find and Replace: the buttons now always stay visible.',
+      'Improved reliability: typing, Undo and Redo, typography, scene separators, import and export are now checked automatically before each release.'
+    ]
+  },
+  {
     version: '1.5.1',
     fr: [
       'Sauvegardes plus sûres et plus fiables.',

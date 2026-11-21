@@ -1,0 +1,29 @@
+{
+  "version": "0.2",
+  "language": "en,fr",
+  "ignorePaths": [
+    ".git/**",
+    "node_modules/**",
+    "dist/**",
+    "release/**",
+    "test-results/**",
+    "playwright-report/**",
+    "package-lock.json",
+    "arborescence.txt",
+    "*.ico"
+  ],
+  "words": [
+    "asar",
+    "cspell",
+    "docx",
+    "epub",
+    "nsis",
+    "odt",
+    "Playwright",
+    "Scriptorium",
+    "TheFrenchGoat",
+    "tsdk",
+    "whats",
+    "worldbuilding"
+  ]
+}
