@@ -16,7 +16,10 @@ export interface LaunchedApp {
   app: ElectronApplication;
   page: Page;
   dataDir: string;
+  /** Ferme l'application puis supprime le dossier de donnees. */
   close: () => Promise<void>;
+  /** Ferme l'application, relit config.json (projets enregistres) puis supprime le dossier. */
+  closeAndRead: () => Promise<unknown>;
 }
 
 function removeDir(dir: string): void {
@@ -32,6 +35,15 @@ function kill(app: ElectronApplication): void {
     app.process().kill();
   } catch {
     // Processus deja arrete.
+  }
+}
+
+/** Contenu de config.json dans le dossier de donnees, ou null s'il est absent ou illisible. */
+export function readConfig(dataDir: string): unknown {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(dataDir, 'config.json'), 'utf8')) as unknown;
+  } catch {
+    return null;
   }
 }
 
@@ -68,11 +80,19 @@ export async function launchApp(config?: Record<string, unknown>): Promise<Launc
       page,
       dataDir,
       close: async () => {
+ try {
+   await launched.close();
+ } finally {
+   removeDir(dataDir);
+        }
+      },
+      closeAndRead: async () => {
         try {
-          await launched.close();
+   await launched.close();
+   return readConfig(dataDir);
         } finally {
           removeDir(dataDir);
- }
+        }
       }
     };
   } catch (error) {
