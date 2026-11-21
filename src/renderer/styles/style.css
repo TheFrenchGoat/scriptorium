@@ -2130,3 +2130,20 @@ button.typo-restore-btn:disabled,
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* === Rechercher / Remplacer : defilement 1.5.2 ===
+   Avec beaucoup de cas, la fenetre depassait l ecran et le bouton
+   Tout corriger devenait inaccessible. Elle defile maintenant et la
+   rangee de boutons du bas reste toujours visible. */
+.modal-content:has(.autorep-tabs) {
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.modal-content:has(.autorep-tabs) :has(> .replace-run-btn) {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  background: var(--bg-panel);
+  padding-top: 10px;
+}
