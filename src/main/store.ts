@@ -5,6 +5,8 @@
 // toutes ici, donc `store.get('projects')` renvoie un ProjectsMap et non `any`.
 
 import Store from 'electron-store';
+import path from 'node:path';
+import { app } from 'electron';
 import type {
   EditorPrefs,
   GrammarPrefs,
@@ -59,6 +61,15 @@ export interface StoreSchema {
    * session.setSpellCheckerEnabled(), sans redémarrage.
    */
   nativeSpellcheckEnabled: boolean;
+}
+
+// Tests automatiques (Playwright) : la variable SCRIPTORIUM_USER_DATA place
+// toutes les donnees (projets, reglages, sauvegardes, stockage de l'interface)
+// dans un dossier temporaire. Ignoree dans la version installee : aucun effet
+// pour l'utilisateur. Doit s'executer avant la creation du store ci-dessous.
+const TEST_USER_DATA = process.env.SCRIPTORIUM_USER_DATA;
+if (TEST_USER_DATA && !app.isPackaged && path.isAbsolute(TEST_USER_DATA)) {
+  app.setPath('userData', TEST_USER_DATA);
 }
 
 export const store = new Store<StoreSchema>({
