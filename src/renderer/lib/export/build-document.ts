@@ -22,11 +22,11 @@ import type {
   ExportRun
 } from '../../../shared/export-document';
 import { EXPORT_SEPARATOR_SYMBOLS } from '../../../shared/export-settings';
+import { isSceneSeparatorText } from '../../../shared/scene-separators';
 import { buildBibleChapters, type BibleSource } from './build-bible';
 
 const INVISIBLE_CHARS = /[\u200B-\u200D\u2060\uFEFF]/g;
 const CONTROL_CHARS = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
-const SEPARATOR_LINE = /^(?:\*(?:\s*\*){2,}|#|\u2042)$/;
 const SAFE_FONT_NAME = /^[A-Za-z0-9 \-]{1,60}$/;
 
 const BLOCK_TAGS = new Set([
@@ -284,7 +284,7 @@ function flush(c: Collector): void {
   const plain = runs.map((run) => run.text).join('').replace(/\s+/g, ' ').trim();
   if (plain === '') return;
 
-  if (c.separators && SEPARATOR_LINE.test(plain)) {
+  if (c.separators && isSceneSeparatorText(plain)) {
     c.blocks.push({ kind: 'separator', symbol: c.separatorSymbol });
     return;
   }

@@ -115,6 +115,7 @@ import { createWorldbuildingActions } from './controller/worldbuilding-actions';
 import { createItemActions } from './controller/item-actions';
 import { createTypographyActions } from './controller/typography-actions';
 import { createTypographyReveal } from './controller/typography-reveal';
+import { createSeparatorActions } from './controller/separator-actions';
 
 // Ré-exports : les autres fichiers continuent d'importer depuis useEditorController.
 export type { EditorController, EditorControllerDeps } from './controller/types';
@@ -1887,6 +1888,20 @@ export function useEditorController({
         updateUndoRedo,
       }),
       ...createTypographyReveal({ s }),
+      ...createSeparatorActions({
+        s,
+        bump,
+        history,
+        projectHistory,
+        mentionIndex,
+        highlight,
+        flushPendingHistoryCommit,
+        saveAll,
+        scheduleChapterSave,
+        setSaveStatus,
+        updateStats,
+        updateUndoRedo,
+      }),
       ...createGrammarActions({
         s,
         bump,

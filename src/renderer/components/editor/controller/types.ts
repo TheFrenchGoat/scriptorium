@@ -12,6 +12,7 @@ import type { AutoReplaceSettings } from '../../../lib/auto-replace';
 import type { TypoHtmlIssue } from '../../../lib/typography-html';
 import type { TypoCategory, TypoLanguage } from '../../../../shared/typography';
 import type { TypoProjectSettings } from '../../../../shared/typography-project';
+import type { SceneSeparatorItem, SceneSeparatorReport, SceneSeparatorResult, SceneSeparatorStyle } from '../../../../shared/scene-separators';
 import type { WbRegistry } from '../../../lib/wb-registry';
 import type { ProjectHistoryResult } from '../../../lib/project-history';
 import type { ReplaceMatchInfo, ReplaceOptions } from '../../../lib/dom';
@@ -154,6 +155,12 @@ export interface EditorController {
   restoreTypographyIgnored(): number;
   /** Selectionne un cas dans le chapitre affiche (false si impossible). */
   revealTypographyCase(item: TypoReportItem): boolean;
+  /** Separateurs de scene du chapitre ouvert ou de tout le livre (etape 2e). */
+  analyzeSceneSeparators(wholeProject: boolean): SceneSeparatorReport;
+  /** Remplace tous les separateurs par le modele choisi (annulable avec Ctrl+Z). */
+  unifySceneSeparators(wholeProject: boolean, style: SceneSeparatorStyle): SceneSeparatorResult;
+  /** Selectionne un separateur dans le chapitre affiche (false si impossible). */
+  revealSceneSeparator(item: SceneSeparatorItem): boolean;
   handlePaste(event: ReactClipboardEvent<HTMLElement>): void;
   handleEditorClick(event: ReactMouseEvent<HTMLElement>): void;
 

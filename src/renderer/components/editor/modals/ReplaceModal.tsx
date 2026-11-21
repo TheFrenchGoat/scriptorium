@@ -21,6 +21,15 @@ import {
   type TypoSpacing
 } from '../../../../shared/typography';
 import type { TypoProjectSettings } from '../../../../shared/typography-project';
+import {
+  SCENE_SEPARATOR_STYLES,
+  SCENE_SEPARATOR_SYMBOLS,
+  sceneSeparatorsToChange,
+  suggestedSceneSeparator,
+  type SceneSeparatorItem,
+  type SceneSeparatorReport,
+  type SceneSeparatorStyle
+} from '../../../../shared/scene-separators';
 import type { TranslationKey } from '../../../i18n/dict';
 import type { TypoReport, TypoReportItem } from '../controller/types';
 
@@ -179,6 +188,10 @@ export function ReplaceModal({ open, controller, onClose }: ReplaceModalProps): 
   const [typoMessage, setTypoMessage] = useState('');
   const [typoShown, setTypoShown] = useState<Partial<Record<TypoCategory, number>>>({});
   const [restoreArmed, setRestoreArmed] = useState(false);
+  // Separateurs de scene (etape 2e)
+  const [sepReport, setSepReport] = useState<SceneSeparatorReport | null>(null);
+  const [sepChoice, setSepChoice] = useState<SceneSeparatorStyle | null>(null);
+  const [sepMessage, setSepMessage] = useState('');
 
   const loadTypography = () => {
     try {
@@ -325,6 +338,67 @@ export function ReplaceModal({ open, controller, onClose }: ReplaceModalProps): 
         shown = controller.revealTypographyCase(item);
       } catch {
  shown = false;
+      }
+      if (!shown && tries < TYPO_REVEAL_TRIES) window.setTimeout(attempt, TYPO_REVEAL_DELAY);
+    };
+    window.setTimeout(attempt, TYPO_REVEAL_DELAY);
+  };
+
+  // Separateurs de scene (etape 2e) : reperage et remplacement par un seul modele.
+  // La portee (chapitre ou livre) est celle de l'onglet Typographie.
+  const sepStyle: SceneSeparatorStyle =
+    sepChoice ?? (sepReport ? suggestedSceneSeparator(sepReport.variants) : 'spaced-stars');
+  const sepStale = sepReport !== null && sepReport.whole !== typoWhole;
+  const sepVariants = sepReport && !sepStale ? sepReport.variants : [];
+  const sepItems = sepReport ? sepReport.items : [];
+  const sepToChange = sepReport && !sepStale ? sceneSeparatorsToChange(sepReport.variants, sepStyle) : 0;
+  let sepSummary = '';
+  if (sepReport && !sepStale) {
+    if (sepReport.unavailable) sepSummary = t('typoUnavailable');
+    else if (sepReport.noChapter) sepSummary = t('typoNoChapter');
+    else if (sepReport.total === 0) sepSummary = t('sceneSepNone');
+    else sepSummary = t('sceneSepSummary', { count: sepReport.total, variants: sepReport.variants.length });
+  }
+
+  const analyzeSeparators = (whole: boolean = typoWhole) => {
+    try {
+      setSepReport(controller.analyzeSceneSeparators(whole));
+    } catch {
+      setSepReport(null);
+      setSepMessage(t('typoError'));
+    }
+  };
+
+  const runSeparatorAnalysis = () => {
+    setSepMessage('');
+    analyzeSeparators();
+  };
+
+  const unifySeparators = () => {
+    try {
+      const result = controller.unifySceneSeparators(typoWhole, sepStyle);
+      if (result.unavailable) setSepMessage(t('typoUnavailable'));
+      else if (result.noChapter) setSepMessage(t('typoNoChapter'));
+      else if (result.count === 0) setSepMessage(t('sceneSepUniform'));
+      else setSepMessage(t('sceneSepUnified', { count: result.count, chapters: result.chapters }));
+    } catch {
+      setSepMessage(t('typoError'));
+    }
+    analyzeSeparators();
+    if (typoReport) analyzeTypo();
+  };
+
+  const goToSeparator = (item: SceneSeparatorItem) => {
+    controller.openItem(item.chapter, 'chapter');
+    onClose();
+    let tries = 0;
+    const attempt = () => {
+      tries += 1;
+      let shown = false;
+      try {
+        shown = controller.revealSceneSeparator(item);
+      } catch {
+        shown = false;
       }
       if (!shown && tries < TYPO_REVEAL_TRIES) window.setTimeout(attempt, TYPO_REVEAL_DELAY);
     };
@@ -843,6 +917,63 @@ onClick={() => updateTypography({ spacing: choice.value })}
     })}
   </div>
        ) : null}
+
+       <section className="typo-separators" style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+         <span className="typo-label">{t('sceneSepLabel')}</span>
+         <p className="typo-note">{t('sceneSepHint')}</p>
+         <div className="replace-row">
+           <div className="replace-scope" role="group" aria-label={t('sceneSepStyleLabel')}>
+             {SCENE_SEPARATOR_STYLES.map((style) => (
+        <button
+                 key={style}
+          type="button"
+                 className={'replace-seg' + (sepStyle === style ? ' active' : '')}
+                 aria-pressed={sepStyle === style}
+          onClick={() => setSepChoice(style)}
+               >
+                 {SCENE_SEPARATOR_SYMBOLS[style]}
+               </button>
+             ))}
+           </div>
+           <button type="button" onClick={runSeparatorAnalysis}>
+             {t('sceneSepFind')}
+           </button>
+           <button type="button" className="btn-primary" onClick={unifySeparators} disabled={sepToChange === 0}>
+             {t('sceneSepUnify')}
+           </button>
+         </div>
+         {sepSummary ? <p className="replace-count" aria-live="polite">{sepSummary}</p> : null}
+         {sepStale ? <p className="typo-message">{t('sceneSepScopeChanged')}</p> : null}
+         {sepMessage ? <p className="typo-message">{sepMessage}</p> : null}
+         {sepVariants.length > 0 ? (
+           <div className="typo-results">
+             {sepVariants.map((variant) => {
+        const first = sepItems.find((item) => item.text === variant.text);
+               return (
+                 <div key={variant.text} className="typo-item">
+            <div className="typo-item-head">
+              <span className={variant.text === SCENE_SEPARATOR_SYMBOLS[sepStyle] ? 'typo-new' : 'typo-old'}>{variant.text}</span>
+              <span className="typo-group-count">{variant.count}</span>
+            </div>
+                   {first ? (
+              <div className="typo-item-actions">
+                <button
+           type="button"
+           title={t('typoGoToHint')}
+                  onClick={() => {
+             if (first) goToSeparator(first);
+           }}
+                >
+           {t('typoGoTo')}
+         </button>
+              </div>
+            ) : null}
+                 </div>
+               );
+             })}
+           </div>
+         ) : null}
+       </section>
      </>
           )}
         </div>
