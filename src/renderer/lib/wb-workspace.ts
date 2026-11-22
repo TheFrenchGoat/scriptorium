@@ -76,11 +76,6 @@ function dispatchRequest(detail: WbWorkspaceEventDetail): void {
   );
 }
 
-/** Ouvre l'atelier (sur l'onglet demandé, sinon le dernier utilisé). */
-export function openWbWorkspace(tab?: WbWorkspaceTab): void {
-  dispatchRequest({ action: 'open', tab });
-}
-
 export function closeWbWorkspace(): void {
   dispatchRequest({ action: 'close' });
 }
@@ -97,10 +92,6 @@ export function toggleWbWorkspace(tab?: WbWorkspaceTab): void {
 
 export function isWbWorkspaceOpen(): boolean {
   return currentState.open;
-}
-
-export function getWbWorkspaceTab(): WbWorkspaceTab {
-  return currentState.tab;
 }
 
 /** Appelé uniquement par WbWorkspace pour publier son état. */

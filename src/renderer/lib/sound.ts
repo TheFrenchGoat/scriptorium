@@ -96,12 +96,6 @@ export function playTimerSound(soundId: TimerSoundId = 'chime', volume = 0.5): v
   (SOUND_PLAYERS[soundId] ?? playChime)(ctx, volume);
 }
 
-/** Rétro-compatibilité : ancien nom, conservé pour ne rien casser si
- *  référencé ailleurs. */
-export function playTimerFinishedSound(volume = 0.5): void {
-  playTimerSound('chime', volume);
-}
-
 /** Fait sonner la sonnerie choisie en boucle (avec un silence entre chaque
  *  répétition) jusqu'à l'appel de la fonction d'arrêt renvoyée. Utilisé pour
  *  que le signal de fin de minuteur continue tant que la personne n'a pas vu

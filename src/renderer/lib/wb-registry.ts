@@ -206,12 +206,6 @@ export function applyMentionColorStyle(span: HTMLElement, color: string): void {
   span.style.borderColor = mentionBorderColor(value);
 }
 
-/** Retire la couleur posée par applyMentionColorStyle. */
-export function clearMentionColorStyle(span: HTMLElement): void {
-  span.style.removeProperty('color');
-  span.style.removeProperty('border-color');
-}
-
 // ---------------------------------------------------------------------------
 // Registre
 // ---------------------------------------------------------------------------

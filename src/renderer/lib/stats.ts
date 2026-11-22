@@ -15,7 +15,7 @@
 // - calendrier d’écriture ;
 // - comptage des mots par chapitre.
 
-import { getLanguage, t } from '../i18n';
+import { getLanguage } from '../i18n';
 import type {
   ProjectData,
   ProjectGoal,
@@ -24,12 +24,6 @@ import type {
   WritingStats,
   WritingStatsBucket
 } from '../../shared/types';
-
-export type StatsPeriod =
-  | 'day'
-  | 'week'
-  | 'month'
-  | 'year';
 
 export type SessionStatsPeriod =
   | 'today'
@@ -233,58 +227,6 @@ export function parseDateKey(
 }
 
 /**
- * Clé de semaine ISO 8601, par exemple "2026-S36".
- */
-export function getIsoWeekKey(
-  date: Date
-): string {
-  const utcDate = new Date(
-    Date.UTC(
-      date.getFullYear(),
-      date.getMonth(),
-      date.getDate()
-    )
-  );
-
-  const dayNumber =
-    (utcDate.getUTCDay() + 6) % 7;
-
-  utcDate.setUTCDate(
-    utcDate.getUTCDate() -
-      dayNumber +
-      3
-  );
-
-  const isoYear =
-    utcDate.getUTCFullYear();
-
-  const firstThursday = new Date(
-    Date.UTC(isoYear, 0, 4)
-  );
-
-  const firstThursdayDayNumber =
-    (firstThursday.getUTCDay() + 6) % 7;
-
-  firstThursday.setUTCDate(
-    firstThursday.getUTCDate() -
-      firstThursdayDayNumber +
-      3
-  );
-
-  const weekNumber =
-    1 +
-    Math.round(
-      (utcDate.getTime() -
-        firstThursday.getTime()) /
-        604800000
-    );
-
-  return `${isoYear}-S${String(
-    weekNumber
-  ).padStart(2, '0')}`;
-}
-
-/**
  * Transforme le contenu HTML d’un chapitre en texte simple.
  */
 export function htmlToPlainText(
@@ -463,132 +405,6 @@ export function getTotalStats(
     words: totalWords,
     chars: totalChars
   };
-}
-
-/**
- * Formate l’étiquette d’une ligne de l’ancien historique de mots.
- */
-export function formatStatsLabel(
-  key: string,
-  period: StatsPeriod
-): string {
-  const locale =
-    getLanguage() === 'en'
-      ? 'en-US'
-      : 'fr-FR';
-
-  if (period === 'day') {
-    const date = parseDateKey(key);
-
-    if (!date) return key;
-
-    const label =
-      date.toLocaleDateString(locale, {
-        weekday: 'short',
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric'
-      });
-
-    return (
-      label.charAt(0).toUpperCase() +
-      label.slice(1)
-    );
-  }
-
-  if (period === 'week') {
-    const [year, week] =
-      key.split('-S');
-
-    return `${t(
-      'statsWeekPrefix'
-    )} ${week} — ${year}`;
-  }
-
-  if (period === 'month') {
-    const [year, month] = key
-      .split('-')
-      .map(Number);
-
-    if (!year || !month) {
-      return key;
-    }
-
-    const label = new Date(
-      year,
-      month - 1,
-      1
-    ).toLocaleDateString(locale, {
-      month: 'long',
-      year: 'numeric'
-    });
-
-    return (
-      label.charAt(0).toUpperCase() +
-      label.slice(1)
-    );
-  }
-
-  return key;
-}
-
-/**
- * Regroupe l’ancien historique quotidien selon la période demandée.
- */
-export function bucketHistory(
-  history: Record<string, number>,
-  period: StatsPeriod
-): {
-  key: string;
-  words: number;
-}[] {
-  const buckets: Record<
-    string,
-    number
-  > = {};
-
-  Object.keys(history).forEach(
-    (dayKey) => {
-      const date =
-        parseDateKey(dayKey);
-
-      if (!date) return;
-
-      const year =
-        date.getFullYear();
-      const month =
-        date.getMonth() + 1;
-
-      let bucketKey: string;
-
-      if (period === 'day') {
-        bucketKey = dayKey;
-      } else if (period === 'week') {
-        bucketKey =
-          getIsoWeekKey(date);
-      } else if (
-        period === 'month'
-      ) {
-        bucketKey = `${year}-${String(
-          month
-        ).padStart(2, '0')}`;
-      } else {
-        bucketKey = String(year);
-      }
-
-      buckets[bucketKey] =
-        (buckets[bucketKey] || 0) +
-        (history[dayKey] || 0);
-    }
-  );
-
-  return Object.keys(buckets)
-    .sort()
-    .reverse()
-    .map((key) => ({
-      key,
-      words: buckets[key]
-    }));
 }
 
 /**
@@ -805,30 +621,6 @@ export function filterSessionsByRange(
           a.startedAt
         ).getTime()
     );
-}
-
-/**
- * Filtre les sessions d’un projet à partir du type de période.
- */
-export function filterSessionsByPeriod(
-  sessions: WritingSession[],
-  period: SessionStatsPeriod,
-  referenceDate = new Date(),
-  customStart?: Date | null,
-  customEnd?: Date | null
-): WritingSession[] {
-  const range =
-    getSessionDateRange(
-      period,
-      referenceDate,
-      customStart,
-      customEnd
-    );
-
-  return filterSessionsByRange(
-    sessions,
-    range
-  );
 }
 
 /**
@@ -1772,25 +1564,6 @@ export function formatSessionTime(
       minute: '2-digit'
     }
   );
-}
-
-/**
- * Génère un identifiant suffisamment unique pour une session créée dans le
- * renderer, sans dépendance externe.
- */
-export function createWritingSessionId(): string {
-  if (
-    typeof crypto !==
-      'undefined' &&
-    typeof crypto.randomUUID ===
-      'function'
-  ) {
-    return crypto.randomUUID();
-  }
-
-  return `session-${Date.now()}-${Math.random()
-    .toString(36)
-    .slice(2, 10)}`;
 }
 
 /**

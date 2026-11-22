@@ -656,28 +656,6 @@ export function isScreenplayProject(
   );
 }
 
-export function getScreenplayData(
-  projectData:
-    | ProjectData
-    | null
-    | undefined
-): ScreenplayProjectData | null {
-  if (!isScreenplayProject(projectData)) {
-    return null;
-  }
-
-  return projectData?.screenplay ?? null;
-}
-
-export function getScreenplayPagePreset(
-  format: ScreenplayPageFormat
-): ScreenplayPagePreset {
-  return (
-    SCREENPLAY_PAGE_PRESETS[format] ??
-    SCREENPLAY_PAGE_PRESETS.a4
-  );
-}
-
 // ---------------------------------------------------------------------------
 // ENCHAÎNEMENT DES TYPES
 // ---------------------------------------------------------------------------
@@ -706,12 +684,6 @@ export function getNextScreenplayTypeAfterEnter(
 }
 
 /**
- * Alias explicite utilisable par l’éditeur.
- */
-export const getNextScreenplayElementType =
-  getNextScreenplayTypeAfterEnter;
-
-/**
  * Retourne les types disponibles dans le sélecteur.
  *
  * Le type Plan est masqué lorsque l’option correspondante est désactivée.
@@ -724,39 +696,6 @@ export function getAvailableScreenplayElementTypes(
       type !== 'shot' ||
       settings.enableShotElement
   );
-}
-
-/**
- * Change de type avec Tab ou Maj+Tab.
- */
-export function cycleScreenplayElementType(
-  currentType: ScreenplayElementType,
-  direction: 1 | -1,
-  settings: ScreenplaySettings
-): ScreenplayElementType {
-  const available =
-    getAvailableScreenplayElementTypes(
-      settings
-    );
-
-  if (available.length === 0) {
-    return 'action';
-  }
-
-  const currentIndex =
-    available.indexOf(currentType);
-
-  if (currentIndex < 0) {
-    return available[0];
-  }
-
-  const nextIndex =
-    (currentIndex +
-      direction +
-      available.length) %
-    available.length;
-
-  return available[nextIndex];
 }
 
 // ---------------------------------------------------------------------------

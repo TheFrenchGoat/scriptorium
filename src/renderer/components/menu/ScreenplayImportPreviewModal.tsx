@@ -5,7 +5,7 @@
 // trace. L'auteur peut renommer le projet ; le scénario est affiché en
 // lecture seule, scène par scène (texte brut, sans HTML inséré).
 
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useI18n } from '../../i18n';
 import { Modal } from '../common/Modal';
 import { countWordsInHtml } from '../../lib/stats';
@@ -44,7 +44,7 @@ export function ScreenplayImportPreviewModal({
   onCancel,
   onConfirm
 }: ScreenplayImportPreviewModalProps) {
-  const { t, lang } = useI18n();
+  const { t } = useI18n();
   const screenplay = imported.projectData.screenplay;
   const scenes = useMemo(() => (screenplay ? screenplay.scenes : []), [screenplay]);
   const language = screenplay && screenplay.settings.conventionLanguage === 'en' ? 'en' : 'fr';

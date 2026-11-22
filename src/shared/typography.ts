@@ -97,21 +97,6 @@ const E_ACUTE = String.fromCharCode(0xe9);
 const CURRENCIES = String.fromCharCode(36, 0x20ac, 0xa3);
 const BACKSLASH = String.fromCharCode(92);
 
-/** Caracteres typographiques utilises par les regles. */
-export const TYPO_CHARS = {
-  nbsp: NBSP,
-  narrowNbsp: NNBSP,
-  apostrophe: APOS,
-  openingSingleQuote: LSQUO,
-  openingQuote: LDQUO,
-  closingQuote: RDQUO,
-  openingGuillemet: LAQUO,
-  closingGuillemet: RAQUO,
-  ellipsis: ELLIPSIS,
-  emDash: EM,
-  enDash: EN
-};
-
 const LETTER_PATTERN = new RegExp('[' + BACKSLASH + 'p{L}' + BACKSLASH + 'p{M}]', 'u');
 
 function isLetter(ch: string): boolean {

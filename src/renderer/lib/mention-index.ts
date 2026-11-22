@@ -149,25 +149,6 @@ export function buildTermsRegExp(terms: string[], flags = 'giu'): RegExp | null 
 }
 
 /**
- * Teste si un terme apparaît dans un texte, en respectant les frontières de
- * mot. Insensible à la casse.
- */
-export function chapterTextMentions(text: string, term: string): boolean {
-  const regex = buildTermsRegExp([term], 'iu');
-
-  return regex ? regex.test(text) : false;
-}
-
-/**
- * Teste si une fiche (nom ou alias) apparaît dans un texte.
- */
-export function textMentionsItem(text: string, item: WbItem): boolean {
-  const regex = buildTermsRegExp(getItemTerms(item), 'iu');
-
-  return regex ? regex.test(text) : false;
-}
-
-/**
  * Identifiants présents dans les attributs data-wb-key d'un HTML.
  */
 export function collectMentionKeys(html: string): Set<string> {

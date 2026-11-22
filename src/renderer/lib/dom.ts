@@ -63,17 +63,6 @@ export function debounce<A extends unknown[]>(
 // ÉCHAPPEMENT
 // ---------------------------------------------------------------------------
 
-/** Échappement générique, pour toute valeur (nom de fiche, icône libre...)
- *  injectée dans un attribut ou un fragment HTML. */
-export function escapeHtmlAttr(s: unknown): string {
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
 /** Caractères spéciaux des expressions régulières (la barre oblique inverse est le code 92). */
 const BACKSLASH = String.fromCharCode(92);
 const REGEXP_SPECIAL_CHARS = '.*+?^$|{}()[]' + BACKSLASH;
@@ -167,17 +156,6 @@ export function setCaretPosition(element: HTMLElement, offset: number): void {
 
   selection.removeAllRanges();
   selection.addRange(range);
-}
-
-export function placeCaretAtEnd(el: HTMLElement): void {
-  el.focus();
-  const range = document.createRange();
-  range.selectNodeContents(el);
-  range.collapse(false);
-  const sel = window.getSelection();
-  if (!sel) return;
-  sel.removeAllRanges();
-  sel.addRange(range);
 }
 
 /** Remplace toutes les occurrences d'une chaîne dans un fragment HTML, en ne

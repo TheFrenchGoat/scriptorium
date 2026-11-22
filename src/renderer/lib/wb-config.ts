@@ -17,8 +17,7 @@ import type {
   WbField,
   WbFieldType,
   WbRelationKind,
-  WbRelationTypeDef,
-  WbTemplate
+  WbRelationTypeDef
 } from '../../shared/types';
 
 // ============================================================================
@@ -172,31 +171,6 @@ export const WB_BUILTIN_FIELDS: Record<BuiltinWbType, WbBuiltinFieldDef[]> = {
   ]
 };
 
-function buildLegacyTemplates(): Record<BuiltinWbType, WbTemplate> {
-  const templates = {} as Record<BuiltinWbType, WbTemplate>;
-
-  for (const type of BUILTIN_WB_TYPES) {
-    templates[type] = {
-      icon: WB_CONFIG[type].icon,
-      label: WB_BUILTIN_LABELS[type].fr,
-      fields: WB_BUILTIN_FIELDS[type].map((field) => ({
-        key: field.key,
-        label: field.label.fr,
-        type: field.type
-      }))
-    };
-  }
-
-  return templates;
-}
-
-/**
- * Gabarits historiques (libellés français).
- *
- * Conservés pour la compatibilité du code existant et pour la migration.
- */
-export const WB_TEMPLATES: Record<BuiltinWbType, WbTemplate> = buildLegacyTemplates();
-
 /**
  * Crée la définition d'une catégorie d'origine.
  *
@@ -289,6 +263,7 @@ export function resolveFieldLabel(
 
 export const WB_FIELD_TYPES: WbFieldType[] = ['text', 'textarea', 'number', 'select', 'reference'];
 
+// Prévu pour Worldbuilding 2 (1.6) : pas encore branché dans l'interface.
 export const WB_FIELD_TYPE_LABELS: Record<WbFieldType, LocalizedText> = {
   text: { fr: 'Texte court', en: 'Short text' },
   textarea: { fr: 'Texte long', en: 'Long text' },
@@ -334,6 +309,7 @@ function choices(...pairs: [string, string][]): LocalizedText[] {
 
 const NOTES_FIELD = presetField('notes', 'textarea', 'Notes', 'Notes');
 
+// Prévu pour Worldbuilding 2 (1.6) : pas encore branché dans l'interface.
 export const WB_CATEGORY_PRESETS: WbCategoryPreset[] = [
   {
     id: 'faction',
@@ -558,6 +534,7 @@ export const WB_CATEGORY_PRESETS: WbCategoryPreset[] = [
   }
 ];
 
+// Prévu pour Worldbuilding 2 (1.6) : pas encore branché dans l'interface.
 /**
  * Crée une catégorie à partir d'un modèle, dans la langue de l'interface.
  *

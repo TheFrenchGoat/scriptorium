@@ -138,7 +138,7 @@ function createWindow(): void {
   });
   win.webContents.on('console-message', (...args: any[]) => {
     // compatible avec l'ancienne et la nouvelle signature d'Electron
-    const [e, level, message, line, source] = args;
+    const [e, , message, line, source] = args;
     logDebug(`[renderer] ${e?.message ?? message} (${e?.sourceId ?? source}:${e?.lineNumber ?? line})`);
   });
   if (process.env.SCRIPTORIUM_DEBUG) {

@@ -112,11 +112,6 @@ export function cloneWbData<T>(value: T): T {
   return structuredClone(value);
 }
 
-/** Vrai pendant une annulation ou un rétablissement. */
-export function isReplayingWbHistory(): boolean {
-  return replaying;
-}
-
 /**
  * Enregistre une action ; efface ce qui pouvait être rétabli.
  * Ignoré pendant une annulation ou un rétablissement.
@@ -173,16 +168,6 @@ function apply(direction: WbHistoryDirection): WbHistoryEntry | null {
   else undoStack.push(item);
   notify();
   return item.entry;
-}
-
-/** Annule la dernière action ; null s'il n'y avait rien à annuler. */
-export function undoWbHistory(): WbHistoryEntry | null {
-  return apply('undo');
-}
-
-/** Rétablit la dernière action annulée ; null s'il n'y avait rien à rétablir. */
-export function redoWbHistory(): WbHistoryEntry | null {
-  return apply('redo');
 }
 
 /**

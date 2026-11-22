@@ -11,7 +11,7 @@
 // L'aperçu est recalculé peu après le dernier changement de réglage, pour
 // rester fluide pendant la saisie d'un titre.
 
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { useI18n } from '../../../i18n';
 import {

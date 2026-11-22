@@ -486,16 +486,6 @@ export function getGrammarMarkGroup(
   return group.includes(mark) ? group : [mark];
 }
 
-/** Texte complet d'une faute (tous ses morceaux). */
-export function getGrammarGroupText(
-  root: ParentNode | null,
-  mark: HTMLElement
-): string {
-  return getGrammarMarkGroup(root, mark)
-    .map((element) => stripInvisibleChars(element.textContent ?? ''))
-    .join('');
-}
-
 /** Retire les <mark> d'une faute sans toucher au texte. Renvoie le texte. */
 export function removeGrammarGroup(
   root: ParentNode | null,
