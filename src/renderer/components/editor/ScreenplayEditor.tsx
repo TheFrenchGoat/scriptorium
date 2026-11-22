@@ -40,7 +40,8 @@ import type { WbRegistry } from '../../lib/wb-registry';
 
 import { highlightWorldBuilding } from '../../lib/highlight';
 
-import { ScreenplayElementEditor, WB_OPEN_TAB_EVENT, type WbOpenTabEventDetail } from './ScreenplayElementEditor';
+import { ScreenplayElementEditor } from './ScreenplayElementEditor';
+import { WB_OPEN_TAB_EVENT, type WbOpenTabEventDetail } from '../../lib/wb-events';
 
 import { openWbPanel } from './WbSidePanel';
 

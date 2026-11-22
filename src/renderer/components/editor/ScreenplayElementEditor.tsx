@@ -52,6 +52,11 @@ import {
   openWbPanel
 } from './WbSidePanel';
 
+import {
+  WB_OPEN_TAB_EVENT,
+  type WbOpenTabEventDetail
+} from '../../lib/wb-events';
+
 import type {
   ProjectData,
   ScreenplayConventionLanguage,
@@ -62,14 +67,6 @@ import type {
 /** Pause après la dernière frappe avant de surligner. */
 const HIGHLIGHT_DELAY_MS =
   300;
-
-/** Événement : ouvrir une fiche dans un onglet (Ctrl+clic dans une scène). */
-export const WB_OPEN_TAB_EVENT =
-  'scriptorium:wb-open-tab';
-
-export interface WbOpenTabEventDetail {
-  itemId: string;
-}
 
 export interface ScreenplayElementEditorProps {
   element: ScreenplayElement;

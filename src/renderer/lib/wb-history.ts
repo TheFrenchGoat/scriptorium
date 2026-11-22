@@ -109,8 +109,7 @@ function notifyScope(): void {
 /** Copie profonde de données sérialisables (tableaux, objets simples). */
 export function cloneWbData<T>(value: T): T {
   if (value === undefined || value === null) return value;
-  if (typeof structuredClone === 'function') return structuredClone(value);
-  return JSON.parse(JSON.stringify(value)) as T;
+  return structuredClone(value);
 }
 
 /** Vrai pendant une annulation ou un rétablissement. */

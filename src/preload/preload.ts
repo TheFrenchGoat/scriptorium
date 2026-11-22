@@ -41,9 +41,15 @@ ipcRenderer.on('app:before-close', () => {
       })
   );
 
-  void Promise.all(tasks).then(() => {
-    ipcRenderer.send('app:close-ready');
-  });
+  // Chaque tâche attrape déjà ses propres erreurs : Promise.all ne peut donc
+  // pas échouer. Le catch reste une sécurité : la réponse part toujours.
+  void Promise.all(tasks)
+    .catch((error: unknown) => {
+      console.error('[fermeture]', error);
+    })
+    .finally(() => {
+      ipcRenderer.send('app:close-ready');
+    });
 });
 
 const api: ScriptoriumApi = {

@@ -11,7 +11,7 @@
 import { useEffect, useState } from 'react';
 import { Modal } from '../common/Modal';
 import { useI18n } from '../../i18n';
-import { applyUiPrefs } from '../../App';
+import { applyUiPrefs } from '../../lib/ui-prefs';
 import type { EditorPrefs, ThemeName } from '../../../shared/types';
 import {
   CorrectionSection,

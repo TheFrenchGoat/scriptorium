@@ -66,7 +66,7 @@ import {
 import { createStatusStore } from './editor-status';
 import { createTrailingThrottle } from './typing-helpers';
 import { openWbPanel } from './WbSidePanel';
-import { WB_OPEN_TAB_EVENT, type WbOpenTabEventDetail } from './ScreenplayElementEditor';
+import { WB_OPEN_TAB_EVENT, type WbOpenTabEventDetail } from '../../lib/wb-events';
 import { cloneWbData, pushWbHistory, type WbHistoryEntry } from '../../lib/wb-history';
 import type {
   ItemType,

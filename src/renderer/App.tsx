@@ -13,7 +13,8 @@ import { WhatsNew } from './components/common/WhatsNew';
 import { UpdateNotifier } from './components/common/UpdateNotifier';
 import { ProjectsPage } from './components/menu/ProjectsPage';
 import { EditorPage } from './components/editor/EditorPage';
-import type { EditorPrefs, LanguageCode, ThemeName } from '../shared/types';
+import { applyUiPrefs } from './lib/ui-prefs';
+import type { LanguageCode, ThemeName } from '../shared/types';
 
 /** Migration ponctuelle : si l'utilisateur avait des projets stockés dans
  *  l'ancien système localStorage (versions précédentes de l'appli), on les
@@ -34,19 +35,11 @@ async function migrateLegacyDataIfNeeded(): Promise<void> {
       localStorage.removeItem('codwriter_state');
       localStorage.removeItem('codwriter_theme');
       localStorage.removeItem('currentProject');
-      console.log('Anciennes données locales migrées vers le stockage persistant.');
+      console.info('Anciennes données locales migrées vers le stockage persistant.');
     }
   } catch (e) {
     console.error('Échec de la migration des données locales :', e);
   }
-}
-
-/** Applique les préférences d'affichage de l'INTERFACE (taille et police des
- *  menus, sidebar, modales). La feuille d'écriture a ses propres variables
- *  (--editor-*), appliquées par l'éditeur. */
-export function applyUiPrefs(prefs: EditorPrefs): void {
-  document.body.style.setProperty('--ui-font-size', `${prefs.uiFontSize ?? 14}px`);
-  document.body.style.setProperty('--ui-font-family', prefs.uiFontFamily ?? "'Roboto', sans-serif");
 }
 
 type View = 'menu' | 'editor';

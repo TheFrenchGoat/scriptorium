@@ -342,6 +342,10 @@ export function EditorPage({
         .save()
         .then(() => {
           onBack();
+        })
+        .catch((error: unknown) => {
+          // Enregistrement impossible : on reste dans l'éditeur pour ne rien perdre.
+          console.error('[retour aux projets]', error);
         });
     }, [controller, onBack]);
 
@@ -978,9 +982,9 @@ export function EditorPage({
       // Le scénario gère lui-même Ctrl+Z, Ctrl+Y et Ctrl+Maj+Z
       // (ScreenplayEditor, handleHistoryKeyDown) : rien à faire ici.
       const focusInScreenplay =
-        document.activeElement?.closest(
-          '.screenplay-editor'
-        ) != null;
+        Boolean(
+          document.activeElement?.closest('.screenplay-editor')
+        );
 
       if (
         ctrlOrCmd &&

@@ -820,6 +820,11 @@ export function Sidebar({
           if (renamed) {
             setRenaming(null);
           }
+        })
+        .catch((error: unknown) => {
+          // Renommage impossible : le champ reste ouvert, comme quand le nom
+          // est refusé.
+          console.error('[renommage]', error);
         });
     };
 

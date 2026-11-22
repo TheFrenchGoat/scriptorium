@@ -148,6 +148,11 @@ export function WbSheet({ controller, name, compact = false }: WbSheetProps): Re
       .then((ok) => {
         if (!ok) setNameDraft(currentName);
       })
+      .catch((error: unknown) => {
+        // Renommage impossible : l'ancien nom revient.
+        console.error('[renommage]', error);
+        setNameDraft(currentName);
+      })
       .finally(() => {
         renameInFlightRef.current = false;
       });

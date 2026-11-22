@@ -2,7 +2,7 @@
 // Point d'entrée du processus principal.
 
 import path from 'node:path';
-import { app, BrowserWindow, ipcMain, Menu, MenuItem, session, type IpcMainEvent } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, Menu, MenuItem, session, type IpcMainEvent } from 'electron';
 import { store } from './store';
 import { registerPersistenceIpc } from './ipc/persistence';
 import { registerFileIpc } from './ipc/files';
@@ -24,6 +24,13 @@ let win: MainWindow | null = null;
 const getWindow = (): MainWindow | null => win;
 
 const DEV_SERVER_URL = process.env.SCRIPTORIUM_DEV_SERVER;
+
+/** Journal de diagnostic : affiché seulement en mode débogage (SCRIPTORIUM_DEBUG). */
+function logDebug(...parts: unknown[]): void {
+  if (process.env.SCRIPTORIUM_DEBUG) {
+    console.log(...parts);
+  }
+}
 
 /** Délai maximal d'attente de l'enregistrement par le renderer. */
 const SAVE_BEFORE_CLOSE_TIMEOUT_MS = 5000;
@@ -119,7 +126,7 @@ function createWindow(): void {
     }
   }) as MainWindow;
 
-  // --- DIAGNOSTIC TEMPORAIRE ---
+  // --- Diagnostic : erreurs toujours journalisées, le reste en mode débogage ---
   win.webContents.on('did-fail-load', (_e, code, desc, url) => {
     console.error('[did-fail-load]', code, desc, url);
   });
@@ -127,12 +134,12 @@ function createWindow(): void {
     console.error('[render-process-gone]', details);
   });
   win.webContents.on('will-navigate', (_e, url) => {
-    console.log('[will-navigate]', url);
+    logDebug('[will-navigate]', url);
   });
   win.webContents.on('console-message', (...args: any[]) => {
     // compatible avec l'ancienne et la nouvelle signature d'Electron
     const [e, level, message, line, source] = args;
-    console.log(`[renderer] ${e?.message ?? message} (${e?.sourceId ?? source}:${e?.lineNumber ?? line})`);
+    logDebug(`[renderer] ${e?.message ?? message} (${e?.sourceId ?? source}:${e?.lineNumber ?? line})`);
   });
   if (process.env.SCRIPTORIUM_DEBUG) {
     win.webContents.openDevTools({ mode: 'detach' });
@@ -261,13 +268,21 @@ function createWindow(): void {
 
     closeRequested = true;
 
-    void saveBeforeClose(currentWin).then(() => {
-      closeAllowed = true;
+    void saveBeforeClose(currentWin)
+      .then(() => {
+        closeAllowed = true;
 
-      if (!currentWin.isDestroyed()) {
-        currentWin.close();
-      }
-    });
+        if (!currentWin.isDestroyed()) {
+          currentWin.close();
+        }
+      })
+      .catch((error: unknown) => {
+        // Imprévu : la fenêtre reste ouverte (rien n'est perdu) et un nouveau
+        // clic sur la croix relance l'enregistrement.
+        console.error('[fermeture]', error);
+        closeAllowed = false;
+        closeRequested = false;
+      });
   });
 
   win.on('closed', () => {
@@ -331,7 +346,7 @@ registerFileIpc();
 registerBackupIpc();
 registerGrammarIpc(getWindow);
 
-app.whenReady().then(() => {
+void app.whenReady().then(() => {
   // Pas de menu d'application : le menu par défaut d'Electron, même caché,
   // gardait ses raccourcis (Ctrl+R recharge, Ctrl+W ferme, zoom, F11, etc.).
   Menu.setApplicationMenu(null);
@@ -348,6 +363,16 @@ app.whenReady().then(() => {
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
+}).catch((error: unknown) => {
+  // Échec au démarrage. Sans fenêtre, le logiciel tournerait sans rien
+  // afficher : on prévient l'utilisateur puis on quitte. Si la fenêtre est
+  // déjà ouverte (échec plus tardif, par exemple des mises à jour), on la garde.
+  console.error('[démarrage]', error);
+  if (BrowserWindow.getAllWindows().length === 0) {
+    const detail = error instanceof Error ? error.message : String(error);
+    dialog.showErrorBox('Scriptorium', detail);
+    app.quit();
+  }
 });
 
 app.on('will-quit', stopGrammarServer);
