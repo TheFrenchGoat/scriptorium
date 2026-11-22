@@ -722,9 +722,9 @@ function parseBlocks(
 /**
  * Importe un fichier ODT et le transforme en projet Scriptorium.
  */
-export function importOdtProject(
+export async function importOdtProject(
   filePath: string
-): ImportedProject {
+): Promise<ImportedProject> {
   if (
     typeof filePath !== 'string' ||
     path.extname(filePath).toLowerCase() !==
@@ -735,16 +735,25 @@ export function importOdtProject(
     );
   }
 
-  if (!fs.existsSync(filePath)) {
+  let fileData: Buffer;
+
+  try {
+    fileData = await fs.promises.readFile(filePath);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      throw new Error(
+ mainMessage('importOdtNotFound')
+      );
+    }
     throw new Error(
-      mainMessage('importOdtNotFound')
+      mainMessage('importOdtOpenFailed')
     );
   }
 
   let archive: AdmZip;
 
   try {
-    archive = new AdmZip(filePath);
+    archive = new AdmZip(fileData);
   } catch {
     throw new Error(
       mainMessage('importOdtOpenFailed')

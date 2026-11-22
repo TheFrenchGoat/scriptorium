@@ -81,11 +81,11 @@ function getProjectNameFromFile(
 /**
  * Charge un projet Scriptorium ou JSON.
  */
-function importScriptoriumProject(
+async function importScriptoriumProject(
   filePath: string
-): ImportedProject {
+): Promise<ImportedProject> {
   const rawContent =
-    fs.readFileSync(
+    await fs.promises.readFile(
       filePath,
       'utf8'
     );
@@ -216,7 +216,7 @@ async function importSupportedProject(
         : undefined;
 
     const imported =
-      importTextProject(
+      await importTextProject(
         filePath,
         rejoinLines
       );
@@ -241,7 +241,7 @@ async function importSupportedProject(
 
   if (extension === '.fountain') {
     const imported =
-      importFountainProject(
+      await importFountainProject(
         filePath
       );
 

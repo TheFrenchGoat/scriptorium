@@ -191,14 +191,14 @@ function blockToXhtml(block: ExportBlock, images: EpubImage[]): string {
 }
 
 /** Image de couverture : JPEG ou PNG reconnus à leurs premiers octets. */
-function readCover(coverPath: string): EpubCover | null {
+async function readCover(coverPath: string): Promise<EpubCover | null> {
   if (coverPath === '') return null;
 
   try {
-    const stat = fs.statSync(coverPath);
+    const stat = await fs.promises.stat(coverPath);
     if (!stat.isFile() || stat.size === 0 || stat.size > MAX_COVER_BYTES) return null;
 
-    const data = fs.readFileSync(coverPath);
+    const data = await fs.promises.readFile(coverPath);
 
     if (data.length > 8 && data[0] === 0x89 && data[1] === 0x50 && data[2] === 0x4e && data[3] === 0x47) {
       return { href: 'images/cover.png', data, mediaType: 'image/png' };
@@ -219,8 +219,8 @@ function readCover(coverPath: string): EpubCover | null {
  * fenêtre d'export. Mêmes règles que l'export (JPEG ou PNG, 30 Mo au plus) :
  * null si l'image est absente ou invalide.
  */
-export function readCoverDataUrl(coverPath: string): string | null {
-  const cover = readCover(coverPath);
+export async function readCoverDataUrl(coverPath: string): Promise<string | null> {
+  const cover = await readCover(coverPath);
   if (!cover) return null;
 
   return `data:${cover.mediaType};base64,${Buffer.from(cover.data).toString('base64')}`;
@@ -248,7 +248,7 @@ export async function generateExportEpub(
   const identifier = `urn:uuid:${options.identifier}`;
   const modified = modifiedDate();
 
-  const cover = readCover(options.coverPath);
+  const cover = await readCover(options.coverPath);
   const coverMissing = options.coverPath !== '' && cover === null;
 
   // Chapitres (et portraits de la bible).

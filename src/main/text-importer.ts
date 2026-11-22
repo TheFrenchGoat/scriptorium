@@ -1060,7 +1060,7 @@ function importMarkdownText(text: string): SplitDocumentResult {
 // -----------------------------------------------------------------------------
 
 /** Importe un fichier texte (.txt) ou Markdown (.md) en projet Scriptorium. */
-export function importTextProject(filePath: string, rejoinLines?: boolean): ImportedProject {
+export async function importTextProject(filePath: string, rejoinLines?: boolean): Promise<ImportedProject> {
   const extension = typeof filePath === 'string' ? path.extname(filePath).toLowerCase() : '';
   const markdown = extension === '.md' || extension === '.markdown';
 
@@ -1068,13 +1068,13 @@ export function importTextProject(filePath: string, rejoinLines?: boolean): Impo
     throw new Error(mainMessage('importNotTextFile'));
   }
 
-  const stats = fs.statSync(filePath);
+  const stats = await fs.promises.stat(filePath);
 
   if (stats.size > MAX_FILE_BYTES) {
     throw new Error(mainMessage('importFileTooLarge'));
   }
 
-  const buffer = fs.readFileSync(filePath);
+  const buffer = await fs.promises.readFile(filePath);
 
   if (buffer.length === 0) {
     throw new Error(mainMessage('importFileEmpty'));

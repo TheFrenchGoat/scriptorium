@@ -24,6 +24,7 @@ import {
   listBackupEntries,
   moveProjectBackups,
   NAMED_SUFFIX,
+  pathExists,
   PRE_CONVERSION_SUFFIX,
   projectBackupDir,
   rotateBackups,
@@ -57,13 +58,28 @@ function isPreConversionData(data: unknown): boolean {
   );
 }
 
+/**
+ * File d'attente des opérations sur les sauvegardes : elles passent une par
+ * une, dans l'ordre des demandes. Les fichiers sont lus et écrits sans bloquer
+ * le processus principal ; sans cette file, deux sauvegardes simultanées
+ * pourraient se gêner (fichier temporaire supprimé par l'autre, rotation
+ * pendant une écriture).
+ */
+let backupQueue: Promise<unknown> = Promise.resolve();
+
+function runInBackupQueue<T>(task: () => Promise<T>): Promise<T> {
+  const run = backupQueue.then(() => task());
+  backupQueue = run.catch(() => undefined);
+  return run;
+}
+
 export function registerBackupIpc(): void {
   ipcMain.handle(
     'backup:create',
-    (_e, payload: { projectName: string; projectData: ProjectData }) => {
+    async (_e, payload: { projectName: string; projectData: ProjectData }) => {
       if (
-        !payload ||
-        typeof payload.projectName !== 'string' ||
+ !payload ||
+ typeof payload.projectName !== 'string' ||
         !payload.projectData ||
         typeof payload.projectData !== 'object'
       ) {
@@ -78,15 +94,13 @@ export function registerBackupIpc(): void {
       const fileName = isPreConversionData(projectData)
         ? timestamp + PRE_CONVERSION_SUFFIX
         : timestamp + '.json';
+      const content = JSON.stringify({ projectName, projectData, savedAt: now.toISOString() }, null, 2);
 
-      // Écriture sécurisée : fichier temporaire, puis renommage.
-      writeBackupFile(
-        dir,
-        fileName,
-        JSON.stringify({ projectName, projectData, savedAt: now.toISOString() }, null, 2)
-      );
-
-      rotateBackups(dir);
+      // Écriture sécurisée (fichier temporaire, puis renommage), puis rotation.
+      await runInBackupQueue(async () => {
+ await writeBackupFile(dir, fileName, content);
+ await rotateBackups(dir);
+      });
 
       return { fileName };
     }
@@ -95,14 +109,14 @@ export function registerBackupIpc(): void {
   // Version nommée : créée par l'auteur, jamais supprimée automatiquement.
   ipcMain.handle(
     'backup:create-version',
-    (_e, payload: { projectName: string; projectData: ProjectData; label: unknown }) => {
+    async (_e, payload: { projectName: string; projectData: ProjectData; label: unknown }) => {
       if (
         !payload ||
         typeof payload.projectName !== 'string' ||
         !payload.projectData ||
         typeof payload.projectData !== 'object'
       ) {
-        throw new Error(mainMessage('backupVersionDataInvalid'));
+ throw new Error(mainMessage('backupVersionDataInvalid'));
       }
 
       const label = sanitizeVersionLabel(payload.label);
@@ -112,31 +126,29 @@ export function registerBackupIpc(): void {
       const dir = projectBackupDir(backupsDir(), projectName);
       const now = new Date();
       const fileName = backupTimestamp(now) + NAMED_SUFFIX;
-
-      writeBackupFile(
-        dir,
-        fileName,
-        JSON.stringify(
-          { projectName, projectData, savedAt: now.toISOString(), kind: 'named', label },
-          null,
-          2
-        )
+      const content = JSON.stringify(
+        { projectName, projectData, savedAt: now.toISOString(), kind: 'named', label },
+        null,
+        2
       );
+
+      await runInBackupQueue(() => writeBackupFile(dir, fileName, content));
 
       return { fileName };
     }
   );
 
   // Liste rapide : la date est lue dans le nom du fichier.
-  ipcMain.handle('backup:list', (_e, projectName: string): BackupEntry[] => {
+  ipcMain.handle('backup:list', async (_e, projectName: string): Promise<BackupEntry[]> => {
     if (typeof projectName !== 'string') return [];
 
-    return listBackupEntries(projectBackupDir(backupsDir(), projectName));
+    const dir = projectBackupDir(backupsDir(), projectName);
+    return runInBackupQueue(() => listBackupEntries(dir));
   });
 
   ipcMain.handle(
     'backup:restore',
-    (_e, payload: { projectName: string; fileName: string }): ProjectData => {
+    async (_e, payload: { projectName: string; fileName: string }): Promise<ProjectData> => {
       if (!payload || typeof payload.projectName !== 'string') {
         throw new Error(mainMessage('backupRestoreDataInvalid'));
       }
@@ -150,28 +162,34 @@ export function registerBackupIpc(): void {
 
       const dir = projectBackupDir(backupsDir(), projectName);
       const filePath = path.join(dir, fileName);
-      if (!fs.existsSync(filePath)) throw new Error(mainMessage('backupNotFound'));
 
-      const data = JSON.parse(fs.readFileSync(filePath, 'utf-8')) as { projectData?: unknown };
-      return sanitizeProjectData(data.projectData);
+      const rawData = await runInBackupQueue(async () => {
+        if (!(await pathExists(filePath))) throw new Error(mainMessage('backupNotFound'));
+        const data = JSON.parse(await fs.promises.readFile(filePath, 'utf-8')) as { projectData?: unknown };
+        return data.projectData;
+      });
+
+      return sanitizeProjectData(rawData);
     }
   );
 
   // Lecture d'une sauvegarde pour l'aperçu : rien n'est modifié ni restauré.
   ipcMain.handle(
     'backup:read',
-    (_e, payload: { projectName: string; fileName: string }): ProjectData => {
+    async (_e, payload: { projectName: string; fileName: string }): Promise<ProjectData> => {
       if (!payload || typeof payload.projectName !== 'string') {
         throw new Error(mainMessage('backupReadDataInvalid'));
       }
 
       const dir = projectBackupDir(backupsDir(), payload.projectName);
-      return sanitizeProjectData(readBackupProjectData(dir, payload.fileName));
+      const fileName = payload.fileName;
+      const rawData = await runInBackupQueue(() => readBackupProjectData(dir, fileName));
+      return sanitizeProjectData(rawData);
     }
   );
 
   // Suppression d'une version nommée (les sauvegardes automatiques sont refusées).
-  ipcMain.handle('backup:delete-version', (_e, payload: unknown): boolean => {
+  ipcMain.handle('backup:delete-version', async (_e, payload: unknown): Promise<boolean> => {
     const record = (payload && typeof payload === 'object' ? payload : {}) as {
       projectName?: unknown;
       fileName?: unknown;
@@ -181,11 +199,13 @@ export function registerBackupIpc(): void {
       throw new Error(mainMessage('backupProjectNameInvalid'));
     }
 
-    return deleteNamedVersion(projectBackupDir(backupsDir(), record.projectName), record.fileName);
+    const dir = projectBackupDir(backupsDir(), record.projectName);
+    const fileName = record.fileName;
+    return runInBackupQueue(() => deleteNamedVersion(dir, fileName));
   });
 
   // Renommage d'un projet : ses sauvegardes suivent le nouveau nom.
-  ipcMain.handle('backup:rename-project', (_e, payload: unknown): boolean => {
+  ipcMain.handle('backup:rename-project', async (_e, payload: unknown): Promise<boolean> => {
     const record = (payload && typeof payload === 'object' ? payload : {}) as {
       oldName?: unknown;
       newName?: unknown;
@@ -202,14 +222,17 @@ export function registerBackupIpc(): void {
     }
 
     const root = backupsDir();
-    if (!fs.existsSync(root)) return true;
 
-    const result = moveProjectBackups(root, oldName, newName);
+    return runInBackupQueue(async () => {
+      if (!(await pathExists(root))) return true;
 
-    if (result.kept > 0) {
-      console.warn("Sauvegardes laissées sous l'ancien nom (nom déjà pris) :", result.kept);
-    }
+      const result = await moveProjectBackups(root, oldName, newName);
 
-    return true;
+      if (result.kept > 0) {
+        console.warn("Sauvegardes laissées sous l'ancien nom (nom déjà pris) :", result.kept);
+      }
+
+      return true;
+    });
   });
 }

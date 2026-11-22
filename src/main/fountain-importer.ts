@@ -23,12 +23,12 @@ export interface FountainImportResult {
   projectData: Record<string, unknown>;
 }
 
-export function importFountainProject(filePath: string): FountainImportResult {
-  if (fs.statSync(filePath).size > MAX_FILE_BYTES) {
+export async function importFountainProject(filePath: string): Promise<FountainImportResult> {
+  if ((await fs.promises.stat(filePath)).size > MAX_FILE_BYTES) {
     throw new Error(mainMessage('importFileTooLarge'));
   }
 
-  const parsed = parseFountain(decodeTextFile(fs.readFileSync(filePath)), () => randomUUID());
+  const parsed = parseFountain(decodeTextFile(await fs.promises.readFile(filePath)), () => randomUUID());
 
   const titlePage = parsed.titlePage ?? {
     enabled: false,

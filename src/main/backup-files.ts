@@ -142,56 +142,52 @@ export function sanitizeVersionLabel(label: unknown): string {
 }
 
 /** Supprime les fichiers temporaires laissés par une écriture interrompue. */
-export function removeStaleTempFiles(dir: string): void {
+export async function removeStaleTempFiles(dir: string): Promise<void> {
   let files: string[];
 
   try {
-    files = fs.readdirSync(dir);
+    files = await fs.promises.readdir(dir);
   } catch {
     return;
   }
 
-  files
-    .filter((fileName) => fileName.endsWith(TEMP_SUFFIX))
-    .forEach((fileName) => {
-      try {
-        fs.unlinkSync(path.join(dir, fileName));
-      } catch (error) {
-        console.error('Impossible de supprimer un fichier temporaire :', fileName, error);
-      }
-    });
+  for (const fileName of files) {
+    if (!fileName.endsWith(TEMP_SUFFIX)) continue;
+    try {
+      await fs.promises.unlink(path.join(dir, fileName));
+    } catch (error) {
+      console.error('Impossible de supprimer un fichier temporaire :', fileName, error);
+    }
+  }
 }
 
 /**
  * Écriture sécurisée : le contenu est écrit dans un fichier temporaire, forcé
  * sur le disque, puis renommé. Le fichier final est donc soit absent, soit
- * complet.
+ * complet. Aucune de ces opérations ne bloque le processus principal.
  */
-export function writeFileAtomic(filePath: string, content: string): void {
+export async function writeFileAtomic(filePath: string, content: string): Promise<void> {
   const tempPath = filePath + TEMP_SUFFIX;
   const data = Buffer.from(content, 'utf-8');
-  let fd: number | null = null;
+  let handle: Awaited<ReturnType<typeof fs.promises.open>> | null = null;
 
   try {
-    fd = fs.openSync(tempPath, 'w');
-    let offset = 0;
-    while (offset < data.length) {
-      offset += fs.writeSync(fd, data, offset, data.length - offset);
-    }
-    fs.fsyncSync(fd);
-    fs.closeSync(fd);
-    fd = null;
-    fs.renameSync(tempPath, filePath);
+    handle = await fs.promises.open(tempPath, 'w');
+    await handle.writeFile(data);
+    await handle.sync();
+    await handle.close();
+    handle = null;
+    await fs.promises.rename(tempPath, filePath);
   } catch (error) {
-    if (fd !== null) {
+    if (handle !== null) {
       try {
-        fs.closeSync(fd);
+ await handle.close();
       } catch {
-        /* déjà fermé */
+ /* déjà fermé */
       }
     }
     try {
-      fs.unlinkSync(tempPath);
+      await fs.promises.unlink(tempPath);
     } catch {
       /* absent */
     }
@@ -200,10 +196,20 @@ export function writeFileAtomic(filePath: string, content: string): void {
 }
 
 /** Écrit une sauvegarde de façon sécurisée (le dossier est créé si besoin). */
-export function writeBackupFile(dir: string, fileName: string, content: string): void {
-  fs.mkdirSync(dir, { recursive: true });
-  removeStaleTempFiles(dir);
-  writeFileAtomic(path.join(dir, fileName), content);
+export async function writeBackupFile(dir: string, fileName: string, content: string): Promise<void> {
+  await fs.promises.mkdir(dir, { recursive: true });
+  await removeStaleTempFiles(dir);
+  await writeFileAtomic(path.join(dir, fileName), content);
+}
+
+/** Indique si un fichier ou un dossier existe, sans bloquer le processus principal. */
+export async function pathExists(target: string): Promise<boolean> {
+  try {
+    await fs.promises.access(target);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -251,8 +257,8 @@ export function selectRegularBackupsToRemove(files: string[], now: number): stri
 }
 
 /** Applique la rotation dans le dossier de sauvegardes d'un projet (versions nommées intactes). */
-export function rotateBackups(dir: string, now: number = Date.now()): void {
-  const files = fs.readdirSync(dir).filter((fileName) => fileName.endsWith('.json'));
+export async function rotateBackups(dir: string, now: number = Date.now()): Promise<void> {
+  const files = (await fs.promises.readdir(dir)).filter((fileName) => fileName.endsWith('.json'));
   const preConversion = files.filter((fileName) => backupKind(fileName) === 'pre-conversion').sort();
   const regular = files.filter((fileName) => backupKind(fileName) === 'auto');
 
@@ -260,13 +266,13 @@ export function rotateBackups(dir: string, now: number = Date.now()): void {
   const excess = preConversion.length - MAX_PRE_CONVERSION_BACKUPS;
   if (excess > 0) toRemove.push(...preConversion.slice(0, excess));
 
-  toRemove.forEach((fileName) => {
+  for (const fileName of toRemove) {
     try {
-      fs.unlinkSync(path.join(dir, fileName));
+      await fs.promises.unlink(path.join(dir, fileName));
     } catch (error) {
       console.error('Impossible de supprimer une ancienne sauvegarde :', fileName, error);
     }
-  });
+  }
 }
 
 /**
@@ -274,35 +280,35 @@ export function rotateBackups(dir: string, now: number = Date.now()): void {
  * du nom du fichier ; le fichier n'est ouvert que si son nom n'a pas le
  * format habituel, ou pour lire le nom d'une version.
  */
-export function listBackupEntries(dir: string): BackupEntry[] {
-  if (!fs.existsSync(dir)) return [];
+export async function listBackupEntries(dir: string): Promise<BackupEntry[]> {
+  if (!(await pathExists(dir))) return [];
 
-  const entries: BackupEntry[] = fs
-    .readdirSync(dir)
-    .filter((fileName) => fileName.endsWith('.json'))
-    .map((fileName) => {
-      const kind = backupKind(fileName);
-      const time = backupTime(fileName);
-      let savedAt: string | null = time !== null ? new Date(time).toISOString() : null;
-      let label = '';
+  const fileNames = (await fs.promises.readdir(dir)).filter((fileName) => fileName.endsWith('.json'));
+  const entries: BackupEntry[] = [];
 
-      if (time === null || kind === 'named') {
-        try {
-          const data = JSON.parse(fs.readFileSync(path.join(dir, fileName), 'utf-8')) as {
-            savedAt?: unknown;
-            label?: unknown;
-          };
-          if (savedAt === null && typeof data.savedAt === 'string') savedAt = data.savedAt;
-          if (kind === 'named') label = sanitizeVersionLabel(data.label);
-        } catch {
-          /* fichier illisible : date ou nom inconnu */
-        }
+  for (const fileName of fileNames) {
+    const kind = backupKind(fileName);
+    const time = backupTime(fileName);
+    let savedAt: string | null = time !== null ? new Date(time).toISOString() : null;
+    let label = '';
+
+    if (time === null || kind === 'named') {
+      try {
+ const data = JSON.parse(await fs.promises.readFile(path.join(dir, fileName), 'utf-8')) as {
+          savedAt?: unknown;
+   label?: unknown;
+        };
+        if (savedAt === null && typeof data.savedAt === 'string') savedAt = data.savedAt;
+        if (kind === 'named') label = sanitizeVersionLabel(data.label);
+      } catch {
+        /* fichier illisible : date ou nom inconnu */
       }
+    }
 
-      const entry: BackupEntry = { fileName, savedAt, kind };
-      if (label) entry.label = label;
-      return entry;
-    });
+    const entry: BackupEntry = { fileName, savedAt, kind };
+    if (label) entry.label = label;
+    entries.push(entry);
+  }
 
   const timeOf = (entry: BackupEntry): number =>
     entry.savedAt ? Date.parse(entry.savedAt) : Number.NaN;
@@ -322,15 +328,15 @@ export function listBackupEntries(dir: string): BackupEntry[] {
  * conversion) ou tout nom contenant un chemin est refusé.
  * Renvoie false si le fichier n'existe déjà plus.
  */
-export function deleteNamedVersion(dir: string, fileName: unknown): boolean {
+export async function deleteNamedVersion(dir: string, fileName: unknown): Promise<boolean> {
   if (!isSafeBackupFileName(fileName) || !fileName.endsWith(NAMED_SUFFIX)) {
     throw new Error(mainMessage('backupOnlyNamedVersionsDeletable'));
   }
 
   const filePath = path.join(dir, fileName);
-  if (!fs.existsSync(filePath)) return false;
+  if (!(await pathExists(filePath))) return false;
 
-  fs.unlinkSync(filePath);
+  await fs.promises.unlink(filePath);
   return true;
 }
 
@@ -346,37 +352,41 @@ export interface MoveBackupsResult {
  * dossier existe déjà sous le nouveau nom, les fichiers sont réunis sans
  * jamais en écraser un.
  */
-export function moveProjectBackups(root: string, oldName: string, newName: string): MoveBackupsResult {
+export async function moveProjectBackups(
+  root: string,
+  oldName: string,
+  newName: string
+): Promise<MoveBackupsResult> {
   const result: MoveBackupsResult = { moved: 0, kept: 0 };
   const oldDir = projectBackupDir(root, oldName);
   const newDir = projectBackupDir(root, newName);
 
-  if (oldDir === newDir || !fs.existsSync(oldDir)) return result;
+  if (oldDir === newDir || !(await pathExists(oldDir))) return result;
 
-  const files = fs.readdirSync(oldDir).filter((fileName) => fileName.endsWith('.json'));
+  const files = (await fs.promises.readdir(oldDir)).filter((fileName) => fileName.endsWith('.json'));
 
   // Même dossier à la casse près (Windows), ou nouveau nom libre :
   // simple renommage du dossier.
-  if (oldDir.toLowerCase() === newDir.toLowerCase() || !fs.existsSync(newDir)) {
-    fs.renameSync(oldDir, newDir);
+  if (oldDir.toLowerCase() === newDir.toLowerCase() || !(await pathExists(newDir))) {
+    await fs.promises.rename(oldDir, newDir);
     result.moved = files.length;
     return result;
   }
 
   // Réunion : aucun fichier existant n'est écrasé.
-  files.forEach((fileName) => {
+  for (const fileName of files) {
     const target = path.join(newDir, fileName);
-    if (fs.existsSync(target)) {
+    if (await pathExists(target)) {
       result.kept++;
-      return;
+      continue;
     }
-    fs.renameSync(path.join(oldDir, fileName), target);
+    await fs.promises.rename(path.join(oldDir, fileName), target);
     result.moved++;
-  });
+  }
 
   // Dossier de l'ancien nom retiré s'il est vide (sinon il reste, sans risque).
   try {
-    fs.rmdirSync(oldDir);
+    await fs.promises.rmdir(oldDir);
   } catch {
     /* pas vide */
   }
