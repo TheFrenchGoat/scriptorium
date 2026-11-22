@@ -9,6 +9,21 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    version: '1.5.3',
+    fr: [
+      'Plus fluide : les sauvegardes, leur restauration et les imports (texte, Fountain, ODT, projets Scriptorium) ne figent plus l’application.',
+      'Sauvegardes plus sûres : elles s’enregistrent une par une et ne peuvent plus se gêner entre elles.',
+      'Sécurité renforcée et plusieurs petits bugs corrigés.',
+      'Application allégée : du code inutile a été retiré.'
+    ],
+    en: [
+      'Smoother: backups, restoring them and imports (text, Fountain, ODT, Scriptorium projects) no longer freeze the app.',
+      'Safer backups: they are saved one at a time and can no longer interfere with each other.',
+      'Stronger security and several small bug fixes.',
+      'Lighter app: unused code has been removed.'
+    ]
+  },
+  {
     version: '1.5.2',
     fr: [
       'Rechercher et remplacer : les boutons restent toujours visibles.',
