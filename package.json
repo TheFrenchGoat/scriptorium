@@ -57,20 +57,20 @@
     "electron-updater": "^6.8.9",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "sanitize-html": "^2.13.1"
+    "sanitize-html": "^2.18.2"
   },
   "devDependencies": {
     "@playwright/test": "^1.65.1",
     "@types/adm-zip": "^0.5.5",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
-    "@types/sanitize-html": "^2.13.0",
+    "@types/sanitize-html": "^2.16.2",
     "@vitejs/plugin-react": "^4.3.4",
-    "concurrently": "^9.1.0",
+    "concurrently": "^9.2.5",
     "cross-env": "^7.0.3",
-    "electron": "^44.2.0",
+    "electron": "^44.11.5",
     "electron-builder": "^26.15.3",
     "typescript": "^5.7.2",
-    "vite": "^6.0.3"
+    "vite": "^6.4.6"
   }
 }
