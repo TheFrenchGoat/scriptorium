@@ -2,7 +2,9 @@
 # Lancement, depuis le dossier du projet :
 #   powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\publier.ps1
 # Le jeton GH_TOKEN est demande en saisie masquee s'il est absent.
-# Il n'est jamais ecrit sur le disque.
+# Il n'est jamais ecrit sur le disque ni affiche. Il est verifie aupres
+# de GitHub (validite, expiration, droits, brouillon deja existant)
+# avant tout envoi : en cas de probleme, rien n'est envoye.
 # La version est lue dans package.json ; elle doit etre identique dans
 # package-lock.json (lignes 3 et 9) et dans le premier bloc de
 # src/renderer/lib/whats-new.ts.
@@ -43,6 +45,41 @@ function Lire-Lignes([string]$rel) {
     $chemin = Join-Path $script:racine $rel
     if (-not (Test-Path -LiteralPath $chemin)) { throw "Fichier introuvable : $rel" }
     return ,[System.IO.File]::ReadAllLines($chemin, [System.Text.Encoding]::UTF8)
+}
+
+function Lire-Entete($entetes, [string]$nom) {
+    if ($null -eq $entetes) { return '' }
+    foreach ($cle in @($entetes.Keys)) {
+ if ([string]$cle -ieq $nom) { return [string]$entetes[$cle] }
+    }
+    return ''
+}
+
+# Appel en lecture de l API GitHub. Le jeton part seulement dans l en-tete
+# Authorization : il n est jamais affiche ni ecrit.
+function Appel-GitHub([string]$route) {
+    $entetesHttp = @{
+        'Authorization' = ('Bearer ' + $env:GH_TOKEN)
+        'X-GitHub-Api-Version' = '2022-11-28'
+    }
+    $resultat = [pscustomobject]@{ Code = 0; Entetes = $null; Corps = $null; Message = '' }
+    $contenu = ''
+    try {
+        $repHttp = Invoke-WebRequest -Uri ('https://api.github.com' + $route) -Headers $entetesHttp -UseBasicParsing -UserAgent 'scriptorium-publier' -TimeoutSec 30 -ErrorAction Stop
+ $resultat.Code = [int]$repHttp.StatusCode
+        $resultat.Entetes = $repHttp.Headers
+        $contenu = [string]$repHttp.Content
+    } catch {
+        $reponseErreur = $_.Exception.Response
+        if ($null -ne $reponseErreur) {
+     $resultat.Code = [int]$reponseErreur.StatusCode
+     $resultat.Entetes = $reponseErreur.Headers
+        } else {
+     $resultat.Message = $_.Exception.Message
+ }
+    }
+    if ($resultat.Code -eq 200 -and $contenu.Trim() -ne '') { $resultat.Corps = ($contenu | ConvertFrom-Json) }
+    return $resultat
 }
 
 try {
@@ -96,12 +133,84 @@ try {
     }
     Rap "Branche main, depot propre, aucun retard, tag $tag libre. Commits a envoyer : $avance"
 
-    # --- 3. Confirmation ---
+    # --- 3. Jeton (demande avant tout envoi) ---
+    if ([string]::IsNullOrWhiteSpace($env:GH_TOKEN)) {
+        $secret = Read-Host 'Jeton GitHub (saisie masquee)' -AsSecureString
+        $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secret)
+        try { $clair = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr) }
+        finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr) }
+ if ([string]::IsNullOrWhiteSpace($clair)) { throw 'Jeton vide : rien n a ete envoye' }
+        $env:GH_TOKEN = $clair.Trim()
+        $clair = $null
+        $script:jetonPose = $true
+        Rap 'Jeton recu (ni affiche, ni enregistre).'
+    } else { Rap 'Jeton deja present dans la session.' }
+
+    # --- 4. Verification du jeton aupres de GitHub (rien n est encore envoye) ---
+    [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+    $pkg = [System.IO.File]::ReadAllText((Join-Path $script:racine 'package.json'), [System.Text.Encoding]::UTF8) | ConvertFrom-Json
+    $pub = $pkg.build.publish
+    if ($pub -is [array]) { $pub = $pub[0] }
+    $proprio = [string]$pub.owner
+    $depot = [string]$pub.repo
+    if ([string]::IsNullOrWhiteSpace($proprio) -or [string]::IsNullOrWhiteSpace($depot)) { throw 'package.json : build.publish.owner ou build.publish.repo absent' }
+    Rap ('Verification du jeton aupres de GitHub (' + $proprio + '/' + $depot + ')...')
+    $typeJeton = 'non reconnu'
+    if ($env:GH_TOKEN.StartsWith('ghp_', [System.StringComparison]::Ordinal)) { $typeJeton = 'classic' } elseif ($env:GH_TOKEN.StartsWith('github_pat_', [System.StringComparison]::Ordinal)) { $typeJeton = 'fine-grained' }
+
+    $rUser = Appel-GitHub '/user'
+    if ($rUser.Code -eq 0) { throw ('Impossible de joindre GitHub (' + $rUser.Message + ') : rien n a ete envoye') }
+    if ($rUser.Code -eq 401) { throw 'Jeton invalide ou expire : creez-en un nouveau sur https://github.com/settings/tokens (rien n a ete envoye)' }
+    if ($rUser.Code -ne 200) { throw ('GitHub refuse le jeton (code ' + $rUser.Code + ') : rien n a ete envoye') }
+    Rap ('Jeton accepte : compte ' + [string]$rUser.Corps.login + ', jeton de type ' + $typeJeton)
+
+    $texteExp = Lire-Entete $rUser.Entetes 'github-authentication-token-expiration'
+    $dateExp = [datetime]::MinValue
+    if ($texteExp.Length -ge 10 -and [datetime]::TryParseExact($texteExp.Substring(0, 10), 'yyyy-MM-dd', [System.Globalization.CultureInfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::None, [ref]$dateExp)) {
+ $joursRestants = ($dateExp.Date - (Get-Date).Date).Days
+        Rap ('Expiration du jeton : ' + $dateExp.ToString('dd/MM/yyyy', [System.Globalization.CultureInfo]::InvariantCulture) + ' (dans ' + $joursRestants + ' jour(s))')
+        if ($joursRestants -lt 7) { Rap 'ATTENTION : le jeton expire bientot. Pensez a en creer un nouveau apres cette publication.' }
+    } else { Rap 'Expiration du jeton : aucune date annoncee par GitHub' }
+
+    $rDepot = Appel-GitHub ('/repos/' + $proprio + '/' + $depot)
+    if ($rDepot.Code -eq 0) { throw ('Impossible de joindre GitHub (' + $rDepot.Message + ') : rien n a ete envoye') }
+    if ($rDepot.Code -eq 404) { throw ('Depot ' + $proprio + '/' + $depot + ' introuvable avec ce jeton : verifiez que le jeton donne acces a ce depot (rien n a ete envoye)') }
+    if ($rDepot.Code -ne 200) { throw ('Lecture du depot impossible (code ' + $rDepot.Code + ') : rien n a ete envoye') }
+    $droitEcriture = $false
+    if ($null -ne $rDepot.Corps.permissions -and $rDepot.Corps.permissions.push -eq $true) { $droitEcriture = $true }
+    if (-not $droitEcriture) { throw 'Le jeton n a pas le droit d ecriture sur le depot : rien n a ete envoye' }
+    $prive = ($rDepot.Corps.private -eq $true)
+
+    if ($typeJeton -eq 'classic') {
+        $portees = @((Lire-Entete $rUser.Entetes 'X-OAuth-Scopes') -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' })
+        $listePortees = 'aucun'
+        if ($portees.Count -gt 0) { $listePortees = $portees -join ', ' }
+ Rap ('Droits du jeton classic : ' + $listePortees)
+        $porteeOk = ($portees -contains 'repo') -or ((-not $prive) -and ($portees -contains 'public_repo'))
+        if (-not $porteeOk) { throw 'Jeton classic sans le droit repo : recreez-le en cochant la case repo (rien n a ete envoye)' }
+    } elseif ($typeJeton -eq 'fine-grained') {
+ Rap 'Jeton fine-grained : GitHub ne permet pas de verifier a l avance le droit Contents (Read and write). S il manque, seul le brouillon echouera, a la fin.'
+    } else {
+ Rap 'Type de jeton non reconnu : verifications limitees au compte et au depot.'
+    }
+
+    $rRel = Appel-GitHub ('/repos/' + $proprio + '/' + $depot + '/releases?per_page=100')
+    if ($rRel.Code -ne 200) { throw ('Lecture des releases impossible (code ' + $rRel.Code + ') : rien n a ete envoye') }
+    foreach ($relGh in @($rRel.Corps)) {
+        if ($null -ne $relGh -and [string]$relGh.tag_name -ieq $tag) {
+     $genre = 'une release publiee'
+     if ($relGh.draft -eq $true) { $genre = 'un brouillon (reste d une tentative precedente ?)' }
+            throw ('Il existe deja ' + $genre + ' ' + $tag + ' sur GitHub : supprimez-le sur la page des releases, puis relancez (rien n a ete envoye)')
+        }
+    }
+    Rap ('Jeton verifie : valide, droit d ecriture sur ' + $proprio + '/' + $depot + ', aucun brouillon ' + $tag + ' existant.')
+
+    # --- 5. Confirmation ---
     Rap ''
     $reponse = Read-Host "Envoyer sur GitHub et creer le brouillon $tag ? Taper OUI pour continuer"
     if ($reponse -cne 'OUI') { Rap 'Annule : rien n a ete envoye.'; return }
 
-    # --- 4. Envoi des commits ---
+    # --- 6. Envoi des commits ---
     $env:GIT_TERMINAL_PROMPT = $script:ancienPrompt
     if ($avance -gt 0) {
         Rap 'Envoi des commits (git push origin main)...'
@@ -112,20 +221,7 @@ try {
     if (-not $commitDistant.StartsWith($commitLocal)) { throw 'Apres envoi, GitHub ne pointe pas sur le meme commit que ce PC' }
     Rap ("GitHub est a jour : " + $commitLocal.Substring(0, 7))
 
-    # --- 5. Jeton ---
-    if ([string]::IsNullOrWhiteSpace($env:GH_TOKEN)) {
-        $secret = Read-Host 'Jeton GitHub (saisie masquee)' -AsSecureString
-        $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secret)
-        try { $clair = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr) }
-        finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr) }
-        if ([string]::IsNullOrWhiteSpace($clair)) { throw 'Jeton vide : brouillon non cree (les commits deja envoyes ne posent aucun probleme)' }
-        $env:GH_TOKEN = $clair.Trim()
-        $clair = $null
-        $script:jetonPose = $true
-        Rap 'Jeton recu (ni affiche, ni enregistre).'
-    } else { Rap 'Jeton deja present dans la session.' }
-
-    # --- 6. Construction et envoi du brouillon ---
+    # --- 7. Construction et envoi du brouillon ---
     $debut = (Get-Date).AddSeconds(-5)
     $journal = Join-Path $env:TEMP "scriptorium-build-$version.log"
     Rap 'npm run release : construction puis envoi du brouillon (plusieurs minutes)...'
@@ -147,7 +243,7 @@ try {
         throw 'Echec de npm run release : regarder sur GitHub si un brouillon incomplet existe, et le supprimer'
     }
 
-    # --- 7. Verification des fichiers produits ---
+    # --- 8. Verification des fichiers produits ---
     $nomExe = "Scriptorium Setup $version.exe"
     $nomUrl = "Scriptorium-Setup-$version.exe"
     $cheminExe = Join-Path $dossierRelease $nomExe
